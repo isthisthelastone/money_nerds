@@ -1,9 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 /* eslint-disable */
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables');
-}
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error(
+            `Missing Supabase environment variables. 
+    URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL || 'undefined'}, 
+    Key: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined'}`
+        );
+    }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
