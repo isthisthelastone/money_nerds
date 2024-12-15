@@ -3,7 +3,7 @@ import { Form } from '@/components';
 
 export function Component({ data }: { data: any[] }) {
   return (
-    <main className="flex flex-col items-center justify-start gap-16 min-h-screen">
+   <main className="flex flex-col items-center justify-start gap-16 min-h-screen w-full px-4">
       <h1 className="text-4xl text-white pt-[20vh]">MONEY NERDS</h1>
 
       {/* Form for Client-side Interaction */}
