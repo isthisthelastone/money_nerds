@@ -11,7 +11,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-size-screen items-center justify-items-center align-center bg-gradient-to-b from-blue-900 via-blue-600 to-blue-300">
+      <body className="min-h-screen min-w-screen bg-cover bg-no-repeat p-safe-top p-safe-bottom items-center justify-items-center align-center bg-gradient-to-b from-blue-900 via-blue-600 to-blue-300">
         {children}
       </body>
     </html>
