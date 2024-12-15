@@ -3,7 +3,7 @@
 import '../styles/global.css';
 import { supabase } from '../../supabaseClient';
 import { Component } from '@/components';
-export const revalidate = 20; // This disables caching entirely
+export const revalidate = 0; // This disables caching entirely
 
 async function fetchData() {
   const { data, error } = await supabase

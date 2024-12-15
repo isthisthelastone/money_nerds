@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 import '../styles/global.css';
 
 export const metadata = {
-  title: 'have you ever made money online?',
+  title: 'money nerds',
   description: 'money nerds money nerds money nerds online',
     icons: '/icon.svg',
 };
