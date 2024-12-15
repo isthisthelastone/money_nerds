@@ -70,7 +70,7 @@ export function FormContent() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={handleSubmit}
-        className="resize-none max-w-[250px] min-h-[40px] bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-0 focus:outline-none rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+        className="resize-none max-w-[15vw] min-h-[4vh] bg-gray-50 border border-gray-300 text-gray-900 text-sm focus:ring-0 focus:outline-none rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         placeholder="Enter your name"
         required
       />
@@ -78,7 +78,7 @@ export function FormContent() {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleSubmit}
-        className="resize-none min-w-[750px] min-h-[155px] bg-gray-50 border border-gray-300 text-gray-900 focus:ring-0 focus:outline-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+        className="resize-none min-w-[39vw] min-h-[10vh] bg-gray-50 border border-gray-300 text-gray-900 focus:ring-0 focus:outline-none text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         placeholder="Type here to get money"
         required
       />
