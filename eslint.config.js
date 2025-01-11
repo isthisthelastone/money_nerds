@@ -1,34 +1,36 @@
-import js from '@eslint/js';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
-import nextPlugin from '@next/eslint-plugin-next';
+import js from "@eslint/js";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import nextPlugin from "@next/eslint-plugin-next";
 
 export default [
   // JavaScript related rules
   js.configs.recommended,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
+      env: { browser: true, node: true, es2021: true },
+      environments: { browser: true, node: true, es2021: true },
       parser: tsParser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: "./tsconfig.json",
         ecmaVersion: 12,
-        sourceType: 'module',
+        sourceType: "module",
       },
     },
     plugins: {
-      '@typescript-eslint': tsPlugin,
+      "@typescript-eslint": tsPlugin,
     },
     rules: {
       // Recommended rules from TypeScript ESLint plugins
       ...tsPlugin.configs.recommended.rules,
-      ...tsPlugin.configs['recommended-requiring-type-checking'].rules,
+      ...tsPlugin.configs["recommended-requiring-type-checking"].rules,
     },
   },
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ["**/*.{js,jsx,ts,tsx}"],
     plugins: {
-      '@next/eslint-plugin-next': nextPlugin,
+      "@next/eslint-plugin-next": nextPlugin,
     },
   },
 ];

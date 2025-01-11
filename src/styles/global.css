@@ -1,56 +1,72 @@
 @font-face {
-    font-family: 'FT Regola Neue';
-    src: url('/path/to/FTRegolaNeue-Regular.woff2') format('woff2'),
-    url('/path/to/FTRegolaNeue-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
+  font-family: "FT Regola Neue";
+  src:
+    url("/path/to/FTRegolaNeue-Regular.woff2") format("woff2"),
+    url("/path/to/FTRegolaNeue-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
-*, *::before, *::after {
-    box-sizing: border-box;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 * {
-    margin: 0;
-    padding: 0;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
-    width: 100%;
-    overflow-x: hidden;
-    overscroll-behavior-y: none;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
-img, picture, video, canvas, svg {
-    display: block;
-    max-width: 100%;
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
 }
 
-input, button, textarea, select {
-    font: inherit;
+input,
+button,
+textarea,
+select {
+  font: inherit;
 }
 
-p, h1, h2, h3, h4, h5, h6 {
-    overflow-wrap: break-word;
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
 }
 
-#root, #__next {
-    isolation: isolate;
+#root,
+#__next {
+  isolation: isolate;
 }
 
 html {
-    height: 100%;
-    width: 100%;
-    background: linear-gradient(to bottom, #1e3a8a, #2563eb, #93c5fd) fixed;
-    background-attachment: fixed;
-    overflow-x: hidden;
-    overscroll-behavior-y: none;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(to bottom, #1e3a8a, #2563eb, #93c5fd) fixed;
+  background-attachment: fixed;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
