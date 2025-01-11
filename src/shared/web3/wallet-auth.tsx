@@ -24,10 +24,10 @@ const PhantomWalletButton = () => {
     setIsConnecting(true);
     setError("");
     try {
-      const response = await window.solana.connect({ onlyIfTrusted: false });
+      const response = await window.solana?.connect({ onlyIfTrusted: false });
       const publicKey = response?.publicKey.toString();
-      setWalletAddress(publicKey);
-      localStorage.setItem("phantomWalletAddress", publicKey);
+      setWalletAddress(publicKey ?? "");
+      localStorage.setItem("phantomWalletAddress", publicKey ?? '');
     } catch (err) {
       console.error("Error connecting to Phantom Wallet:", err);
       setError("Failed to connect to Phantom Wallet.");
@@ -41,7 +41,7 @@ const PhantomWalletButton = () => {
   };
 
   const checkAndAddWallet = async (walletAddress: string) => {
-    const { data, error } = await supabase
+    const { data: _, error } = await supabase
       .from("users")
       .select("*")
       .eq("wallet_address", walletAddress)
@@ -49,7 +49,7 @@ const PhantomWalletButton = () => {
 
     if (error) {
       // Wallet not found, so add it
-      const { data, error: insertError } = await supabase
+      const { data : _, error: insertError } = await supabase
         .from("test")
         .insert([{ wallet_address: walletAddress }]);
       if (insertError) {
