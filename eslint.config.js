@@ -9,13 +9,17 @@ export default [
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
-      env: { browser: true, node: true, es2021: true },
-      environments: { browser: true, node: true, es2021: true },
       parser: tsParser,
       parserOptions: {
         project: "./tsconfig.json",
         ecmaVersion: 12,
         sourceType: "module",
+      },
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        localStorage: "readonly",
+        console: "readonly"
       },
     },
     plugins: {
@@ -31,6 +35,13 @@ export default [
     files: ["**/*.{js,jsx,ts,tsx}"],
     plugins: {
       "@next/eslint-plugin-next": nextPlugin,
+    },
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        localStorage: "readonly",
+      },
     },
   },
 ];

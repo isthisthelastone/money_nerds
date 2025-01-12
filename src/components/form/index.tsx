@@ -94,7 +94,7 @@ export function FormContent() {
             name,
             message,
             walletAddress:
-              localStorage.getItem("phantomWalletAddress") ?? "no adress",
+              localStorage.getItem("phantomWalletAddress") ?? "no address",
           },
           {
             onSuccess: () => {
@@ -114,7 +114,7 @@ export function FormContent() {
           name,
           message,
           walletAddress:
-            localStorage.getItem("phantomWalletAddress") ?? "no adress",
+            localStorage.getItem("phantomWalletAddress") ?? "no address",
         },
         {
           onSuccess: () => {

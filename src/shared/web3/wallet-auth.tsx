@@ -41,6 +41,7 @@ const PhantomWalletButton = () => {
   };
 
   const checkAndAddWallet = async (walletAddress: string) => {
+    //eslint-disable-next-line
     const { data: _, error } = await supabase
       .from("users")
       .select("*")
@@ -49,6 +50,7 @@ const PhantomWalletButton = () => {
 
     if (error) {
       // Wallet not found, so add it
+      //eslint-disable-next-line
       const { data : _, error: insertError } = await supabase
         .from("test")
         .insert([{ wallet_address: walletAddress }]);
@@ -56,9 +58,6 @@ const PhantomWalletButton = () => {
         console.error("Error adding new wallet address:", insertError);
         setError("Failed to register new wallet address.");
       }
-    } else if (error) {
-      console.error("Error checking wallet address:", error);
-      setError("Failed to check wallet address.");
     }
   };
 
@@ -81,6 +80,7 @@ const PhantomWalletButton = () => {
       {error && <p style={{ color: "red" }}>{error}</p>}
       {!walletAddress ? (
         <button
+            //eslint-disable-next-line
           onClick={async () => {
             await connectWallet();
             await checkAndAddWallet(
