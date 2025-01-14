@@ -1,140 +1,197 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { supabase } from "../../../supabaseClient";
+import React, { useEffect, useState } from "react";
+import {QueryClient, QueryClientProvider, useMutation, useQueryClient} from "@tanstack/react-query";
 
-const PhantomWalletButton = () => {
-  const [walletAddress, setWalletAddress] = useState<null | string>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState("");
+/** The response from GET /api/auth/nonce */
+interface NonceResponse {
+  nonce: string;
+  [key: string]: unknown;
+}
 
-  const isPhantomInstalled = () => {
-    return (
-        typeof window !== "undefined" && window.solana && window.solana.isPhantom
-    );
-  };
+/** The response from POST /api/auth/verify (Supabase built-in Auth style) */
+interface VerifyResponse {
+  error?: string;
+  message?: string;
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  user?: any; // or a more specific type if desired
+}
 
-  const connectWallet = async () => {
-    if (!isPhantomInstalled()) {
-      setError(
-          "Phantom Wallet is not installed! Please install it from https://phantom.app",
+const queryClient = new QueryClient();
+
+export const PhantomWalletButton = () => {
+  return <QueryClientProvider client={queryClient}>
+    <PhantomWallet/>
+  </QueryClientProvider>
+
+}
+
+/** A single component handling connect → nonce → sign → verify, using v5 of TanStack Query. */
+export  function PhantomWallet() {
+  const queryClient = useQueryClient();
+
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * The big mutation that:
+   * 1) Connects Phantom
+   * 2) GET /api/auth/nonce (via queryClient.fetchQuery)
+   * 3) signMessage
+   * 4) POST /api/auth/verify
+   */
+  const loginMutation = useMutation<
+      // success data
+      { walletAddress: string; access_token?: string; refresh_token?: string },
+      // error type
+      Error,
+      // variables (none)
+      void
+  >({
+    mutationFn: async () => {
+      // 1) Check Phantom
+      if (
+          typeof window === "undefined" ||
+          !window.solana ||
+          !window.solana.isPhantom
+      ) {
+        throw new Error("Phantom Wallet is not installed!");
+      }
+
+      // 2) Connect to Phantom
+      const resp = await window.solana.connect({ onlyIfTrusted: false });
+      const address = resp?.publicKey?.toString();
+      if (!address) {
+        throw new Error("No public key from Phantom");
+      }
+
+      // 3) GET nonce
+      const nonceData = await queryClient.fetchQuery<NonceResponse>({
+        queryKey: ["nonce-fetch"],
+        queryFn: async () => {
+          const res = await fetch("/api/auth/nonce");
+          if (!res.ok) throw new Error("Failed to fetch nonce");
+          return res.json() as Promise<NonceResponse>;
+        },
+        // We'll fetch it once per mutation, so staleTime can be Infinity or 0
+        staleTime: Infinity,
+      });
+
+      if (!nonceData.nonce) {
+        throw new Error("No nonce in server response");
+      }
+
+      // 4) signMessage
+      if (!window.solana.signMessage) {
+        throw new Error("Phantom does not support signMessage");
+      }
+      const encodedNonce = new TextEncoder().encode(nonceData.nonce);
+      const signatureResp = await window.solana.signMessage(
+          encodedNonce,
+          "utf8"
       );
-      return;
-    }
+      // Could be a base58 string or raw bytes
+      const signature = signatureResp.signature;
 
-    setIsConnecting(true);
-    setError("");
-    try {
-      const response = await window.solana?.connect({ onlyIfTrusted: false });
-      const publicKey = response?.publicKey.toString();
-      setWalletAddress(publicKey ?? "");
-      localStorage.setItem("phantomWalletAddress", publicKey ?? '');
-    } catch (err) {
-      console.error("Error connecting to Phantom Wallet:", err);
-      setError("Failed to connect to Phantom Wallet.");
-    }
-    setIsConnecting(false);
+      // 5) POST verify
+      const verifyData = await queryClient.fetchQuery<VerifyResponse>({
+        queryKey: ["verify-fetch"],
+        queryFn: async () => {
+          const res = await fetch("/api/auth/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nonce: nonceData.nonce,
+              publicKey: address,
+              signature,
+            }),
+          });
+          const data = (await res.json()) as VerifyResponse;
+          if (!res.ok) {
+            throw new Error(data.error || "Verification failed");
+          }
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          return data;
+        },
+        staleTime: Infinity,
+      });
+
+      // We should have { access_token, refresh_token, etc. }
+      return {
+        walletAddress: address,
+        access_token: verifyData.access_token,
+        refresh_token: verifyData.refresh_token,
+      };
+    },
+    onSuccess: (data) => {
+      // Persist wallet & tokens in localStorage
+      if (data.access_token) {
+        localStorage.setItem("sb_access_token", data.access_token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem("sb_refresh_token", data.refresh_token);
+      }
+      localStorage.setItem("phantomWalletAddress", data.walletAddress);
+
+      // Update local state
+      setWalletAddress(data.walletAddress);
+    },
+    onError: (err) => {
+      setError(err.message);
+    },
+  });
+
+  /** Click handler: runs the mutation. */
+  const handleConnect = () => {
+    setError(null);
+    loginMutation.mutate();
   };
 
+  /** Disconnect logic */
   const disconnectWallet = () => {
     setWalletAddress(null);
     localStorage.removeItem("phantomWalletAddress");
+    localStorage.removeItem("sb_access_token");
+    localStorage.removeItem("sb_refresh_token");
   };
 
-  const checkAndAddWallet = async (walletAddress: string) => {
-    //eslint-disable-next-line
-    const { data: _, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("wallet_address", walletAddress)
-        .single();
-
-    if (error) {
-      //eslint-disable-next-line
-      const { data: _, error: insertError } = await supabase
-          .from("test")
-          .insert([{ wallet_address: walletAddress }]);
-      if (insertError) {
-        console.error("Error adding new wallet address:", insertError);
-        setError("Failed to register new wallet address.");
-      }
-    }
-  };
-
+  /** On mount, restore from localStorage */
   useEffect(() => {
-    const storedAddress = localStorage.getItem("phantomWalletAddress");
-    if (storedAddress) {
-      setWalletAddress(storedAddress);
-    }
+    const storedAddr = localStorage.getItem("phantomWalletAddress");
+    if (storedAddr) setWalletAddress(storedAddr);
   }, []);
 
   return (
-      <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "10px",
-          }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {error && <p style={{ color: "red" }}>{error}</p>}
-        {!walletAddress ? (
-            <button
-                //eslint-disable-next-line
-                onClick={async () => {
-                  await connectWallet();
-                  await checkAndAddWallet(
-                      localStorage.getItem("phantomWalletAddress") ?? "",
-                  );
-                }}
-                disabled={isConnecting}
-                className="rounded-lg"
-                style={{
-                  padding: "0px 20px",
-                  borderRadius: "5px",
-                  border: "none",
-                  backgroundColor: "#5c67f2",
-                  color: "#fff",
-                  fontSize: "16px",
-                  cursor: isConnecting ? "wait" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-            >
-              <img
-                  src="/phantom-logo.svg"
-                  alt="Phantom Logo"
-                  loading="eager" // Forces immediate loading
-                  style={{ width: "150px", height: "75px" }}
-                  onLoad={() => console.log("Image loaded successfully")}
-                  onError={(e) => {
-                    console.error("Image failed to load", e);
-                    setError("Failed to load the Phantom Wallet logo.");
-                  }}
-              />
-            </button>
-        ) : (
+
+        {walletAddress ? (
             <div>
               <p>Connected Wallet: {walletAddress}</p>
-              <button
-                  onClick={disconnectWallet}
-                  style={{
-                    padding: "10px 20px",
-                    borderRadius: "5px",
-                    border: "none",
-                    backgroundColor: "#f25c5c",
-                    color: "#fff",
-                    fontSize: "16px",
-                    cursor: "pointer",
-                  }}
-              >
-                Disconnect Wallet
-              </button>
+              <button onClick={disconnectWallet}>Disconnect</button>
             </div>
+        ) : (
+            <button
+                onClick={handleConnect}
+                // For TanStack Query v5, `loginMutation.isPending` replaces `isLoading`.
+                disabled={loginMutation.isPending}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "5px",
+                  backgroundColor: "#5c67f2",
+                  border: "none",
+                  color: "white",
+                  cursor: loginMutation.isPending ? "wait" : "pointer",
+                }}
+            >
+              {loginMutation.isPending ? "Connecting..." : "Connect Phantom"}
+            </button>
         )}
       </div>
   );
-};
-
-export default PhantomWalletButton;
+}

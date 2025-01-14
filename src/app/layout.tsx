@@ -2,16 +2,21 @@
 import { ReactNode } from "react";
 import "../styles/global.css";
 
+// src/app/layout.tsx or src/app/page.tsx (wherever you currently export metadata)
+
 export const metadata = {
   title: "money nerds",
   description: "money nerds money nerds money nerds online",
+  // icons can stay here
   icons: "/icon.svg",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: "cover",
-  },
+};
+
+// Then define a separate export for the viewport:
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -1,12 +1,18 @@
 /* eslint-disable */
 import { Form } from "@/components";
-import PhantomWalletButton from "@/shared/web3/wallet-auth";
+import {PhantomWalletButton} from "@/shared/web3/wallet-auth";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 
 export function Component({ data }: { data: any[] }) {
+
+
+
+
   return (
     <main className="flex flex-col items-center justify-start gap-16 min-h-screen w-full px-4">
       <div className="flex self-end place-self-end justify-self-end pr-[5vw] pt-[5vh]">
         <PhantomWalletButton />
+
       </div>
       <h1 className="text-[12vw] text-white pt-[20vh]">MONEY NERDS</h1>
 

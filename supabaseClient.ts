@@ -15,4 +15,14 @@ if (
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const token = typeof window !== 'undefined'
+    ? localStorage.getItem("sb_access_token")
+    : null;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey,  {
+  global: {
+    headers: token
+        ? { Authorization: `Bearer ${token}` }
+        : {},
+  },
+});
