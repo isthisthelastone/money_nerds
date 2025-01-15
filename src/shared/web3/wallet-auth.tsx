@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {QueryClient, QueryClientProvider, useMutation, useQueryClient} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useMutation, useQueryClient } from "@tanstack/react-query";
+import bs58 from "bs58"; // <-- import bs58 here
 
 /** The response from GET /api/auth/nonce */
 interface NonceResponse {
@@ -23,14 +24,18 @@ interface VerifyResponse {
 const queryClient = new QueryClient();
 
 export const PhantomWalletButton = () => {
-  return <QueryClientProvider client={queryClient}>
-    <PhantomWallet/>
-  </QueryClientProvider>
+  return (
+      <QueryClientProvider client={queryClient}>
+        <PhantomWallet />
+      </QueryClientProvider>
+  );
+};
 
-}
-
-/** A single component handling connect → nonce → sign → verify, using v5 of TanStack Query. */
-export  function PhantomWallet() {
+/**
+ * A single component handling connect → nonce → sign → verify,
+ * using v5 of TanStack Query.
+ */
+export function PhantomWallet() {
   const queryClient = useQueryClient();
 
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -53,16 +58,15 @@ export  function PhantomWallet() {
   >({
     mutationFn: async () => {
       // 1) Check Phantom
-      if (
-          typeof window === "undefined" ||
-          !window.solana ||
-          !window.solana.isPhantom
-      ) {
+      if (typeof window === "undefined" || !window.solana || !window.solana.isPhantom) {
         throw new Error("Phantom Wallet is not installed!");
       }
 
       // 2) Connect to Phantom
       const resp = await window.solana.connect({ onlyIfTrusted: false });
+      // If you want a base58 public key, do .toBase58() if available:
+      // const address = resp?.publicKey?.toBase58();
+      // If .toBase58() is not available for some reason, .toString() generally returns base58 as well:
       const address = resp?.publicKey?.toString();
       if (!address) {
         throw new Error("No public key from Phantom");
@@ -89,12 +93,11 @@ export  function PhantomWallet() {
         throw new Error("Phantom does not support signMessage");
       }
       const encodedNonce = new TextEncoder().encode(nonceData.nonce);
-      const signatureResp = await window.solana.signMessage(
-          encodedNonce,
-          "utf8"
-      );
-      // Could be a base58 string or raw bytes
-      const signature = signatureResp.signature;
+      const signatureResp = await window.solana.signMessage(encodedNonce, "utf8");
+
+      // signatureResp.signature is likely a Uint8Array
+      // Convert it to a base58-encoded string
+      const signatureBase58 = bs58.encode(signatureResp.signature);
 
       // 5) POST verify
       const verifyData = await queryClient.fetchQuery<VerifyResponse>({
@@ -106,9 +109,11 @@ export  function PhantomWallet() {
             body: JSON.stringify({
               nonce: nonceData.nonce,
               publicKey: address,
-              signature,
+              // Send the base58-encoded signature
+              signature: signatureBase58,
             }),
           });
+
           const data = (await res.json()) as VerifyResponse;
           if (!res.ok) {
             throw new Error(data.error || "Verification failed");

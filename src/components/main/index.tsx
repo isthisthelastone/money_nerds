@@ -1,7 +1,6 @@
 /* eslint-disable */
 import { Form } from "@/components";
 import {PhantomWalletButton} from "@/shared/web3/wallet-auth";
-import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 
 export function Component({ data }: { data: any[] }) {
 
