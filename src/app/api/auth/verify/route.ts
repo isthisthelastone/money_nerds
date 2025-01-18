@@ -1,154 +1,192 @@
-
-
-/**
- * By default, Next.js 13 route handlers run in the Edge runtime.
- * But `randomBytes` (crypto) is *not* supported on the Edge.
- * Also, Supabase Admin calls often require a Node environment.
- */
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import {type User, type Session, createClient} from '@supabase/supabase-js';
+import {  type Session, createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 
-/**
- * Admin client with service_role key.
- * - Make sure to keep this key secret (.env).
- * - For example:
- *   NEXT_PUBLIC_SUPABASE_URL=https://xyzcompany.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- */
+// ----------- Interfaces -----------
+interface AdminUser {
+    id: string;
+    email: string;
+    // ... plus whatever other fields you might need
+}
 
+interface AdminListUsersResponse {
+    users: AdminUser[];
+    page: number;
+    per_page: number;
+    total_users: number;
+    next_page: number | null;
+    last_page: number;
+}
 
-/** Shape of the request body */
+/** The shape of the request body expected by this route */
 interface VerifyRequestBody {
     nonce?: string;
     publicKey?: string;
-    signature?: string;
+    signature?: string | { type: 'Buffer'; data: number[] };
 }
 
-const supabase = createClient( process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''  // <-- Service role key
-); // admin acc
+// ----------- Supabase Admin Helper -----------
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
+/**
+ * A small helper to fetch a user by email from Supabase's Admin API (not the client).
+ * If you prefer to do it via `supabaseAdmin.auth.admin.listUsers(...)`, you can.
+ * This is just a direct fetch to the GoTrue REST endpoint.
+ */
+async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
+    try {
+        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`;
+        const resp = await fetch(url, {
+            method: 'GET',
+            headers: {
+                apiKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+                Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
+            },
+        });
+
+        if (!resp.ok) {
+            console.error('[getUserByEmail] Non-200 from Supabase Admin:', resp.status);
+            const body = await resp.text();
+            console.error('Body:', body);
+            return undefined;
+        }
+
+        const data: AdminListUsersResponse = (await resp.json()) as AdminListUsersResponse;
+        return data.users?.[0] ?? undefined;
+    } catch (err) {
+        console.error('[getUserByEmail] Error:', err);
+        return undefined;
+    }
+}
+
+// ----------- The POST Handler -----------
 export async function POST(request: Request) {
     try {
-        // 1) Parse the request
+        // 1) Parse JSON from request
         const body: VerifyRequestBody = await request.json() as VerifyRequestBody;
         const { nonce, publicKey, signature } = body;
 
-        console.log('[VERIFY ROUTE] Incoming body:', body);
+        console.log('[VERIFY ROUTE] Received body:', body);
 
+        // Basic validations
         if (!nonce || !publicKey || !signature) {
-            console.error('[VERIFY ROUTE] Missing required fields');
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
-
-        // 2) Verify signature with tweetnacl
-        //    (Phantom signatures are typically base58-encoded)
-        let isValid = false;
-        try {
-            const sigBytes = bs58.decode(signature);
-            const msgBytes = new TextEncoder().encode(nonce);
-            const pubKeyBytes = bs58.decode(publicKey);
-
-            isValid = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
-        } catch (error) {
-            console.error('[VERIFY ROUTE] Error decoding/verify signature:', error);
-            return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
-        }
-
-        if (!isValid) {
-            console.error('[VERIFY ROUTE] Signature is invalid');
-            return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-        }
-
-        console.log('[VERIFY ROUTE] Signature verified OK for publicKey=', publicKey);
-
-        // 3) Create a "fake" email from the publicKey
-        const fakeEmail = `${publicKey}@example.com`;
-        const randomPass = randomBytes(16).toString('hex'); // <--- Make sure runtime = 'nodejs'
-
-        // 4) List users to see if we already have this user
-        // NOTE: This requires a Supabase library version that supports auth.admin.listUsers
-        console.log('[VERIFY ROUTE] Checking if user already exists in Supabase...');
-        const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({
-            page: 1,
-            perPage: 100
-        });
-
-        if (listErr) {
-            console.error('[VERIFY ROUTE] Error listing users:', listErr);
             return NextResponse.json(
-                { error: listErr.message || 'Failed to list users' },
-                { status: 500 }
+                { error: 'Missing nonce, publicKey, or signature' },
+                { status: 400 }
             );
         }
 
-        const existingUser: User | undefined = listData?.users?.find((u) => u.email === fakeEmail);
+        // 2) Decode the signature & verify with tweetnacl
+        let sigBytes: Uint8Array;
+        try {
+            if (typeof signature === 'string') {
+                // If the signature is a base58 string (common for Phantom)
+                sigBytes = bs58.decode(signature);
+            } else if (
+                typeof signature === 'object' &&
+                signature !== null &&
+                signature.type === 'Buffer' &&
+                Array.isArray(signature.data)
+            ) {
+                // If the signature came in as { type: 'Buffer', data: [...] }
+                sigBytes = new Uint8Array(signature.data);
+            } else {
+                throw new Error('Signature not in recognized format');
+            }
 
-        let finalUser: User | undefined;
+            const msgBytes = new TextEncoder().encode(nonce);
+            const pubKeyBytes = bs58.decode(publicKey);
+
+            const isValid = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
+            if (!isValid) {
+                return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+            }
+        } catch (err) {
+            console.error('[VERIFY ROUTE] Signature decoding error:', err);
+            return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
+        }
+
+        console.log('[VERIFY ROUTE] ✅ Signature verified for publicKey:', publicKey);
+
+        // 3) Use the publicKey as the unique "email"
+        const fakeEmail = `${publicKey}@example.com`;
+        const randomPass = randomBytes(16).toString('hex');
+
+        // 4) Check if the user already exists
+        let existingUser = await getUserByEmail(fakeEmail);
 
         // 5) If user does not exist, create one
         if (!existingUser) {
             console.log('[VERIFY ROUTE] No existing user found. Creating user...');
-            const { data: createData, error: createError } = await supabase.auth.admin.createUser({
+            const { data, error } = await supabaseAdmin.auth.admin.createUser({
                 email: fakeEmail,
                 password: randomPass,
-                user_metadata: { wallet: publicKey },
-                email_confirm: true,  // <-- This line ensures the user is immediately "confirmed"
+                user_metadata: { walletAddress: publicKey },
+                email_confirm: true, // so we skip "confirmation required" issues
             });
 
-            if (createError || !createData?.user) {
-                console.error('[VERIFY ROUTE] Error creating user:', createError);
+            if (error || !data?.user) {
+                console.error('[VERIFY ROUTE] Error creating user:', error);
                 return NextResponse.json(
-                    { error: createError?.message || 'Failed to create user' },
+                    { error: error?.message || 'Failed to create user' },
                     { status: 500 }
                 );
             }
-
-            finalUser = createData.user;
-            console.log('[VERIFY ROUTE] Created new user with ID:', finalUser.id);
+            existingUser = data.user as AdminUser;
+            console.log('[VERIFY ROUTE] Created user with ID:', existingUser.id);
         } else {
-            finalUser = existingUser;
-            console.log('[VERIFY ROUTE] Found existing user with ID:', finalUser.id);
+            // If user exists, we must update the password to match our new random password
+            // otherwise signInWithPassword will fail with "invalid login credentials"
+            console.log('[VERIFY ROUTE] Found existing user ID:', existingUser.id, '- updating password...');
+            const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+                existingUser.id,
+                { password: randomPass, email_confirm: true }
+            );
+            if (updateError || !updatedUser) {
+                console.error('[VERIFY ROUTE] Failed to update existing user:', updateError);
+                return NextResponse.json(
+                    { error: updateError?.message || 'Failed to update user' },
+                    { status: 500 }
+                );
+            }
         }
 
-        // 6) Sign them in with email/password to get a session
-        console.log('[VERIFY ROUTE] Attempting to sign in user with password...');
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        // 6) Now sign them in using the newly set random password
+        console.log('[VERIFY ROUTE] Attempting to sign in with randomPass...');
+        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
             email: fakeEmail,
-            password: randomPass
+            password: randomPass,
         });
 
         if (signInError || !signInData?.session) {
-            console.error('[VERIFY ROUTE] Sign in error:', signInError);
+            console.error('[VERIFY ROUTE] Sign-in error:', signInError);
             return NextResponse.json(
                 { error: signInError?.message || 'Failed to sign user in' },
                 { status: 500 }
             );
         }
 
+        // 7) Return session info
         const session: Session = signInData.session;
-        if (!session.access_token) {
-            console.error('[VERIFY ROUTE] No access token in session object!');
-            return NextResponse.json({ error: 'No access token in session' }, { status: 500 });
-        }
+        console.log('[VERIFY ROUTE] ✔️ Auth flow successful for user:', fakeEmail);
 
-        // 7) Return the session info
-        console.log('[VERIFY ROUTE] Success! Returning session and user');
         return NextResponse.json({
             message: 'Signature verified successfully',
             access_token: session.access_token,
             token_type: session.token_type,
             expires_in: session.expires_in,
             refresh_token: session.refresh_token,
-            user: finalUser, // or session.user
+            user: signInData.user,
         });
     } catch (error: unknown) {
-        console.error('[VERIFY ROUTE] Uncaught error in the handler:', error);
+        console.error('[VERIFY ROUTE] Uncaught error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
