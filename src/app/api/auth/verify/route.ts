@@ -91,7 +91,6 @@ export async function POST(request: Request) {
                 sigBytes = bs58.decode(signature);
             } else if (
                 typeof signature === 'object' &&
-                signature !== null &&
                 signature.type === 'Buffer' &&
                 Array.isArray(signature.data)
             ) {
