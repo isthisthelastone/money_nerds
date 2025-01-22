@@ -2,10 +2,9 @@
 /* eslint-disable */
 
 import {useState} from "react";
-import {QueryClientProvider, useMutation, useQueryClient,} from "@tanstack/react-query";
+import {QueryClientProvider, useMutation, useQueryClient} from "@tanstack/react-query";
 import {supabase} from "../../../supabaseClient";
 import {queryClient, useAuthStore} from "@/shared/web3/wallet-auth";
-
 
 export const Form = () => {
     const {isL} = useAuthStore();
@@ -23,106 +22,89 @@ export function FormContent() {
     const [message, setMessage] = useState("");
     const queryClient = useQueryClient();
 
-
     // Mutation for inserting data
     const mutation = useMutation({
         mutationFn: async ({
-                               name,
-                               message,
-                               walletAddress,
-                           }: {
+                            name,
+                            message,
+                            walletAddress,
+                        }: {
             name: string;
-            message: string; // we assume this is a single string
+            message: string;
             walletAddress: string;
         }) => {
-            // 1) Check if there’s a row with this walletAddress
-            const {data, error: selectError} = await supabase
-                .from("test")
-                .select("id, name, message, walletAddress")
-                .eq("walletAddress", walletAddress);
-
-            if (selectError) throw new Error(selectError.message);
-
-            // 2) If found → append to existing message array
-            if (data && data.length > 0) {
-                const existingRow = data[0];
-                // Make sure we have an array; if `existingRow.message` is null or undefined, start fresh
-                const updatedMessages = existingRow.message
-                    ? [...existingRow.message, message]
-                    : [message];
-
-                // Update that row
-                const {error: updateError} = await supabase
-                    .from("test")
-                    .update({
-                        message: updatedMessages,
-                        // Optionally update the name if you want to store a new name as well:
-                        // name,
-                    })
-                    .eq("walletAddress", walletAddress);
-
-                if (updateError) throw new Error(updateError.message);
-            } else {
-                // 3) If no row found → create a new row with an array that contains the message
-                const {error: insertError} = await supabase.from("test").insert([
+            const now = new Date().toISOString();
+            
+            // Insert a new post and get the returned data
+            const { data: postData, error: insertError } = await supabase
+                .from("posts")
+                .insert([
                     {
-                        name,
-                        message: [message], // message array with one element
-                        walletAddress,
-                    },
-                ]);
+                        username: name,
+                        message: message,
+                        walletAddress: walletAddress,
+                        created_at: now
+                    }
+                ])
+                .select()
+                .single();
 
-                if (insertError) throw new Error(insertError.message);
+            if (insertError) throw new Error(insertError.message);
+            
+            // Create corresponding entry in post_info
+            if (postData) {
+                const { error: postInfoError } = await supabase
+                    .from("post_info")
+                    .insert([
+                        {
+                            id: postData.id,
+                            created_at: postData.created_at,
+                            liked_by: []
+                        }
+                    ]);
+
+                if (postInfoError) throw new Error(postInfoError.message);
+            } else {
+                throw new Error("Failed to create post: No data returned");
             }
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({queryKey: ["fetchData"]});
+            queryClient.invalidateQueries({queryKey: ["fetchPosts"]});
             setName("");
             setMessage("");
         },
     });
 
     const handleSubmit = (
-        e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+        e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            if (name.trim() && message.trim()) {
-                mutation.mutate(
-                    {
-                        name,
-                        message,
-                        walletAddress:
-                            localStorage.getItem("phantomWalletAddress") ?? "no address",
-                    },
-                    {
-                        onSuccess: () => {
-                            // Refresh the page after successful mutation
-                            window.location.reload();
-                        },
-                    },
-                );
-            }
+            submitPost();
         }
     };
 
-    const handleSubmitButton = () => {
+    const submitPost = () => {
         if (name.trim() && message.trim()) {
+            const walletAddress = localStorage.getItem("phantomWalletAddress") ?? "no address";
+
             mutation.mutate(
                 {
                     name,
                     message,
-                    walletAddress:
-                        localStorage.getItem("phantomWalletAddress") ?? "no address",
+                    walletAddress,
                 },
                 {
                     onSuccess: () => {
-                        // Refresh the page after successful mutation
                         window.location.reload();
                     },
-                },
+                }
             );
         }
+    };
+
+    const handleSubmitButton = () => {
+        submitPost();
     };
 
     return (
@@ -146,7 +128,7 @@ export function FormContent() {
             />
             <button
                 type="button"
-                className=" max-w-20  self-end font-mono px-4 py-2  bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-0 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="max-w-20 self-end font-mono px-4 py-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-0 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                 onClick={() => handleSubmitButton()}
             >
                 Submit

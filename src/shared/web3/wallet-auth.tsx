@@ -54,6 +54,11 @@ export function PhantomWallet() {
 
     const {setIsL} = useAuthStore();
 
+
+    useEffect(() => {
+        setIsL(Boolean(localStorage.getItem('phantomWalletAddress')));
+    }, [])
+
     /**
      * The big mutation that:
      * 1) Connects Phantom
