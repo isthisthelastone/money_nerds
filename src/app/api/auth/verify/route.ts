@@ -1,25 +1,16 @@
 export const runtime = 'nodejs';
 
-import { NextResponse } from 'next/server';
+import {NextResponse} from 'next/server';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import {  type Session, createClient } from '@supabase/supabase-js';
-import { randomBytes } from 'crypto';
+import {createClient, type Session} from '@supabase/supabase-js';
+import {randomBytes} from 'crypto';
 
 // ----------- Interfaces -----------
 interface AdminUser {
     id: string;
     email: string;
     // ... plus whatever other fields you might need
-}
-
-interface AdminListUsersResponse {
-    users: AdminUser[];
-    page: number;
-    per_page: number;
-    total_users: number;
-    next_page: number | null;
-    last_page: number;
 }
 
 /** The shape of the request body expected by this route */
@@ -40,28 +31,30 @@ const supabaseAdmin = createClient(
  * If you prefer to do it via `supabaseAdmin.auth.admin.listUsers(...)`, you can.
  * This is just a direct fetch to the GoTrue REST endpoint.
  */
-async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
+export async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
     try {
-        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`;
-        const resp = await fetch(url, {
-            method: 'GET',
-            headers: {
-                apiKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-                Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
-            },
+        // For a small/medium user base, you might do a single fetch
+        // with a large perPage to capture all users (or enough to find your user).
+        const {data, error} = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 10000, // up to 10,000 users returned
         });
 
-        if (!resp.ok) {
-            console.error('[getUserByEmail] Non-200 from Supabase Admin:', resp.status);
-            const body = await resp.text();
-            console.error('Body:', body);
+        if (error) {
+            console.error('[getUserByEmail] Error listing users:', error);
             return undefined;
         }
 
-        const data: AdminListUsersResponse = (await resp.json()) as AdminListUsersResponse;
-        return data.users?.[0] ?? undefined;
+        // If no users are returned or data is empty, there's nothing to match
+        if (!data?.users?.length) {
+            return undefined;
+        }
+
+        // Manually find the user in memory by matching on email
+        const foundUser = data.users.find((u) => u.email === email);
+        return foundUser ? (foundUser as AdminUser) : undefined;
     } catch (err) {
-        console.error('[getUserByEmail] Error:', err);
+        console.error('[getUserByEmail] Exception:', err);
         return undefined;
     }
 }
@@ -71,15 +64,15 @@ export async function POST(request: Request) {
     try {
         // 1) Parse JSON from request
         const body: VerifyRequestBody = await request.json() as VerifyRequestBody;
-        const { nonce, publicKey, signature } = body;
+        const {nonce, publicKey, signature} = body;
 
         console.log('[VERIFY ROUTE] Received body:', body);
 
         // Basic validations
         if (!nonce || !publicKey || !signature) {
             return NextResponse.json(
-                { error: 'Missing nonce, publicKey, or signature' },
-                { status: 400 }
+                {error: 'Missing nonce, publicKey, or signature'},
+                {status: 400}
             );
         }
 
@@ -105,17 +98,18 @@ export async function POST(request: Request) {
 
             const isValid = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
             if (!isValid) {
-                return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+                return NextResponse.json({error: 'Invalid signature'}, {status: 401});
             }
         } catch (err) {
             console.error('[VERIFY ROUTE] Signature decoding error:', err);
-            return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
+            return NextResponse.json({error: 'Invalid signature format'}, {status: 400});
         }
 
         console.log('[VERIFY ROUTE] ✅ Signature verified for publicKey:', publicKey);
 
         // 3) Use the publicKey as the unique "email"
         const fakeEmail = `${publicKey}@example.com`;
+        console.log(fakeEmail, 'fakeEmail')
         const randomPass = randomBytes(16).toString('hex');
 
         // 4) Check if the user already exists
@@ -124,18 +118,18 @@ export async function POST(request: Request) {
         // 5) If user does not exist, create one
         if (!existingUser) {
             console.log('[VERIFY ROUTE] No existing user found. Creating user...');
-            const { data, error } = await supabaseAdmin.auth.admin.createUser({
+            const {data, error} = await supabaseAdmin.auth.admin.createUser({
                 email: fakeEmail,
                 password: randomPass,
-                user_metadata: { walletAddress: publicKey },
+                user_metadata: {walletAddress: publicKey},
                 email_confirm: true, // so we skip "confirmation required" issues
             });
 
             if (error || !data?.user) {
                 console.error('[VERIFY ROUTE] Error creating user:', error);
                 return NextResponse.json(
-                    { error: error?.message || 'Failed to create user' },
-                    { status: 500 }
+                    {error: error?.message || 'Failed to create user'},
+                    {status: 500}
                 );
             }
             existingUser = data.user as AdminUser;
@@ -144,22 +138,22 @@ export async function POST(request: Request) {
             // If user exists, we must update the password to match our new random password
             // otherwise signInWithPassword will fail with "invalid login credentials"
             console.log('[VERIFY ROUTE] Found existing user ID:', existingUser.id, '- updating password...');
-            const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            const {data: updatedUser, error: updateError} = await supabaseAdmin.auth.admin.updateUserById(
                 existingUser.id,
-                { password: randomPass, email_confirm: true }
+                {password: randomPass, email_confirm: true}
             );
             if (updateError || !updatedUser) {
                 console.error('[VERIFY ROUTE] Failed to update existing user:', updateError);
                 return NextResponse.json(
-                    { error: updateError?.message || 'Failed to update user' },
-                    { status: 500 }
+                    {error: updateError?.message || 'Failed to update user'},
+                    {status: 500}
                 );
             }
         }
 
         // 6) Now sign them in using the newly set random password
         console.log('[VERIFY ROUTE] Attempting to sign in with randomPass...');
-        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+        const {data: signInData, error: signInError} = await supabaseAdmin.auth.signInWithPassword({
             email: fakeEmail,
             password: randomPass,
         });
@@ -167,8 +161,8 @@ export async function POST(request: Request) {
         if (signInError || !signInData?.session) {
             console.error('[VERIFY ROUTE] Sign-in error:', signInError);
             return NextResponse.json(
-                { error: signInError?.message || 'Failed to sign user in' },
-                { status: 500 }
+                {error: signInError?.message || 'Failed to sign user in'},
+                {status: 500}
             );
         }
 
@@ -186,6 +180,6 @@ export async function POST(request: Request) {
         });
     } catch (error: unknown) {
         console.error('[VERIFY ROUTE] Uncaught error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({error: 'Internal server error'}, {status: 500});
     }
 }

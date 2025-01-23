@@ -1,8 +1,8 @@
 "use client";
 
 import React, {useEffect, useState} from "react";
-import {QueryClient, QueryClientProvider, useMutation, useQueryClient} from "@tanstack/react-query";
-import {create} from 'zustand'
+import {QueryClient, QueryClientProvider, useMutation, useQueryClient,} from "@tanstack/react-query";
+import {create} from "zustand";
 
 /** The response from GET /api/auth/nonce */
 interface NonceResponse {
@@ -23,27 +23,27 @@ interface VerifyResponse {
     user?: any; // or a more specific type if desired
 }
 
-
 // Define the shape of your store
 interface BearState {
-    isL: boolean
-    setIsL: (l: boolean) => void
+    isL: boolean;
+    setIsL: (l: boolean) => void;
 }
 
 // Create the store
 export const useAuthStore = create<BearState>((set) => ({
     isL: false,
-    setIsL: (l) => set({isL: l})
+    setIsL: (l) => set({isL: l}),
 }));
 
 export const queryClient = new QueryClient();
 
 export const PhantomWalletButton = () => {
-    return <QueryClientProvider client={queryClient}>
-        <PhantomWallet/>
-    </QueryClientProvider>
-
-}
+    return (
+        <QueryClientProvider client={queryClient}>
+            <PhantomWallet/>
+        </QueryClientProvider>
+    );
+};
 
 /** A single component handling connect → nonce → sign → verify, using v5 of TanStack Query. */
 export function PhantomWallet() {
@@ -54,17 +54,16 @@ export function PhantomWallet() {
 
     const {setIsL} = useAuthStore();
 
-
     useEffect(() => {
-        setIsL(Boolean(localStorage.getItem('phantomWalletAddress')));
-    }, [])
+        setIsL(Boolean(localStorage.getItem("phantomWalletAddress")));
+    }, [setIsL]);
 
     /**
      * The big mutation that:
      * 1) Connects Phantom
      * 2) GET /api/auth/nonce (via queryClient.fetchQuery)
      * 3) signMessage
-     * 4) POST /api/auth/verify
+     * 4) POST /api/auth/verify, asking server to create a user if one doesn’t exist
      */
     const loginMutation = useMutation<
         // success data
@@ -120,6 +119,7 @@ export function PhantomWallet() {
             const signature = signatureResp.signature;
 
             // 5) POST verify
+            //    Send `shouldCreate: true` so backend can create new user if needed
             const verifyData = await queryClient.fetchQuery<VerifyResponse>({
                 queryKey: ["verify-fetch"],
                 queryFn: async () => {
@@ -130,6 +130,7 @@ export function PhantomWallet() {
                             nonce: nonceData.nonce,
                             publicKey: address,
                             signature,
+                            shouldCreate: true, // <-- important
                         }),
                     });
                     const data = (await res.json()) as VerifyResponse;
@@ -163,7 +164,7 @@ export function PhantomWallet() {
 
             // Update local state
             setWalletAddress(data.walletAddress);
-            setIsL(true)
+            setIsL(true);
         },
         onError: (err) => {
             setError(err.message);
@@ -203,7 +204,6 @@ export function PhantomWallet() {
             ) : (
                 <button
                     onClick={handleConnect}
-                    // For TanStack Query v5, `loginMutation.isPending` replaces `isLoading`.
                     disabled={loginMutation.isPending}
                     style={{
                         padding: "0.5rem 1rem",
