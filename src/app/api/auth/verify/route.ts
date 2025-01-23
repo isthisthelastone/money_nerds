@@ -31,7 +31,7 @@ const supabaseAdmin = createClient(
  * If you prefer to do it via `supabaseAdmin.auth.admin.listUsers(...)`, you can.
  * This is just a direct fetch to the GoTrue REST endpoint.
  */
-export async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
+async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
     try {
         // For a small/medium user base, you might do a single fetch
         // with a large perPage to capture all users (or enough to find your user).
