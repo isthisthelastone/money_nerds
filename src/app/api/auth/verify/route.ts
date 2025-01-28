@@ -1,10 +1,11 @@
-export const runtime = 'nodejs';
-
 import {NextResponse} from 'next/server';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import {createClient, type Session} from '@supabase/supabase-js';
 import {randomBytes} from 'crypto';
+import {supabase} from "../../../../../supabaseClient";
+
+export const runtime = 'nodejs';
 
 // ----------- Interfaces -----------
 interface AdminUser {
@@ -33,6 +34,8 @@ const supabaseAdmin = createClient(
  */
 async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
     try {
+
+
         // For a small/medium user base, you might do a single fetch
         // with a large perPage to capture all users (or enough to find your user).
         const {data, error} = await supabaseAdmin.auth.admin.listUsers({
@@ -51,7 +54,7 @@ async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
         }
 
         // Manually find the user in memory by matching on email
-        const foundUser = data.users.find((u) => u.email === email);
+        const foundUser = data.users.find((u) => u.email === email.toLowerCase());
         return foundUser ? (foundUser as AdminUser) : undefined;
     } catch (err) {
         console.error('[getUserByEmail] Exception:', err);
@@ -115,6 +118,8 @@ export async function POST(request: Request) {
         // 4) Check if the user already exists
         let existingUser = await getUserByEmail(fakeEmail);
 
+        console.log(existingUser, 'existingUser')
+
         // 5) If user does not exist, create one
         if (!existingUser) {
             console.log('[VERIFY ROUTE] No existing user found. Creating user...');
@@ -142,6 +147,13 @@ export async function POST(request: Request) {
                 existingUser.id,
                 {password: randomPass, email_confirm: true}
             );
+            const {data: _, error: __} = await supabase.auth.signInWithPassword({
+                email: fakeEmail,
+                password: randomPass,
+            })
+
+            console.log(_, 'user signed in');
+            console.log(__, 'user signed in error ')
             if (updateError || !updatedUser) {
                 console.error('[VERIFY ROUTE] Failed to update existing user:', updateError);
                 return NextResponse.json(
@@ -157,6 +169,17 @@ export async function POST(request: Request) {
             email: fakeEmail,
             password: randomPass,
         });
+        const {data: _, error: __} = await supabase.auth.signInWithPassword({
+            email: fakeEmail,
+            password: randomPass,
+        })
+
+        const testdd = await supabase.auth.refreshSession()
+        const testff = testdd.data
+        console.log(testdd)
+        console.log(testff)
+        console.log(_, 'user signed in');
+        console.log(__, 'user signed in error ')
 
         if (signInError || !signInData?.session) {
             console.error('[VERIFY ROUTE] Sign-in error:', signInError);

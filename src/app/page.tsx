@@ -13,6 +13,8 @@ async function fetchData() {
         .order("created_at", {ascending: false});
 
     if (error) {
+        console.log(error)
+        console.log(error.message)
         throw new Error(error.message);
     }
     return data;

@@ -1,7 +1,6 @@
 'use client'
 
 import {useEffect, useState} from 'react'
-import {useWallet} from '@solana/wallet-adapter-react'
 import {supabase} from '../../../supabaseClient'
 import {HeartIcon as HeartOutline} from '@heroicons/react/24/outline'
 import {HeartIcon as HeartSolid} from '@heroicons/react/24/solid'
@@ -16,33 +15,32 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
     const [likes, setLikes] = useState(initialLikes)
     const [isLiked, setIsLiked] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
-    const {publicKey} = useWallet()
+
 
     useEffect(() => {
         const checkIfLiked = async () => {
-            if (!publicKey) return
-
+//eslint-disable-next-line
             const {data} = await supabase
                 .from('post_info')
                 .select('liked_by')
                 .eq('id', postId)
                 .single()
-            //eslint-disable-next-line
-            if (data?.liked_by?.includes(publicKey.toString())) {
-                setIsLiked(true)
-            }
+
+            // if (data?.liked_by?.includes(publicKey.toString())) {
+            //   setIsLiked(true)
+            // }
         }
         //eslint-disable-next-line
         checkIfLiked()
-    }, [postId, publicKey])
+    }, [postId, /*publicKey*/])
 
     const handleLike = async () => {
-        if (!publicKey || isLoading) return
 
-        setIsLoading(true)
 
         try {
-            const userAddress = publicKey.toString()
+
+
+            const userAddress = localStorage.getItem("phantomWalletAddress");
 
             // Start transaction
             const {error: error1} = await supabase
@@ -73,13 +71,14 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
         } finally {
             setIsLoading(false)
         }
+
     }
+
 
     return (
         <button
             //eslint-disable-next-line
             onClick={async () => await handleLike()}
-            disabled={!publicKey || isLoading}
             className={`flex items-center space-x-1 ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
             } transition-opacity duration-200 ease-in-out disabled:cursor-not-allowed`}
