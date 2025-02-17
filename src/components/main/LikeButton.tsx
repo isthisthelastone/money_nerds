@@ -29,11 +29,12 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
                 .single()
 
             if (!data) return;
-
+            //eslint-disable-next-line
             if (data.liked_by?.includes(userAddress)) {
                 setIsLiked(true)
             }
         }
+        //eslint-disable-next-line
         checkIfLiked()
     }, [postId])
 
