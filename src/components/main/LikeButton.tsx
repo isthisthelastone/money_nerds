@@ -4,7 +4,7 @@ import {useEffect, useState} from 'react'
 import {supabase} from '../../../supabaseClient'
 import {HeartIcon as HeartOutline} from '@heroicons/react/24/outline'
 import {HeartIcon as HeartSolid} from '@heroicons/react/24/solid'
-import {WalletProvider} from '../providers/WalletProvider'
+import {SolanaWalletProvider as WalletProvider} from '../providers/WalletProvider'
 
 interface LikeButtonProps {
     postId: number
@@ -19,28 +19,44 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
 
     useEffect(() => {
         const checkIfLiked = async () => {
-//eslint-disable-next-line
+            const userAddress = localStorage.getItem("phantomWalletAddress");
+            if (!userAddress) return;
+
             const {data} = await supabase
                 .from('post_info')
                 .select('liked_by')
                 .eq('id', postId)
                 .single()
 
-            // if (data?.liked_by?.includes(publicKey.toString())) {
-            //   setIsLiked(true)
-            // }
+            if (!data) return;
+
+            if (data.liked_by?.includes(userAddress)) {
+                setIsLiked(true)
+            }
         }
-        //eslint-disable-next-line
         checkIfLiked()
-    }, [postId, /*publicKey*/])
+    }, [postId])
 
     const handleLike = async () => {
-
+        if (isLiked) return;
+        setIsLoading(true);
 
         try {
-
-
             const userAddress = localStorage.getItem("phantomWalletAddress");
+            if (!userAddress) return;
+
+            // Get current liked_by array
+            const {data: currentData} = await supabase
+                .from('post_info')
+                .select('liked_by')
+                .eq('id', postId)
+                .single()
+
+            const currentLikedBy: string[] = currentData?.liked_by as string[] || [];
+            if (currentLikedBy.includes(userAddress)) {
+                setIsLiked(true);
+                return;
+            }
 
             // Start transaction
             const {error: error1} = await supabase
@@ -55,7 +71,7 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
                 //@ts-expect-error valid types
                 .upsert({
                     id: postId,
-                    liked_by: isLiked ? [] : [userAddress]
+                    liked_by: [...currentLikedBy, userAddress]
                 }, {
                     onConflict: 'id',
                     defaultToNull: false
@@ -78,7 +94,8 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
     return (
         <button
             //eslint-disable-next-line
-            onClick={async () => await handleLike()}
+            onClick={handleLike}
+            disabled={isLiked || isLoading}
             className={`flex items-center space-x-1 ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
             } transition-opacity duration-200 ease-in-out disabled:cursor-not-allowed`}

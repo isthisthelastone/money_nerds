@@ -1,8 +1,8 @@
-"use client"
-import {WalletProvider} from '../providers/WalletProvider'
+"use client";
 import {FC, useState} from 'react';
 import {useConnection, useWallet} from '@solana/wallet-adapter-react';
 import {LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction} from '@solana/web3.js';
+import {WalletMultiButton} from '@solana/wallet-adapter-react-ui';
 
 interface DonateButtonProps {
     recipientAddress: string;
@@ -13,9 +13,20 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
     const [status, setStatus] = useState<string>('');
     const [isError, setIsError] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isValidAmount, setIsValidAmount] = useState<boolean>(false);
 
     const {connection} = useConnection();
-    const {publicKey, sendTransaction} = useWallet();
+    const {publicKey, sendTransaction, connected} = useWallet();
+
+    // 🚀 Wallet Check
+    if (!connected) {
+        return (
+            <div>
+                <p className="text-red-500 mb-3">Please connect your wallet first to donate</p>
+                <WalletMultiButton/>
+            </div>
+        );
+    }
 
     const handleDonate = async () => {
         if (!publicKey || !amount) return;
@@ -52,22 +63,28 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
 
     return (
         <div>
+            <WalletMultiButton/>
             <div className="flex gap-2 my-3">
                 <input
                     type="number"
                     min="0"
                     step="0.1"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        setAmount(value);
+                        const parsedValue = parseFloat(value);
+                        setIsValidAmount(!isNaN(parsedValue) && parsedValue > 0);
+                    }}
                     placeholder="SOL amount"
                     className="bg-[#1a1a1a] border border-[#333] rounded text-white px-3 py-2 w-[120px] focus:outline-none focus:border-[#666]"
                 />
                 <button
-                    //eslint-disable-next-line 
-                    onClick={async () => {
-                        return await handleDonate()
+                    onClick={() => {
+                        //eslint-disable-next-line @typescript-eslint/no-floating-promises
+                        handleDonate()
                     }}
-                    disabled={!publicKey || !amount || isLoading}
+                    disabled={!publicKey || !isValidAmount || isLoading}
                     className="bg-[#512da8] text-white rounded px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#673ab7] disabled:bg-[#333] disabled:cursor-not-allowed"
                 >
                     {isLoading ? 'Processing...' : 'Donate'}
@@ -84,8 +101,6 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
 
 export const DonateButton: FC<DonateButtonProps> = (props) => {
     return (
-        <WalletProvider>
-            <UnwrappedDonateButton {...props} />
-        </WalletProvider>
+        <UnwrappedDonateButton {...props} />
     );
 };
