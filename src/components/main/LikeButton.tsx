@@ -34,7 +34,7 @@ function UnwrappedLikeButton({postId, initialLikes}: LikeButtonProps) {
                 setIsLiked(true)
             }
         }
-        
+        //eslint-disable-next-line
         checkIfLiked()
     }, [postId])
 
