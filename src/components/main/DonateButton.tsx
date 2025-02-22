@@ -22,8 +22,8 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
     if (!connected) {
         return (
             <div>
-                <p className="text-red-500 mb-3">Please connect your wallet first to donate</p>
-                <WalletMultiButton/>
+                <p className="text-gray-500 mb-3">Please connect your wallet first to donate</p>
+                <WalletMultiButton style={{backgroundColor: '#3377ff'}}/>
             </div>
         );
     }

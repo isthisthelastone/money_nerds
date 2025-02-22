@@ -3,6 +3,9 @@
 import React, {useEffect, useState} from "react";
 import {QueryClient, QueryClientProvider, useMutation, useQueryClient,} from "@tanstack/react-query";
 import {create} from "zustand";
+import {IoLogInOutline} from "react-icons/io5";
+import {FaRegCopy} from "react-icons/fa";
+import {twMerge} from "tailwind-merge";
 
 /** The response from GET /api/auth/nonce */
 interface NonceResponse {
@@ -197,10 +200,7 @@ export function PhantomWallet() {
             {error && <p style={{color: "red"}}>{error}</p>}
 
             {walletAddress ? (
-                <div>
-                    <p>Connected Wallet: {walletAddress}</p>
-                    <button onClick={disconnectWallet}>Disconnect</button>
-                </div>
+                <WalletConnect walletAddress={walletAddress} disconnectWallet={disconnectWallet}/>
             ) : (
                 <button
                     onClick={handleConnect}
@@ -217,6 +217,47 @@ export function PhantomWallet() {
                     {loginMutation.isPending ? "Connecting..." : "Connect Phantom"}
                 </button>
             )}
+        </div>
+    );
+}
+
+export default function WalletConnect({walletAddress, disconnectWallet}: {
+    walletAddress: string,
+    disconnectWallet: () => void;
+}) {
+    const [copied, setCopied] = useState(false);
+
+    const copyToClipboard = () => {
+        //eslint-disable-next-line
+        navigator.clipboard.writeText(walletAddress);
+        setCopied(true);
+        //eslint-disable-next-line
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div
+            className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-900 to-indigo-900 rounded-xl shadow-lg w-full max-w-sm mx-auto text-white">
+            <p className="text-sm font-medium opacity-80 mb-2">Connected Wallet:</p>
+            <div className="flex items-center justify-between bg-white/10 p-2 rounded-lg w-full">
+                <span className="truncate text-sm font-mono px-2">{walletAddress}</span>
+                <button
+                    onClick={copyToClipboard}
+                    className={twMerge(
+                        "p-1 rounded transition-all",
+                        copied ? "text-green-400" : "text-white opacity-80 hover:opacity-100"
+                    )}
+                >
+                    <FaRegCopy size={18}/>
+                </button>
+            </div>
+            {copied && <p className="text-xs text-green-400 mt-1">Copied to clipboard!</p>}
+            <button
+                onClick={disconnectWallet}
+                className=" flex p-1 mt-4 rounded-lg flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-end justify-center text-white w-full"
+            >
+                <IoLogInOutline size={18}/> Disconnect
+            </button>
         </div>
     );
 }
