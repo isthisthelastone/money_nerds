@@ -64,7 +64,7 @@ export function Component({data}: { data: any[] }) {
                                     <p>{item.walletAddress.slice(-5, -1)}</p>
                                 </div>
                             </div>
-                            <p>under nickname <b>${item.username}</b></p>
+                            <p>under nickname <b>{item.username}</b></p>
                             <p>{item.message}</p>
                             <div className="flex justify-between">
                                 <p>{moment(item.createdAt).format('MM/DD/YYYY HH:mm:ss')}</p>
