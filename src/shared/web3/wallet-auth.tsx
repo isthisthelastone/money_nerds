@@ -1,20 +1,19 @@
 "use client";
 
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {QueryClient, QueryClientProvider, useMutation, useQueryClient,} from "@tanstack/react-query";
 import {create} from "zustand";
 import {IoLogInOutline} from "react-icons/io5";
 import {FaRegCopy} from "react-icons/fa";
 import {twMerge} from "tailwind-merge";
 
-/** The response from GET /api/auth/nonce */
+// --- API Response Interfaces ---
 interface NonceResponse {
     nonce: string;
 
     [key: string]: unknown;
 }
 
-/** The response from POST /api/auth/verify (Supabase built-in Auth style) */
 interface VerifyResponse {
     error?: string;
     message?: string;
@@ -22,17 +21,16 @@ interface VerifyResponse {
     refresh_token?: string;
     token_type?: string;
     expires_in?: number;
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    user?: any; // or a more specific type if desired
+    //eslint-disable-next-line
+    user?: any;
 }
 
-// Define the shape of your store
+// --- Zustand Store ---
 interface BearState {
     isL: boolean;
     setIsL: (l: boolean) => void;
 }
 
-// Create the store
 export const useAuthStore = create<BearState>((set) => ({
     isL: false,
     setIsL: (l) => set({isL: l}),
@@ -40,6 +38,7 @@ export const useAuthStore = create<BearState>((set) => ({
 
 export const queryClient = new QueryClient();
 
+// --- Main Component ---
 export const PhantomWalletButton = () => {
     return (
         <QueryClientProvider client={queryClient}>
@@ -48,36 +47,84 @@ export const PhantomWalletButton = () => {
     );
 };
 
-/** A single component handling connect → nonce → sign → verify, using v5 of TanStack Query. */
 export function PhantomWallet() {
     const queryClient = useQueryClient();
-
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-
     const {setIsL} = useAuthStore();
 
+    // Функция отключения кошелька
+    const disconnectWallet = useCallback(() => {
+        setWalletAddress(null);
+        setIsL(false);
+        localStorage.removeItem("phantomWalletAddress");
+        localStorage.removeItem("sb_access_token");
+        localStorage.removeItem("sb_refresh_token");
+    }, [setIsL]);
+
+    // Восстанавливаем состояние авторизации из localStorage
     useEffect(() => {
         setIsL(Boolean(localStorage.getItem("phantomWalletAddress")));
     }, [setIsL]);
 
-    /**
-     * The big mutation that:
-     * 1) Connects Phantom
-     * 2) GET /api/auth/nonce (via queryClient.fetchQuery)
-     * 3) signMessage
-     * 4) POST /api/auth/verify, asking server to create a user if one doesn’t exist
-     */
+    // --- Проверка валидности токена при монтировании ---
+    useEffect(() => {
+        const checkTokenValidity = async () => {
+            const accessToken = localStorage.getItem("sb_access_token");
+            if (!accessToken) return; // Нет токена – пользователь не залогинен
+
+            try {
+                const res = await fetch("/api/auth/check", {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+                console.log("Token check status:", res.status);
+                if (res.ok) {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        //eslint-disable-next-line
+                        const data = await res.json();
+                        console.log("Token check data:", data);
+                    } else {
+                        console.log("Token check non-json response, assuming token is valid.");
+                    }
+                } else {
+                    console.log("Token check failed with status:", res.status);
+                    let errorMessage = "Session expired";
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        //eslint-disable-next-line
+                        const errorData = await res.json();
+                        console.log("Token check error data:", errorData);
+                        //eslint-disable-next-line
+                        errorMessage = errorData.error || errorMessage;
+                    } else {
+                        const errorText = await res.text();
+                        console.log("Token check error text:", errorText);
+                    }
+                    throw new Error(errorMessage);
+                }
+            } catch (err) {
+                console.error("Token validation error:", err);
+                // Если ошибка проверки токена, выводим сообщение и отключаем кошелёк
+                //eslint-disable-next-line
+                alert("Session has expired. Please log in again.");
+                disconnectWallet();
+            }
+        };
+//eslint-disable-next-line
+        checkTokenValidity();
+    }, [disconnectWallet]);
+
+    // --- Мутация для логина ---
     const loginMutation = useMutation<
-        // success data
         { walletAddress: string; access_token?: string; refresh_token?: string },
-        // error type
         Error,
-        // variables (none)
         void
     >({
         mutationFn: async () => {
-            // 1) Check Phantom
+            // 1. Проверка наличия Phantom
             if (
                 typeof window === "undefined" ||
                 !window.solana ||
@@ -86,14 +133,14 @@ export function PhantomWallet() {
                 throw new Error("Phantom Wallet is not installed!");
             }
 
-            // 2) Connect to Phantom
+            // 2. Подключение к Phantom
             const resp = await window.solana.connect({onlyIfTrusted: false});
             const address = resp?.publicKey?.toString();
             if (!address) {
                 throw new Error("No public key from Phantom");
             }
 
-            // 3) GET nonce
+            // 3. Получение nonce
             const nonceData = await queryClient.fetchQuery<NonceResponse>({
                 queryKey: ["nonce-fetch"],
                 queryFn: async () => {
@@ -101,28 +148,21 @@ export function PhantomWallet() {
                     if (!res.ok) throw new Error("Failed to fetch nonce");
                     return res.json() as Promise<NonceResponse>;
                 },
-                // We'll fetch it once per mutation, so staleTime can be Infinity or 0
                 staleTime: Infinity,
             });
-
             if (!nonceData.nonce) {
                 throw new Error("No nonce in server response");
             }
 
-            // 4) signMessage
+            // 4. Подпись сообщения
             if (!window.solana.signMessage) {
                 throw new Error("Phantom does not support signMessage");
             }
             const encodedNonce = new TextEncoder().encode(nonceData.nonce);
-            const signatureResp = await window.solana.signMessage(
-                encodedNonce,
-                "utf8"
-            );
-            // Could be a base58 string or raw bytes
+            const signatureResp = await window.solana.signMessage(encodedNonce, "utf8");
             const signature = signatureResp.signature;
 
-            // 5) POST verify
-            //    Send `shouldCreate: true` so backend can create new user if needed
+            // 5. Верификация
             const verifyData = await queryClient.fetchQuery<VerifyResponse>({
                 queryKey: ["verify-fetch"],
                 queryFn: async () => {
@@ -133,7 +173,7 @@ export function PhantomWallet() {
                             nonce: nonceData.nonce,
                             publicKey: address,
                             signature,
-                            shouldCreate: true, // <-- important
+                            shouldCreate: true,
                         }),
                     });
                     const data = (await res.json()) as VerifyResponse;
@@ -148,7 +188,6 @@ export function PhantomWallet() {
                 staleTime: Infinity,
             });
 
-            // We should have { access_token, refresh_token, etc. }
             return {
                 walletAddress: address,
                 access_token: verifyData.access_token,
@@ -156,7 +195,7 @@ export function PhantomWallet() {
             };
         },
         onSuccess: (data) => {
-            // Persist wallet & tokens in localStorage
+            // Сохраняем токены и адрес
             if (data.access_token) {
                 localStorage.setItem("sb_access_token", data.access_token);
             }
@@ -164,8 +203,6 @@ export function PhantomWallet() {
                 localStorage.setItem("sb_refresh_token", data.refresh_token);
             }
             localStorage.setItem("phantomWalletAddress", data.walletAddress);
-
-            // Update local state
             setWalletAddress(data.walletAddress);
             setIsL(true);
         },
@@ -174,22 +211,12 @@ export function PhantomWallet() {
         },
     });
 
-    /** Click handler: runs the mutation. */
     const handleConnect = () => {
         setError(null);
         loginMutation.mutate();
     };
 
-    /** Disconnect logic */
-    const disconnectWallet = () => {
-        setWalletAddress(null);
-        setIsL(false);
-        localStorage.removeItem("phantomWalletAddress");
-        localStorage.removeItem("sb_access_token");
-        localStorage.removeItem("sb_refresh_token");
-    };
-
-    /** On mount, restore from localStorage */
+    // Восстанавливаем адрес кошелька из localStorage
     useEffect(() => {
         const storedAddr = localStorage.getItem("phantomWalletAddress");
         if (storedAddr) setWalletAddress(storedAddr);
@@ -198,9 +225,11 @@ export function PhantomWallet() {
     return (
         <div style={{display: "flex", flexDirection: "column", gap: "10px"}}>
             {error && <p style={{color: "red"}}>{error}</p>}
-
             {walletAddress ? (
-                <WalletConnect walletAddress={walletAddress} disconnectWallet={disconnectWallet}/>
+                <WalletConnect
+                    walletAddress={walletAddress}
+                    disconnectWallet={disconnectWallet}
+                />
             ) : (
                 <button
                     onClick={handleConnect}
@@ -221,8 +250,11 @@ export function PhantomWallet() {
     );
 }
 
-export default function WalletConnect({walletAddress, disconnectWallet}: {
-    walletAddress: string,
+function WalletConnect({
+                           walletAddress,
+                           disconnectWallet,
+                       }: {
+    walletAddress: string;
     disconnectWallet: () => void;
 }) {
     const [copied, setCopied] = useState(false);
@@ -231,7 +263,7 @@ export default function WalletConnect({walletAddress, disconnectWallet}: {
         //eslint-disable-next-line
         navigator.clipboard.writeText(walletAddress);
         setCopied(true);
-        //eslint-disable-next-line
+        //eslint-disable-next-line 
         setTimeout(() => setCopied(false), 2000);
     };
 
@@ -240,7 +272,7 @@ export default function WalletConnect({walletAddress, disconnectWallet}: {
             className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-900 to-indigo-900 rounded-xl shadow-lg w-full max-w-sm mx-auto text-white">
             <p className="text-sm font-medium opacity-80 mb-2">Connected Wallet:</p>
             <div className="flex items-center justify-between bg-white/10 p-2 rounded-lg w-full">
-                <span className="truncate text-sm  px-2">{walletAddress}</span>
+                <span className="truncate text-sm px-2">{walletAddress}</span>
                 <button
                     onClick={copyToClipboard}
                     className={twMerge(
@@ -251,13 +283,17 @@ export default function WalletConnect({walletAddress, disconnectWallet}: {
                     <FaRegCopy size={18}/>
                 </button>
             </div>
-            {copied && <p className="text-xs text-green-400 mt-1">Copied to clipboard!</p>}
+            {copied && (
+                <p className="text-xs text-green-400 mt-1">Copied to clipboard!</p>
+            )}
             <button
                 onClick={disconnectWallet}
-                className=" flex p-1 mt-4 rounded-lg items-center gap-2 bg-blue-500 hover:bg-blue-600 text-end justify-center text-white w-full"
+                className="flex p-1 mt-4 rounded-lg items-center gap-2 bg-blue-500 hover:bg-blue-600 text-end justify-center text-white w-full"
             >
                 <IoLogInOutline size={18}/> Disconnect
             </button>
         </div>
     );
 }
+
+export default PhantomWallet;

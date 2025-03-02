@@ -25,18 +25,18 @@ export function FormContent() {
     // Mutation for inserting data
     const mutation = useMutation({
         mutationFn: async ({
-                            name,
-                            message,
-                            walletAddress,
-                        }: {
+                               name,
+                               message,
+                               walletAddress,
+                           }: {
             name: string;
             message: string;
             walletAddress: string;
         }) => {
             const now = new Date().toISOString();
-            
+
             // Insert a new post and get the returned data
-            const { data: postData, error: insertError } = await supabase
+            const {data: postData, error: insertError} = await supabase
                 .from("posts")
                 .insert([
                     {
@@ -50,10 +50,10 @@ export function FormContent() {
                 .single();
 
             if (insertError) throw new Error(insertError.message);
-            
+
             // Create corresponding entry in post_info
             if (postData) {
-                const { error: postInfoError } = await supabase
+                const {error: postInfoError} = await supabase
                     .from("post_info")
                     .insert([
                         {
@@ -108,7 +108,7 @@ export function FormContent() {
     };
 
     return (
-        <form className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4 pt-10">
             <input
                 type="text"
                 value={name}
