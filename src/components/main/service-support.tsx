@@ -48,7 +48,7 @@ export const ServiceDonateButton = ({buttonClassName}: ServiceButtonProps) => {
     return (
         <div className={twMerge(buttonClassName, 'flex flex-col gap-2')}>
             <WalletMultiButton style={{
-                marginLeft: '5vw'
+                marginLeft: '11vw'
             }}/>
             <div className="flex gap-2 my-3 justify-between px-3">
                 <input
