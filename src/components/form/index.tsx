@@ -12,7 +12,12 @@ export const Form = () => {
     return (
         <QueryClientProvider client={queryClient}>
             {isL ? <FormContent/> :
-                <div>you must login to be able to post</div>}
+                <button
+                    className="font-mono p-3 px-5 min-w-[39vw] border border-dashed border-gray-400 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-300 ease-in-out cursor-not-allowed opacity-70 dark:bg-gray-800 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-700"
+                    disabled
+                >
+                    You must log in to post
+                </button>}
         </QueryClientProvider>
     );
 };

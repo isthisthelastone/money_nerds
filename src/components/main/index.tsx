@@ -9,13 +9,14 @@ import moment from "moment";
 import {Canvas, useFrame} from "@react-three/fiber";
 import {OrbitControls, useGLTF} from "@react-three/drei";
 import {Suspense, useRef, useState} from "react";
+import {ServiceDonateButton} from "@/components/main/service-support";
 
 /**
  * Your main component: wallet button, flipping coin, form, and data list.
  */
 export function Component({data}: { data: any[] }) {
     return (
-        <main className="flex flex-col items-center justify-start gap-1 min-h-screen w-full px-4">
+        <main className="flex flex-col  justify-start gap-1 min-h-screen w-full px-20">
             {/* Wallet Button */}
             <div className="flex self-end place-self-end justify-self-end pr-[5vw] pt-[5vh]">
                 <PhantomWalletButton/>
@@ -32,11 +33,11 @@ export function Component({data}: { data: any[] }) {
                 <Form/>
 
                 {/* List of Data */}
-                <ul className="space-y-[4vh] gap-4 pb-10">
+                <ul className="  items-start flex-col justify-center space-y-[4vh] gap-4 pb-10 ">
                     {data.map((item) => (
                         <li
                             key={item.id}
-                            className="font-mono p-4 min-w-[39vw] bg-gray-50 border border-gray-300
+                            className="font-mono p-4  min-w-[39vw] bg-gray-50 border border-gray-300
                          text-gray-900 focus:ring-0 focus:outline-none text-sm rounded-lg
                          focus:ring-blue-500 focus:border-blue-500 block w-full
                          dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400
@@ -164,39 +165,64 @@ function CoinFlipper() {
     };
 
     return (
-        <div className="w-full h-[500px]">
-            {/* Flip button and result */}
-            <div className="flex flex-col gap-5 w-full justify-center items-center font-mono">
-                <button
-                    onClick={flipCoin}
-                    disabled={isFlipping}
-                    className="p-1 mt-4 rounded-lg w-[50vw] items-center gap-2
-                     bg-blue-500 hover:bg-blue-600 text-center justify-center
-                     text-white"
-                >
-                    {isFlipping ? "Flipping..." : "Flip Coin"}
-                </button>
+        <div className="w-full h-[500px] flex ">
 
-                {result && !isFlipping && (
-                    <p
-                        className="font-mono mt-2 text-lg flex flex-col items-center justify-center
-                       bg-gradient-to-b from-blue-900 to-indigo-900 rounded-xl shadow-lg
-                       w-full max-w-[50vw] mx-auto text-white"
-                    >
-                        {result}
-                    </p>
-                )}
-            </div>
 
             {/* The 3D canvas */}
-            <Canvas camera={{position: [0, 0, 5]}}>
-                <ambientLight intensity={0.7}/>
-                <directionalLight position={[2, 2, 2]}/>
-                <Suspense fallback={null}>
-                    <CoinModel rotationY={rotationY}/>
-                </Suspense>
-                <OrbitControls enableZoom={false}/>
-            </Canvas>
+            <div className={"flex  w-full h-[30rem] items-center justify-center pl-[30vw] pr-[30vw] gap-[10vw] "}>
+                {/* The 3D canvas */}
+                <div className={"flex flex-col w-full h-[30rem] items-center justify-center "}>
+                    {/* Flip button and result */}
+                    <div className="flex flex-col gap-5 w-full justify-center items-center font-mono">
+                        <button
+                            onClick={flipCoin}
+                            disabled={isFlipping}
+                            className="p-1 mt-4 rounded-lg w-[15vw] items-center gap-2
+                     bg-blue-500 hover:bg-blue-600 text-center justify-center
+                     text-white"
+                        >
+                            {isFlipping ? "Flipping..." : "Flip Coin"}
+                        </button>
+
+                        {result && !isFlipping && (
+                            <p
+                                className="font-mono mt-2 text-lg flex flex-col items-center justify-center
+                       bg-gradient-to-b from-blue-900 to-indigo-900 rounded-xl shadow-lg
+                       w-full max-w-[15vw] mx-auto text-white"
+                            >
+                                {result}
+                            </p>
+                        )}
+                    </div>
+                    <Canvas camera={{position: [0, 0, 5]}}>
+                        <ambientLight intensity={0.7}/>
+                        <directionalLight position={[2, 2, 2]}/>
+                        <Suspense fallback={null}>
+                            <CoinModel rotationY={rotationY}/>
+                        </Suspense>
+                        <OrbitControls enableZoom={false}/>
+                    </Canvas>
+                </div>
+                <div className="flex flex-col mt-10 font-mono min-h-[35rem] p-4 min-w-[20vw] gap-3 bg-gray-50 border max-h-[10rem]  border-gray-300
+                    text-gray-900 focus:ring-0 focus:outline-none text-sm rounded-lg
+                    focus:ring-blue-500 focus:border-blue-500
+                    dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400
+                    dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                    <p className="text-4xl  text-center font-mono font-thin">Donate</p>
+                    <div className="pl-[5vw] pt-5">
+                        <img src="/pepe-pepe-logo.svg" width={150} height={200} alt="Icon"/>
+                    </div>
+                    <p className=" text-center max-w-[20rem]">We don't take any comissions from user donations. And
+                        we're fully
+                        transparent so besides donate button below you can see our wallet and it's number oif
+                        transactions and amount of money sent</p>
+                    <ServiceDonateButton buttonClassName={"ml-30"}/>
+                    <a href={'https://solscan.io/account/BqzLRNsHraeahvfppDs9QmRDdYx3gUYt69pgA6UR9GQg'}>
+                        <p className='text-center max-w-[20rem] hover:underline'>https://solscan.io/account/BqzLRNsHraeahvfppDs9QmRDdYx3gUYt69pgA6UR9GQg</p>
+                    </a>
+
+                </div>
+            </div>
         </div>
     );
 }
