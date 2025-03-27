@@ -1,45 +1,61 @@
 "use client";
-import {FC, useState} from 'react';
+
+import React, {FC, useMemo, useState} from 'react';
+import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction,} from '@solana/web3.js';
 import {useConnection, useWallet} from '@solana/wallet-adapter-react';
-import {LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction} from '@solana/web3.js';
 import {WalletMultiButton} from '@solana/wallet-adapter-react-ui';
 
 interface DonateButtonProps {
     recipientAddress: string;
 }
 
-const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
-    const [amount, setAmount] = useState<string>('');
-    const [status, setStatus] = useState<string>('');
-    const [isError, setIsError] = useState<boolean>(false);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isValidAmount, setIsValidAmount] = useState<boolean>(false);
+const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) => {
+    const [amount, setAmount] = useState('');
+    const [status, setStatus] = useState('');
+    const [isError, setIsError] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const {connection} = useConnection();
     const {publicKey, sendTransaction, connected} = useWallet();
 
-    // 🚀 Wallet Check
-    if (!connected) {
-        return (
-            <div>
-                <p className="text-gray-500 mb-3">Please connect your wallet first to donate</p>
-                <WalletMultiButton style={{backgroundColor: '#3377ff'}}/>
-            </div>
-        );
-    }
+    const recipientPubKey = useMemo(() => new PublicKey(recipientAddress), [recipientAddress]);
+
+    const calculatePriorityFee = async () => {
+        try {
+            const fees = await connection.getRecentPrioritizationFees();
+            if (!fees.length) return 100_000_000; // Increased to 0.002 SOL for priority
+
+            const averageFee = fees.reduce((sum, fee) => sum + fee.prioritizationFee, 0) / fees.length;
+            return Math.ceil(averageFee * 100); // Increased priority (2x)
+            //eslint-disable-next-line
+        } catch (error) {
+            console.warn("Using fallback priority fee");
+            return 100_000_000; // Increased fallback fee
+        }
+    };
 
     const handleDonate = async () => {
-        if (!publicKey || !amount) return;
+        if (!publicKey || !amount || parseFloat(amount) <= 0) {
+            setIsError(true);
+            setStatus('Enter a valid amount.');
+            return;
+        }
 
         setIsLoading(true);
         setStatus('');
         setIsError(false);
 
         try {
-            const recipientPubKey = new PublicKey(recipientAddress);
-            const lamports = parseFloat(amount) * LAMPORTS_PER_SOL;
+            const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
+            const priorityFee = await calculatePriorityFee();
 
-            const transaction = new Transaction().add(
+            // Only build the transaction initially without blockhash
+            const transaction = new Transaction();
+            transaction.feePayer = publicKey;
+
+            transaction.add(
+                ComputeBudgetProgram.setComputeUnitLimit({units: 1_400_000}),
+                ComputeBudgetProgram.setComputeUnitPrice({microLamports: priorityFee}),
                 SystemProgram.transfer({
                     fromPubkey: publicKey,
                     toPubkey: recipientPubKey,
@@ -47,19 +63,61 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
                 })
             );
 
-            const signature = await sendTransaction(transaction, connection);
-            await connection.confirmTransaction(signature, 'confirmed');
+            // Fetch freshest blockhash exactly right before signature and send
+            const latestBlockhash = await connection.getLatestBlockhash('finalized');
+            transaction.recentBlockhash = latestBlockhash.blockhash;
 
-            setStatus('Donation successful! Thank you for your support.');
+            // Immediately send transaction (minimize delay!)
+            const signature = await sendTransaction(transaction, connection, {
+                preflightCommitment: 'confirmed',
+                skipPreflight: false,
+                maxRetries: 5,
+            });
+
+            // Confirm the transaction robustly
+            const confirmation = await connection.confirmTransaction(
+                {
+                    signature,
+                    blockhash: latestBlockhash.blockhash,
+                    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+                },
+                'finalized'
+            );
+
+            if (confirmation.value.err) {
+                throw new Error('Transaction failed during confirmation.');
+            }
+
+            setStatus(`✅ Donation successful! Signature: ${signature}`);
             setAmount('');
-        } catch (error) {
-            console.error('Donation failed:', error);
+            //eslint-disable-next-line
+        } catch (error: any) {
+            console.error('Donation error:', error);
+            setStatus(
+                //eslint-disable-next-line
+                error.message.includes('expired') ||
+                //eslint-disable-next-line
+                error.message.includes('block height') ||
+                //eslint-disable-next-line
+                error.message.includes('Blockhash not found')
+                    ? '⏳ Transaction expired. Please retry quickly and confirm immediately.'
+                    //eslint-disable-next-line
+                    : `❌ Error: ${error.message}`
+            );
             setIsError(true);
-            setStatus(error instanceof Error ? error.message : 'Donation failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
+
+    if (!connected) {
+        return (
+            <div>
+                <p className="text-gray-500 mb-3">Please connect your wallet first.</p>
+                <WalletMultiButton style={{backgroundColor: '#3377ff'}}/>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -68,23 +126,16 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
                 <input
                     type="number"
                     min="0"
-                    step="0.1"
+                    step="0.01"
                     value={amount}
-                    onChange={(e) => {
-                        const value = e.target.value;
-                        setAmount(value);
-                        const parsedValue = parseFloat(value);
-                        setIsValidAmount(!isNaN(parsedValue) && parsedValue > 0);
-                    }}
+                    onChange={(e) => setAmount(e.target.value)}
                     placeholder="SOL amount"
                     className="bg-[#1a1a1a] border border-[#333] rounded text-white px-3 py-2 w-[120px] focus:outline-none focus:border-[#666]"
                 />
                 <button
-                    onClick={() => {
-                        //eslint-disable-next-line @typescript-eslint/no-floating-promises
-                        handleDonate()
-                    }}
-                    disabled={!publicKey || !isValidAmount || isLoading}
+                    //eslint-disable-next-line
+                    onClick={handleDonate}
+                    disabled={!publicKey || isLoading || parseFloat(amount) <= 0}
                     className="bg-[#512da8] text-white rounded px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#673ab7] disabled:bg-[#333] disabled:cursor-not-allowed"
                 >
                     {isLoading ? 'Processing...' : 'Donate'}
@@ -100,7 +151,5 @@ const UnwrappedDonateButton: FC<DonateButtonProps> = ({recipientAddress}) => {
 };
 
 export const DonateButton: FC<DonateButtonProps> = (props) => {
-    return (
-        <UnwrappedDonateButton {...props} />
-    );
+    return <UnwrappedDonateButton {...props} />;
 };

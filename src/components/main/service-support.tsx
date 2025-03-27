@@ -33,7 +33,18 @@ export const ServiceDonateButton = ({buttonClassName}: ServiceButtonProps) => {
             );
 
             const signature = await sendTransaction(transaction, connection);
-            await connection.confirmTransaction(signature, 'confirmed');
+            const latestBlockhash = (await connection.getLatestBlockhash()).blockhash;
+            const {lastValidBlockHeight} = await connection.getLatestBlockhash();
+
+// After sending your transaction and getting the "signature":
+            await connection.confirmTransaction(
+                {
+                    blockhash: latestBlockhash,
+                    lastValidBlockHeight,
+                    signature
+                },
+                'confirmed' // or 'finalized', 'processed', etc.
+            );
 
             setStatus('Donation successful! Thanks!');
             setAmount('');
@@ -48,7 +59,7 @@ export const ServiceDonateButton = ({buttonClassName}: ServiceButtonProps) => {
     return (
         <div className={twMerge(buttonClassName, 'flex flex-col gap-2')}>
             <WalletMultiButton style={{
-                marginLeft: '11vw'
+                marginLeft: '8.5rem'
             }}/>
             <div className="flex gap-2 my-3 justify-between px-3">
                 <input

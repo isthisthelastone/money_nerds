@@ -1,8 +1,7 @@
 'use client'
 
-import {WalletAdapterNetwork, WalletError} from '@solana/wallet-adapter-base'
+import {WalletError} from '@solana/wallet-adapter-base'
 import {ConnectionProvider, WalletProvider} from '@solana/wallet-adapter-react'
-import {clusterApiUrl} from '@solana/web3.js'
 import {FC, ReactNode, useCallback, useMemo} from 'react'
 import dynamic from 'next/dynamic'
 // Import wallet styles
@@ -23,8 +22,6 @@ export interface WalletContextProviderProps {
 
 export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children}) => {
 // Configure the network and endpoint
-    const network = WalletAdapterNetwork.Devnet
-    const endpoint = useMemo(() => clusterApiUrl(network), [network])
 
 // Empty wallets array since we're using standard wallet adapters
     const wallets = useMemo(
@@ -39,7 +36,8 @@ export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children})
     }, [])
 
     return (
-        <ConnectionProvider endpoint={endpoint}>
+        <ConnectionProvider
+            endpoint={"https://methodical-proud-mound.solana-mainnet.quiknode.pro/cf7e2e60fb75f284ee97d657aa2078530eb291b0/"}>
             <WalletProvider
                 wallets={wallets}
                 onError={onError}
