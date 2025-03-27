@@ -1,7 +1,7 @@
 "use client";
 
 import React, {FC, useMemo, useState} from 'react';
-import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction,} from '@solana/web3.js';
+import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction} from '@solana/web3.js';
 import {useConnection, useWallet} from '@solana/wallet-adapter-react';
 import {WalletMultiButton} from '@solana/wallet-adapter-react-ui';
 
@@ -18,19 +18,21 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
     const {connection} = useConnection();
     const {publicKey, sendTransaction, connected} = useWallet();
 
+    // Convert string recipient to PublicKey once
     const recipientPubKey = useMemo(() => new PublicKey(recipientAddress), [recipientAddress]);
 
+    // Optional: keep priority fee logic if you want.
+    // If you don't need it, you can skip the entire function + its usage.
     const calculatePriorityFee = async () => {
         try {
             const fees = await connection.getRecentPrioritizationFees();
-            if (!fees.length) return 100_000_000; // Increased to 0.002 SOL for priority
+            if (!fees.length) return 100_000_000; // fallback = 0.002 SOL (2_000_000 microLamports)
 
             const averageFee = fees.reduce((sum, fee) => sum + fee.prioritizationFee, 0) / fees.length;
-            return Math.ceil(averageFee * 100); // Increased priority (2x)
-            //eslint-disable-next-line
+            return Math.ceil(averageFee * 100); // 2x the average
         } catch (error) {
-            console.warn("Using fallback priority fee");
-            return 100_000_000; // Increased fallback fee
+            console.warn("Using fallback priority fee", error);
+            return 100_000_000;
         }
     };
 
@@ -49,9 +51,8 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
             const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
             const priorityFee = await calculatePriorityFee();
 
-            // Only build the transaction initially without blockhash
+            // 1) Build the transaction
             const transaction = new Transaction();
-            transaction.feePayer = publicKey;
 
             transaction.add(
                 ComputeBudgetProgram.setComputeUnitLimit({units: 1_400_000}),
@@ -63,47 +64,38 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                 })
             );
 
-            // Fetch freshest blockhash exactly right before signature and send
-            const latestBlockhash = await connection.getLatestBlockhash('finalized');
-            transaction.recentBlockhash = latestBlockhash.blockhash;
-
-            // Immediately send transaction (minimize delay!)
+            // 2) Let wallet adapter handle blockhash & sign/broadcast
             const signature = await sendTransaction(transaction, connection, {
                 preflightCommitment: 'confirmed',
                 skipPreflight: false,
                 maxRetries: 5,
             });
 
-            // Confirm the transaction robustly
-            const confirmation = await connection.confirmTransaction(
-                {
-                    signature,
-                    blockhash: latestBlockhash.blockhash,
-                    lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-                },
-                'finalized'
-            );
-
+            // 3) Confirm the transaction (with 'confirmed' or 'finalized')
+            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
             if (confirmation.value.err) {
                 throw new Error('Transaction failed during confirmation.');
             }
 
             setStatus(`✅ Donation successful! Signature: ${signature}`);
             setAmount('');
-            //eslint-disable-next-line
+//eslint-disable-next-line
         } catch (error: any) {
             console.error('Donation error:', error);
-            setStatus(
+            // If it's a blockhash error or expiration, show your custom message
+            if (
                 //eslint-disable-next-line
                 error.message.includes('expired') ||
                 //eslint-disable-next-line
                 error.message.includes('block height') ||
                 //eslint-disable-next-line
                 error.message.includes('Blockhash not found')
-                    ? '⏳ Transaction expired. Please retry quickly and confirm immediately.'
-                    //eslint-disable-next-line
-                    : `❌ Error: ${error.message}`
-            );
+            ) {
+                setStatus('⏳ Transaction expired. Please retry quickly and confirm immediately.');
+            } else {
+                //eslint-disable-next-line
+                setStatus(`❌ Error: ${error.message}`);
+            }
             setIsError(true);
         } finally {
             setIsLoading(false);
@@ -150,6 +142,7 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
     );
 };
 
+// Export the final "DonateButton"
 export const DonateButton: FC<DonateButtonProps> = (props) => {
     return <UnwrappedDonateButton {...props} />;
 };
