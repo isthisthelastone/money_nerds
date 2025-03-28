@@ -1,7 +1,7 @@
 "use client";
 
 import React, {FC, useMemo, useState} from 'react';
-import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction} from '@solana/web3.js';
+import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction,} from '@solana/web3.js';
 import {useConnection, useWallet} from '@solana/wallet-adapter-react';
 import {WalletMultiButton} from '@solana/wallet-adapter-react-ui';
 
@@ -16,20 +16,18 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
     const [isLoading, setIsLoading] = useState(false);
 
     const {connection} = useConnection();
-    const {publicKey, sendTransaction, connected} = useWallet();
+    const wallet = useWallet();
 
-    // Convert string recipient to PublicKey once
+    const {publicKey, signAndSendTransaction, signTransaction, connected} = wallet;
+
     const recipientPubKey = useMemo(() => new PublicKey(recipientAddress), [recipientAddress]);
 
-    // Optional: keep priority fee logic if you want.
-    // If you don't need it, you can skip the entire function + its usage.
     const calculatePriorityFee = async () => {
         try {
             const fees = await connection.getRecentPrioritizationFees();
-            if (!fees.length) return 100_000_000; // fallback = 0.002 SOL (2_000_000 microLamports)
-
+            if (!fees.length) return 100_000_000;
             const averageFee = fees.reduce((sum, fee) => sum + fee.prioritizationFee, 0) / fees.length;
-            return Math.ceil(averageFee * 100); // 2x the average
+            return Math.ceil(averageFee * 100);
         } catch (error) {
             console.warn("Using fallback priority fee", error);
             return 100_000_000;
@@ -50,9 +48,12 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
         try {
             const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
             const priorityFee = await calculatePriorityFee();
+            const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash('finalized');
 
-            // 1) Build the transaction
-            const transaction = new Transaction();
+            const transaction = new Transaction({
+                feePayer: publicKey,
+                recentBlockhash: blockhash,
+            });
 
             transaction.add(
                 ComputeBudgetProgram.setComputeUnitLimit({units: 1_400_000}),
@@ -64,36 +65,41 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                 })
             );
 
-            // 2) Let wallet adapter handle blockhash & sign/broadcast
-            const signature = await sendTransaction(transaction, connection, {
-                preflightCommitment: 'confirmed',
-                skipPreflight: false,
-                maxRetries: 5,
-            });
+            let signature: string;
 
-            // 3) Confirm the transaction (with 'confirmed' or 'finalized')
-            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+            // ✅ Preferred: use signAndSendTransaction if wallet supports it
+            if ('signAndSendTransaction' in wallet && typeof signAndSendTransaction === 'function') {
+                signature = await signAndSendTransaction(transaction);
+            } else if ('signTransaction' in wallet && typeof signTransaction === 'function') {
+                const signedTx = await signTransaction(transaction);
+                signature = await connection.sendRawTransaction(signedTx.serialize(), {
+                    skipPreflight: false,
+                    maxRetries: 5,
+                });
+            } else {
+                throw new Error('Wallet does not support transaction signing.');
+            }
+
+            const confirmation = await connection.confirmTransaction(
+                {signature, blockhash, lastValidBlockHeight},
+                'confirmed'
+            );
+
             if (confirmation.value.err) {
                 throw new Error('Transaction failed during confirmation.');
             }
 
             setStatus(`✅ Donation successful! Signature: ${signature}`);
             setAmount('');
-//eslint-disable-next-line
         } catch (error: any) {
             console.error('Donation error:', error);
-            // If it's a blockhash error or expiration, show your custom message
             if (
-                //eslint-disable-next-line
-                error.message.includes('expired') ||
-                //eslint-disable-next-line
-                error.message.includes('block height') ||
-                //eslint-disable-next-line
-                error.message.includes('Blockhash not found')
+                error.message?.includes('expired') ||
+                error.message?.includes('block height') ||
+                error.message?.includes('Blockhash not found')
             ) {
                 setStatus('⏳ Transaction expired. Please retry quickly and confirm immediately.');
             } else {
-                //eslint-disable-next-line
                 setStatus(`❌ Error: ${error.message}`);
             }
             setIsError(true);
@@ -125,7 +131,6 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                     className="bg-[#1a1a1a] border border-[#333] rounded text-white px-3 py-2 w-[120px] focus:outline-none focus:border-[#666]"
                 />
                 <button
-                    //eslint-disable-next-line
                     onClick={handleDonate}
                     disabled={!publicKey || isLoading || parseFloat(amount) <= 0}
                     className="bg-[#512da8] text-white rounded px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#673ab7] disabled:bg-[#333] disabled:cursor-not-allowed"
@@ -142,7 +147,6 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
     );
 };
 
-// Export the final "DonateButton"
 export const DonateButton: FC<DonateButtonProps> = (props) => {
     return <UnwrappedDonateButton {...props} />;
 };
