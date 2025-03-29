@@ -50,7 +50,15 @@ export function Component({data}: { data: any[] }) {
                 <Form/>
 
                 <ul className="flex flex-col gap-4 pb-10">
-                    {data.map((item) => (
+                    {data.map((item: {
+                        donated: Record<string, number>,
+                        id: number,
+                        walletAddress: string,
+                        likes: number,
+                        createdAt: string,
+                        username: string;
+                        message: string;
+                    }) => (
                         <li
                             key={item.id}
                             className="font-mono p-4 bg-gray-50 border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
@@ -73,10 +81,10 @@ export function Component({data}: { data: any[] }) {
                                 <div className="flex flex-col md:flex-row md:justify-between gap-2 text-sm">
                                     <p>{moment(item.createdAt).format("MM/DD/YYYY HH:mm:ss")}</p>
                                     <p>Likes: {item.likes}</p>
-                                    <p>Donations: {item.donated_sum}</p>
+                                    <p>Donations: {Object.values(item.donated).length ? Object.values(item.donated).reduce((acc: number, val: number) => acc + val, 0) : 0} SOL</p>
                                 </div>
                                 <div className="flex flex-col md:flex-row md:justify-between gap-2">
-                                    <DonateButton recipientAddress={item.walletAddress}/>
+                                    <DonateButton postId={item.id} recipientAddress={item.walletAddress}/>
                                     <LikeButton postId={item.id} initialLikes={item.likes}/>
                                 </div>
                             </div>

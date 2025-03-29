@@ -4,21 +4,26 @@ import React, {FC, useMemo, useState} from "react";
 import {ComputeBudgetProgram, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction,} from "@solana/web3.js";
 import {useConnection, useWallet} from "@solana/wallet-adapter-react";
 import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
+import {supabase} from "../../../supabaseClient";
 
 interface DonateButtonProps {
     recipientAddress: string;
+    postId?: number;
 }
 
 // ✅ Type guard to check for Phantom's custom method
 function supportsSignAndSend(
-    //eslint-disable-next-line
+    // eslint-disable-next-line
     wallet: any
 ): wallet is { signAndSendTransaction: (tx: Transaction) => Promise<string> } {
     //eslint-disable-next-line
     return typeof wallet?.signAndSendTransaction === "function";
 }
 
-const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) => {
+const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
+                                                                recipientAddress,
+                                                                postId,
+                                                            }) => {
     const [amount, setAmount] = useState("");
     const [status, setStatus] = useState("");
     const [isError, setIsError] = useState(false);
@@ -28,13 +33,18 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
     const wallet = useWallet();
     const {publicKey, signTransaction, connected} = wallet;
 
-    const recipientPubKey = useMemo(() => new PublicKey(recipientAddress), [recipientAddress]);
+    const recipientPubKey = useMemo(
+        () => new PublicKey(recipientAddress),
+        [recipientAddress]
+    );
 
     const calculatePriorityFee = async () => {
         try {
             const fees = await connection.getRecentPrioritizationFees();
             if (!fees.length) return 100_000_000;
-            const avgFee = fees.reduce((sum, fee) => sum + fee.prioritizationFee, 0) / fees.length;
+            const avgFee =
+                fees.reduce((sum, fee) => sum + fee.prioritizationFee, 0) /
+                fees.length;
             return Math.ceil(avgFee * 100);
         } catch (err) {
             console.warn("Using fallback priority fee", err);
@@ -56,7 +66,9 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
         try {
             const lamports = Math.floor(parseFloat(amount) * LAMPORTS_PER_SOL);
             const priorityFee = await calculatePriorityFee();
-            const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash("finalized");
+            const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash(
+                "finalized"
+            );
 
             const transaction = new Transaction({
                 feePayer: publicKey,
@@ -90,6 +102,7 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                 throw new Error("Wallet does not support transaction signing.");
             }
 
+            // Confirm the transaction
             const confirmation = await connection.confirmTransaction(
                 {signature, blockhash, lastValidBlockHeight},
                 "confirmed"
@@ -99,6 +112,45 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                 throw new Error("Transaction failed during confirmation.");
             }
 
+            // ❇️ Transaction was successful, now update Supabase if we have a postId
+            if (postId) {
+                // 1) Fetch current donation JSONB
+                const {data: postRow, error: fetchError} = await supabase
+                    .from("posts")
+                    .select("donated") // assume your JSONB column is called 'donated'
+                    .eq("id", postId)
+                    .single();
+
+                if (fetchError) {
+                    console.error("Error fetching post row:", fetchError);
+                } else if (postRow) {
+                    // 2) If no object, default to {}
+                    //eslint-disable-next-line
+                    let donated: Record<string, number> = postRow.donated || {};
+
+                    // 3) Add or increment the donor's existing total
+                    const donorKey = publicKey.toBase58(); // or toString()
+                    const currentDonation = donated[donorKey] ?? 0;
+                    const updatedDonation = currentDonation + parseFloat(amount);
+
+                    donated = {
+                        ...donated,
+                        [donorKey]: updatedDonation,
+                    };
+
+                    // 4) Write updated object back to Supabase
+                    const {error: updateError} = await supabase
+                        .from("posts")
+                        .update({donated})
+                        .eq("id", postId);
+
+                    if (updateError) {
+                        console.error("Error updating donation JSONB:", updateError);
+                    }
+                }
+            }
+
+            // Finally, show success to the user
             setStatus(`✅ Donation successful! Signature: ${signature}`);
             setAmount("");
             //eslint-disable-next-line
@@ -155,7 +207,9 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({recipientAddress}) 
                 </button>
             </div>
             {status && (
-                <div className={`text-sm mt-2 ${isError ? "text-[#ff4444]" : "text-[#4caf50]"}`}>
+                <div
+                    className={`text-sm mt-2 ${isError ? "text-[#ff4444]" : "text-[#4caf50]"}`}
+                >
                     {status}
                 </div>
             )}
