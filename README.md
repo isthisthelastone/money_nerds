@@ -19,7 +19,7 @@ Why It Matters
 This isn’t just another crowdfunding site. Money Nerds is an open protocol for decentralized generosity and creativity—a culture platform for Web3-native expression. It’s a place where the value of your content is determined directly by the community, with no middlemen or algorithms in the way.
 
 Get Involved
-	•	Explore: Visit moneynerds.online to see what’s being posted.
+	•	Explore: Visit https://moneynerds.online to see what’s being posted.
 	•	Spread the Word: Share the project with your friends, followers, or community.
 	•	Contribute: Open to feedback or donations—every bit helps us grow and improve.
 
