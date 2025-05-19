@@ -37,7 +37,7 @@ export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children})
 
     return (
         <ConnectionProvider
-            endpoint={"https://mainnet.helius-rpc.com/?api-key=d61f3621-9f97-44bd-a163-ed1a8ce47db9"}>
+            endpoint={process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string}>
             <WalletProvider
                 wallets={wallets}
                 onError={onError}
