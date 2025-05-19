@@ -13,9 +13,10 @@ interface SolanaWalletProviderProps {
 export const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({children}) => {
     const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
+
     return (
         <ConnectionProvider
-            endpoint="https://methodical-proud-mound.solana-mainnet.quiknode.pro/cf7e2e60fb75f284ee97d657aa2078530eb291b0/">
+            endpoint='https://mainnet.helius-rpc.com/?api-key=d61f3621-9f97-44bd-a163-ed1a8ce47db9'>
             <WalletProvider wallets={wallets} autoConnect>
                 <WalletModalProvider>{children}</WalletModalProvider>
             </WalletProvider>
