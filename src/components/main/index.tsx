@@ -13,11 +13,29 @@ import {ServiceDonateButton} from "@/components/main/service-support";
 import {copyToClipboard} from "@/shared/utils";
 import {CommentSection} from "./CommentSection";
 import {Form} from "@/components";
+import {useRouter, useSearchParams} from "next/navigation";
 
-// =======================
-// MAIN PAGE COMPONENT
-// =======================
-export function Component({data}: { data: any[] }) {
+export function Component({
+                              data,
+                              page = 1,
+                              totalPages = 1,
+                          }: {
+    data: any[];
+    page?: number;
+    totalPages?: number;
+}) {
+    "use client";
+
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    /** Navigate to another page by updating the ?page= query param */
+    const goToPage = (next: number) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("page", String(next));
+        router.push("?" + params.toString());
+    };
+
     return (
         // Provide the QueryClient at the top level, so posts/comments can use it
         <QueryClientProvider client={queryClient}>
@@ -27,7 +45,9 @@ export function Component({data}: { data: any[] }) {
                         <PhantomWalletButton/>
                     </div>
 
-                    <h1 className="text-5xl md:text-[8vw] text-center text-white">MONEY NERDS</h1>
+                    <h1 className="text-5xl md:text-[8vw] text-center text-white">
+                        MONEY NERDS
+                    </h1>
 
                     <div className="flex flex-col lg:flex-row items-center justify-center gap-10">
                         <CoinFlipper/>
@@ -42,8 +62,8 @@ export function Component({data}: { data: any[] }) {
                                 alt="Icon"
                             />
                             <p className="text-center text-sm">
-                                We don't take any commissions from user donations. Fully transparent, see our wallet
-                                transactions below.
+                                We don&apos;t take any commissions from user donations. Fully
+                                transparent, see our wallet transactions below.
                             </p>
                             <ServiceDonateButton/>
                             <a
@@ -60,18 +80,41 @@ export function Component({data}: { data: any[] }) {
 
                     {/* Post list */}
                     <ul className="flex flex-col gap-4 pb-10">
-                        {data.map((item: {
-                            donated: Record<string, number>;
-                            id: number;
-                            walletAddress: string;
-                            likes: number;
-                            createdAt: string;
-                            username: string;
-                            message: string;
-                        }) => (
-                            <PostCard key={item.id} item={item}/>
-                        ))}
+                        {data.map(
+                            (item: {
+                                donated: Record<string, number>;
+                                id: number;
+                                walletAddress: string;
+                                likes: number;
+                                createdAt: string;
+                                username: string;
+                                message: string;
+                            }) => (
+                                <PostCard key={item.id} item={item}/>
+                            ),
+                        )}
                     </ul>
+                    <nav className="flex items-center justify-center gap-4 py-6">
+                        <button
+                            className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 disabled:opacity-40 font-mono"
+                            disabled={page <= 1}
+                            onClick={() => goToPage(page - 1)}
+                        >
+                            ← Prev
+                        </button>
+
+                        <span className="font-mono">
+                            {page} / {totalPages}
+                        </span>
+
+                        <button
+                            className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-600 disabled:opacity-40 font-mono"
+                            disabled={page >= totalPages}
+                            onClick={() => goToPage(page + 1)}
+                        >
+                            Next →
+                        </button>
+                    </nav>
                 </main>
             </div>
         </QueryClientProvider>
@@ -133,9 +176,7 @@ function PostCard({
     );
 }
 
-// =======================
-// COIN FLIPPER / 3D MODEL
-// =======================
+
 function CoinFlipper() {
     const [rotationY, setRotationY] = useState(Math.PI);
     const [isFlipping, setIsFlipping] = useState(false);
