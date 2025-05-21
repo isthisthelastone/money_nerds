@@ -1,5 +1,3 @@
- 
-
 import "../styles/global.css";
 import {supabase} from "../../supabaseClient";
 import {Component} from "@/components";
@@ -12,9 +10,9 @@ const PAGE_SIZE = 10;
 export default async function HomePage({
                                            searchParams,
                                        }: {
-    searchParams: { page?: string };
+    searchParams?: { page?: string };
 }) {
-    const page = Number(searchParams.page ?? "1");
+    const page = Number(searchParams?.page ?? "1");
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
