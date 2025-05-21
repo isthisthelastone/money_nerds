@@ -10,11 +10,17 @@ const PAGE_SIZE = 10;
 export default async function HomePage({
                                            searchParams,
                                        }: {
-    searchParams?: { [key: string]: string | string[] | undefined };
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const pageParam =
-        Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
-    const page = Number(pageParam ?? "1");
+    const resolvedParams =
+        //eslint-disable-next-line
+        searchParams ? await searchParams : ({} as { [key: string]: string | string[] | undefined });
+
+    const rawPage = Array.isArray(resolvedParams.page)
+        ? resolvedParams.page[0]
+        : resolvedParams.page;
+
+    const page = Number(rawPage ?? "1");
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
