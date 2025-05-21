@@ -11,8 +11,8 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@react-icons/all-files": "^4.1.0",
-    "@react-three/drei": "^10.0.1",
-    "@react-three/fiber": "^9.0.4",
+    "@react-three/drei": "^10.0.8",
+    "@react-three/fiber": "^9.1.2",
     "@solana/wallet-adapter-base": "^0.9.26",
     "@solana/wallet-adapter-react": "^0.15.38",
     "@solana/wallet-adapter-react-ui": "^0.9.38",

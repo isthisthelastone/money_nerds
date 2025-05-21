@@ -10,9 +10,11 @@ const PAGE_SIZE = 10;
 export default async function HomePage({
                                            searchParams,
                                        }: {
-    searchParams?: { page?: string };
+    searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-    const page = Number(searchParams?.page ?? "1");
+    const pageParam =
+        Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
+    const page = Number(pageParam ?? "1");
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
