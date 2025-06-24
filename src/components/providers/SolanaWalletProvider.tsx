@@ -3,18 +3,17 @@
 import {WalletError} from '@solana/wallet-adapter-base'
 import {ConnectionProvider, WalletProvider} from '@solana/wallet-adapter-react'
 import {FC, ReactNode, useCallback, useMemo} from 'react'
-import dynamic from 'next/dynamic'
+//import dynamic from 'next/dynamic'
 // Import wallet styles
 import '@solana/wallet-adapter-react-ui/styles.css'
-
+import {WalletModalProvider} from '@solana/wallet-adapter-react-ui'
 // Dynamically import WalletModalProvider to handle SSR
-const WalletModalProvider = dynamic(
-    () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletModalProvider),
-    {
-        ssr: false,
-        loading: () => <div>Loading wallet...</div>
-    }
-)
+//const WalletModalProvider = dynamic(
+ //   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletModalProvider),
+   // {
+    //    ssr: false,
+    //}
+//)
 
 export interface WalletContextProviderProps {
     children: ReactNode

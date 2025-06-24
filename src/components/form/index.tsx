@@ -4,19 +4,21 @@
 import {useState} from "react";
 import {QueryClientProvider, useMutation, useQueryClient} from "@tanstack/react-query";
 import {supabase} from "../../../supabaseClient";
-import {queryClient, useAuthStore} from "@/shared/web3/wallet-auth";
+import {queryClient} from "@/shared/web3/wallet-auth";
+import {useWallet} from "@solana/wallet-adapter-react";
+import {useRouter} from "next/navigation";
 
 export const Form = () => {
-    const {isL} = useAuthStore();
+    const walletData = useWallet();
 
     return (
         <QueryClientProvider client={queryClient}>
-            {isL ? <FormContent/> :
+            {walletData.connected ? <FormContent/> :
                 <button
                     className="font-mono p-3 px-5 min-w-[39vw] border border-dashed border-gray-400 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-300 ease-in-out cursor-not-allowed opacity-70 dark:bg-gray-800 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-700"
                     disabled
                 >
-                    You must log in to post
+                    You must be logged in to post
                 </button>}
         </QueryClientProvider>
     );
@@ -26,6 +28,8 @@ export function FormContent() {
     const [name, setName] = useState("");
     const [message, setMessage] = useState("");
     const queryClient = useQueryClient();
+    const router = useRouter();
+    const walletData = useWallet();
 
     // Mutation for inserting data
     const mutation = useMutation({
@@ -77,6 +81,7 @@ export function FormContent() {
             queryClient.invalidateQueries({queryKey: ["fetchPosts"]});
             setName("");
             setMessage("");
+            router.refresh();                 // re-fetch server components without full reload
         },
     });
 
@@ -90,8 +95,8 @@ export function FormContent() {
     };
 
     const submitPost = () => {
-        if (name.trim() && message.trim()) {
-            const walletAddress = localStorage.getItem("phantomWalletAddress") ?? "no address";
+            if (name.trim() && message.trim()) {
+            const walletAddress = walletData.publicKey?.toString() ?? "ebal v rot";
 
             mutation.mutate(
                 {
@@ -101,7 +106,7 @@ export function FormContent() {
                 },
                 {
                     onSuccess: () => {
-                        window.location.reload();
+                        router.refresh();
                     },
                 }
             );

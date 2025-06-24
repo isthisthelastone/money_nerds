@@ -18,6 +18,7 @@ interface AdminUser {
 interface VerifyRequestBody {
     nonce?: string;
     publicKey?: string;
+    walletAddress?: string;
     signature?: string | { type: 'Buffer'; data: number[] };
 }
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     try {
         // 1) Parse JSON from request
         const body: VerifyRequestBody = await request.json() as VerifyRequestBody;
-        const {nonce, publicKey, signature} = body;
+        const {nonce, walletAddress: publicKey, signature} = body;
 
         console.log('[VERIFY ROUTE] Received body:', body);
 

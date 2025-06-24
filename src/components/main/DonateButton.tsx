@@ -7,7 +7,8 @@ import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
 import {supabase} from "../../../supabaseClient";
 
 interface DonateButtonProps {
-    recipientAddress: string;
+    /** Either a base‑58 encoded address string or an already‑constructed PublicKey */
+    recipientAddress: string | PublicKey;
     postId?: number;
 }
 
@@ -33,10 +34,23 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
     const wallet = useWallet();
     const {publicKey, signTransaction, connected} = wallet;
 
-    const recipientPubKey = useMemo(
-        () => new PublicKey(recipientAddress),
-        [recipientAddress]
-    );
+    const recipientPubKey = useMemo(() => {
+        try {
+            if(publicKey) return publicKey;
+            if (recipientAddress instanceof PublicKey) {
+                return recipientAddress;
+            }
+            console.log(recipientAddress, 'just ad');
+                console.log(new PublicKey(recipientAddress), 'past thing')
+            return new PublicKey(recipientAddress)
+        } catch (err) {
+            console.error(
+                `DonateButton: invalid recipient address → "${recipientAddress.toString()}".`,
+                err
+            );
+            return null as unknown as PublicKey;
+        }
+    }, [recipientAddress]);
 
     const calculatePriorityFee = async () => {
         try {
@@ -59,6 +73,12 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
             return;
         }
 
+        if (!recipientPubKey) {
+            setIsError(true);
+            setStatus("❌ Invalid recipient address.");
+            return;
+        }
+
         setIsLoading(true);
         setStatus("");
         setIsError(false);
@@ -70,6 +90,7 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
                 "finalized"
             );
 
+            if(!publicKey) throw new Error("Wallet not connected");
             const transaction = new Transaction({
                 feePayer: publicKey,
                 recentBlockhash: blockhash,
@@ -200,7 +221,9 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
                 <button
                     //eslint-disable-next-line
                     onClick={handleDonate}
-                    disabled={!publicKey || isLoading || parseFloat(amount) <= 0}
+                    disabled={
+                        !publicKey || !recipientPubKey || isLoading || parseFloat(amount) <= 0
+                    }
                     className="bg-[#512da8] text-white rounded px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-[#673ab7] disabled:bg-[#333] disabled:cursor-not-allowed"
                 >
                     {isLoading ? "Processing..." : "Donate"}

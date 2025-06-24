@@ -1,9 +1,9 @@
-import {useAuthStore} from "@/shared/web3/wallet-auth";
 import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useState} from "react";
 import {supabase} from "../../../supabaseClient";
 import moment from "moment/moment";
 import {PostgrestError} from "@supabase/supabase-js";
+import {useWallet} from "@solana/wallet-adapter-react";
 
 export interface Comment {
 
@@ -18,7 +18,7 @@ export interface Comment {
 }
 
 export const CommentSection = ({postId}: { postId: number }) => {
-    const {isL} = useAuthStore();
+    const {connected} = useWallet()
     const queryClient = useQueryClient();
     const [showAll, setShowAll] = useState(false);
     const [newComment, setNewComment] = useState("");
@@ -113,7 +113,7 @@ export const CommentSection = ({postId}: { postId: number }) => {
             )}
 
             {/* COMMENT INPUT (only if logged in) */}
-            {isL ? (
+            {connected ? (
                 <div className="mt-4 flex flex-col gap-2">
                     <input
                         className=" w-[40%] p-2 border border-gray-300 rounded-md text-black focus:ring-indigo-500 focus:border-indigo-500 dark:text-white dark:bg-gray-800 dark:border-gray-500"

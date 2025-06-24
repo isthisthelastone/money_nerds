@@ -24,7 +24,7 @@ export function Component({
     page?: number;
     totalPages?: number;
 }) {
-    "use client";
+
 
     const router = useRouter();
     const searchParams = useSearchParams();

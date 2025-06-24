@@ -1,11 +1,13 @@
 "use client";
 
-import React, {useCallback, useEffect, useState} from "react";
+import React, {ReactElement, useCallback, useEffect, useState} from "react";
 import {QueryClient, QueryClientProvider, useMutation, useQueryClient,} from "@tanstack/react-query";
 import {create} from "zustand";
 import {IoLogInOutline} from "react-icons/io5";
 import {FaRegCopy} from "react-icons/fa";
 import {twMerge} from "tailwind-merge";
+import {useWallet} from "@solana/wallet-adapter-react";
+import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
 
 // --- API Response Interfaces ---
 interface NonceResponse {
@@ -38,6 +40,41 @@ export const useAuthStore = create<BearState>((set) => ({
 
 export const queryClient = new QueryClient();
 
+// tokenStore.ts --------------------------------------------------------------
+const now   = () => Date.now();
+//const hours = (h: number) => h * 60 * 60 * 1_000;
+
+export function save(key: string, value: string, ttlMs: number) {
+    localStorage.setItem(
+        key,
+        JSON.stringify({ value, exp: now() + ttlMs })
+    );
+}
+
+export function load(key: string): string | null {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    try {
+        const { value, exp } = JSON.parse(raw) as { value: string; exp: number };
+        if (exp && exp < now()) {
+            localStorage.removeItem(key);        // hard-expire
+            return null;
+        }
+        return value;
+    } catch {
+        localStorage.removeItem(key);          // corrupted
+        return null;
+    }
+}
+
+export function clear(...keys: string[]) {
+    keys.forEach(k => localStorage.removeItem(k));
+}
+const THREE_HOURS = 3 * 60 * 60 * 1_000;
+
+
+
 // --- Main Component ---
 export const PhantomWalletButton = () => {
     return (
@@ -47,25 +84,21 @@ export const PhantomWalletButton = () => {
     );
 };
 
-export function PhantomWallet() {
+export const  PhantomWallet : () => ReactElement = () : ReactElement =>  {
     const queryClient = useQueryClient();
-    const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const {setIsL} = useAuthStore();
+
+    const walletCtx = useWallet();
 
     // Функция отключения кошелька
-    const disconnectWallet = useCallback(() => {
-        setWalletAddress(null);
-        setIsL(false);
+    const disconnectWallet = useCallback(async() => {
+        await walletCtx.disconnect();
         localStorage.removeItem("phantomWalletAddress");
         localStorage.removeItem("sb_access_token");
         localStorage.removeItem("sb_refresh_token");
-    }, [setIsL]);
+    }, [walletCtx]);
 
-    // Восстанавливаем состояние авторизации из localStorage
-    useEffect(() => {
-        setIsL(Boolean(localStorage.getItem("phantomWalletAddress")));
-    }, [setIsL]);
+
 
     // --- Проверка валидности токена при монтировании ---
     useEffect(() => {
@@ -110,12 +143,15 @@ export function PhantomWallet() {
                 // Если ошибка проверки токена, выводим сообщение и отключаем кошелёк
                 //eslint-disable-next-line
                 alert("Session has expired. Please log in again.");
-                disconnectWallet();
+                localStorage.removeItem("phantomWalletAddress");
+                await disconnectWallet();
             }
+
+
         };
-//eslint-disable-next-line
-        checkTokenValidity();
-    }, [disconnectWallet]);
+        void checkTokenValidity().catch(() => {/* swallow or log the error */});
+
+    }, [walletCtx]);
 
     // --- Мутация для логина ---
     const loginMutation = useMutation<
@@ -127,26 +163,22 @@ export function PhantomWallet() {
             // 1. Проверка наличия Phantom
             if (
                 typeof window === "undefined" ||
-                !window.solana ||
-                !window.solana.isPhantom
+                !window.solana
             ) {
                 throw new Error("Phantom Wallet is not installed!");
             }
 
-            // 2. Подключение к Phantom
-            const resp = await window.solana.connect({onlyIfTrusted: false});
-            const address = resp?.publicKey?.toString();
-            if (!address) {
-                throw new Error("No public key from Phantom");
+            // 2.5 Check that the wallet is actually connected
+            if (!walletCtx.publicKey) {
+                throw new Error("Wallet not connected");
             }
-
             // 3. Получение nonce
             const nonceData = await queryClient.fetchQuery<NonceResponse>({
                 queryKey: ["nonce-fetch"],
                 queryFn: async () => {
                     const res = await fetch("/api/auth/nonce");
                     if (!res.ok) throw new Error("Failed to fetch nonce");
-                    return res.json() as Promise<NonceResponse>;
+                    return await res.json() as NonceResponse;
                 },
                 staleTime: Infinity,
             });
@@ -171,7 +203,7 @@ export function PhantomWallet() {
                         headers: {"Content-Type": "application/json"},
                         body: JSON.stringify({
                             nonce: nonceData.nonce,
-                            publicKey: address,
+                            publicKey: walletCtx.publicKey?.toString(),
                             signature,
                             shouldCreate: true,
                         }),
@@ -189,7 +221,7 @@ export function PhantomWallet() {
             });
 
             return {
-                walletAddress: address,
+                walletAddress: walletCtx.publicKey.toString(),
                 access_token: verifyData.access_token,
                 refresh_token: verifyData.refresh_token,
             };
@@ -197,42 +229,39 @@ export function PhantomWallet() {
         onSuccess: (data) => {
             // Сохраняем токены и адрес
             if (data.access_token) {
-                localStorage.setItem("sb_access_token", data.access_token);
+                save("sb_access_token",  data.access_token,  THREE_HOURS);
             }
             if (data.refresh_token) {
-                localStorage.setItem("sb_refresh_token", data.refresh_token);
+                save("sb_refresh_token", data.refresh_token, 24 * THREE_HOURS); // longer TTL
             }
-            localStorage.setItem("phantomWalletAddress", data.walletAddress);
-            setWalletAddress(data.walletAddress);
-            setIsL(true);
+            void walletCtx.connect()
         },
         onError: (err) => {
             setError(err.message);
+            void walletCtx.disconnect()
         },
     });
 
-    const handleConnect = () => {
+    const handleConnect = async () => {
         setError(null);
         loginMutation.mutate();
+        await walletCtx.connect();
     };
 
-    // Восстанавливаем адрес кошелька из localStorage
-    useEffect(() => {
-        const storedAddr = localStorage.getItem("phantomWalletAddress");
-        if (storedAddr) setWalletAddress(storedAddr);
-    }, []);
 
     return (
         <div style={{display: "flex", flexDirection: "column", gap: "10px"}}>
             {error && <p style={{color: "red"}}>{error}</p>}
-            {walletAddress ? (
+            {walletCtx.connected ? (
                 <WalletConnect
-                    walletAddress={walletAddress}
-                    disconnectWallet={disconnectWallet}
+                    walletAddress={walletCtx.publicKey?.toString()}
+                    disconnectWallet={() => {
+                        void walletCtx.disconnect().catch(() => {/* swallow or log the error */});
+                    }}
                 />
             ) : (
-                <button
-                    onClick={handleConnect}
+                <WalletMultiButton
+                    onClick={void handleConnect}
                     disabled={loginMutation.isPending}
                     style={{
                         padding: "0.5rem 1rem",
@@ -243,8 +272,8 @@ export function PhantomWallet() {
                         cursor: loginMutation.isPending ? "wait" : "pointer",
                     }}
                 >
-                    {loginMutation.isPending ? "Connecting..." : "Connect Phantom"}
-                </button>
+                    {loginMutation.isPending ? "Connecting..." : "Connect Wallet"}
+                </WalletMultiButton>
             )}
         </div>
     );
@@ -254,14 +283,16 @@ function WalletConnect({
                            walletAddress,
                            disconnectWallet,
                        }: {
-    walletAddress: string;
+    walletAddress?: string;
     disconnectWallet: () => void;
 }) {
     const [copied, setCopied] = useState(false);
 
-    const copyToClipboard = () => {
+    if(!walletAddress) return null;
+
+    const copyToClipboard =  async () => {
         //eslint-disable-next-line
-        navigator.clipboard.writeText(walletAddress);
+       await navigator.clipboard.writeText(walletAddress);
         setCopied(true);
         //eslint-disable-next-line 
         setTimeout(() => setCopied(false), 2000);
@@ -274,7 +305,7 @@ function WalletConnect({
             <div className="flex items-center justify-between bg-white/10 p-2 rounded-lg w-full">
                 <span className="truncate text-sm px-2">{walletAddress}</span>
                 <button
-                    onClick={copyToClipboard}
+                    onClick= { void copyToClipboard}
                     className={twMerge(
                         "p-1 rounded transition-all",
                         copied ? "text-green-400" : "text-white opacity-80 hover:opacity-100"
