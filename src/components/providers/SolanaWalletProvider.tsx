@@ -6,14 +6,13 @@ import {FC, ReactNode, useCallback, useMemo} from 'react'
 //import dynamic from 'next/dynamic'
 // Import wallet styles
 import '@solana/wallet-adapter-react-ui/styles.css'
-import {WalletModalProvider} from '@solana/wallet-adapter-react-ui'
-// Dynamically import WalletModalProvider to handle SSR
-//const WalletModalProvider = dynamic(
- //   () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletModalProvider),
-   // {
-    //    ssr: false,
-    //}
-//)
+import dynamic from 'next/dynamic';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+
+const WalletModalProvider = dynamic(
+    () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletModalProvider),
+    { ssr: false }
+);
 
 export interface WalletContextProviderProps {
     children: ReactNode
@@ -22,11 +21,13 @@ export interface WalletContextProviderProps {
 export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children}) => {
 // Configure the network and endpoint
 
-// Empty wallets array since we're using standard wallet adapters
     const wallets = useMemo(
-        () => [],
+        () => [
+            new PhantomWalletAdapter(),
+            new SolflareWalletAdapter(),
+        ],
         []
-    )
+    );
 
 // Handle wallet errors
     const onError = useCallback((error: WalletError) => {
@@ -42,7 +43,7 @@ export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children})
                 onError={onError}
                 autoConnect={true}
             >
-                <WalletModalProvider>
+                <WalletModalProvider key={"original one"}>
                     {children}
                 </WalletModalProvider>
             </WalletProvider>

@@ -10,6 +10,7 @@ interface SolanaWalletProviderProps {
     children: ReactNode;
 }
 
+
 export const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({children}) => {
     const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
@@ -17,7 +18,7 @@ export const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({children}) 
         <ConnectionProvider
             endpoint={process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string}>
             <WalletProvider wallets={wallets} autoConnect>
-                <WalletModalProvider>{children}</WalletModalProvider>
+                <WalletModalProvider key={"duplicate"}>{children}</WalletModalProvider>
             </WalletProvider>
         </ConnectionProvider>
     );

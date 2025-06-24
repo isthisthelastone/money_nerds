@@ -14,6 +14,7 @@ import {copyToClipboard} from "@/shared/utils";
 import {CommentSection} from "./CommentSection";
 import {Form} from "@/components";
 import {useRouter, useSearchParams} from "next/navigation";
+import {useWallet} from "@solana/wallet-adapter-react";
 
 export function Component({
                               data,
@@ -25,6 +26,9 @@ export function Component({
     totalPages?: number;
 }) {
 
+
+
+    const wallet = useWallet();
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -160,7 +164,7 @@ function PostCard({
                 </p>
                 <p>{item.message}</p>
                 <div className="flex flex-col md:flex-row md:justify-between gap-2 text-sm">
-                    <p>{moment(item.createdAt).format("MM/DD/YYYY HH:mm:ss")}</p>
+                    <p suppressHydrationWarning>{moment(item.createdAt).format("MM/DD/YYYY HH:mm:ss")}</p>
                     <p>Likes: {item.likes}</p>
                     <p>Donations: {totalDonations} SOL</p>
                 </div>

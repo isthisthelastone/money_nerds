@@ -7,7 +7,14 @@ import {IoLogInOutline} from "react-icons/io5";
 import {FaRegCopy} from "react-icons/fa";
 import {twMerge} from "tailwind-merge";
 import {useWallet} from "@solana/wallet-adapter-react";
-import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
+
+import dynamic from 'next/dynamic';
+
+// Dynamically load WalletMultiButton on the client only
+const VMB = dynamic(
+    () => import('@solana/wallet-adapter-react-ui').then((m) => m.WalletMultiButton),
+    { ssr: false }
+);
 
 // --- API Response Interfaces ---
 interface NonceResponse {
@@ -260,7 +267,7 @@ export const  PhantomWallet : () => ReactElement = () : ReactElement =>  {
                     }}
                 />
             ) : (
-                <WalletMultiButton
+                <VMB
                     onClick={void handleConnect}
                     disabled={loginMutation.isPending}
                     style={{
@@ -273,7 +280,7 @@ export const  PhantomWallet : () => ReactElement = () : ReactElement =>  {
                     }}
                 >
                     {loginMutation.isPending ? "Connecting..." : "Connect Wallet"}
-                </WalletMultiButton>
+                </VMB>
             )}
         </div>
     );

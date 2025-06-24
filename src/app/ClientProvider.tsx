@@ -5,7 +5,7 @@ import { SolanaWalletProvider } from "@/components/providers/SolanaWalletProvide
 
 export function ClientProvider({ children }: { children: ReactNode }) {
     return (
-        <SolanaWalletProvider>
+        <SolanaWalletProvider >
             {children}
         </SolanaWalletProvider>
     )
