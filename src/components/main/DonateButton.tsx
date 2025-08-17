@@ -36,19 +36,17 @@ const UnwrappedDonateButton: React.FC<DonateButtonProps> = ({
 
     const recipientPubKey = useMemo(() => {
         try {
-            if(publicKey) return publicKey;
             if (recipientAddress instanceof PublicKey) {
                 return recipientAddress;
             }
-            console.log(recipientAddress, 'just ad');
-                console.log(new PublicKey(recipientAddress), 'past thing')
-            return new PublicKey(recipientAddress)
+
+            return new PublicKey(recipientAddress);
         } catch (err) {
             console.error(
                 `DonateButton: invalid recipient address → "${recipientAddress.toString()}".`,
                 err
             );
-            return null as unknown as PublicKey;
+            return null;
         }
     }, [recipientAddress]);
 
