@@ -1,32 +1,52 @@
-**Money Nerds**
+# Money Nerds
 
-Money Nerds is a fully Web3-native platform where anyone can get paid simply for posting anything—think “4chan meets Kickstarter,” but decentralized, anonymous, and free from gatekeeping.
+Money Nerds is a wallet-native public board for asks, ideas, memes, and mutual
+aid. People publish with a Solana wallet and can receive SOL directly from other
+wallets. The platform takes no commission and never custodies user funds.
 
-What Makes Money Nerds Unique?
-	•	Open, Permissionless Monetization: Anyone can post content—memes, art, personal stories, even off-the-wall ideas—without gatekeepers.
-	•	Fully Anonymous: No accounts, no KYC; your wallet is your identity.
-	•	Zero Fees: We rely on optional donations, not mandatory cuts.
-	•	Instant, Direct Payments: Funds go straight to the poster’s wallet, visible on-chain for full transparency.
-	•	Built-in Comment System: Users can discuss, support, criticize, or roast any post.
+## Product surface
 
-How It Works
-	1.	Post Something: Share your story, meme, startup pitch, or random thought.
-	2.	Get Paid: If people like it, they can donate crypto directly to your wallet.
-	3.	Engage: Comment, react, and foster a community around your (and others’) posts.
+- One wallet connection and signature creates the secure app session.
+- Posts, threaded replies, atomic likes, and direct verified SOL support.
+- Images, uploaded or recorded audio, and circular video attachments up to 15 MB.
+- Public wallet profiles with aliases, activity, and verified transaction links.
+- Responsive editorial UI, a reduced-motion-safe 3D hero, SSR metadata, JSON-LD,
+  dynamic sitemap, RSS, robots, manifest, and `llms.txt`.
+- Explicit separation between verified on-chain transfers and unsigned legacy
+  donation history.
 
-Why It Matters
+## Stack
 
-This isn’t just another crowdfunding site. Money Nerds is an open protocol for decentralized generosity and creativity—a culture platform for Web3-native expression. It’s a place where the value of your content is determined directly by the community, with no middlemen or algorithms in the way.
+Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Solana Wallet Adapter,
+Supabase Postgres/Storage, and Vercel. Production targets Node 24 and pnpm 10.
 
-Get Involved
-	•	Explore: Visit https://moneynerds.online to see what’s being posted.
-	•	Spread the Word: Share the project with your friends, followers, or community.
-	•	Contribute: Open to feedback or donations—every bit helps us grow and improve.
+## Local development
 
-Contact
+1. Install Node 24 and enable the pinned pnpm version with Corepack.
+2. Copy `.env.example` to `.env.local` and fill in the project values.
+3. Run `pnpm install --frozen-lockfile`.
+4. Run `pnpm dev`.
 
-Questions or ideas? Reach out at: unluckypleasure@yandex.ru
+The Supabase service-role key is server-only. It must never appear in browser
+code, logs, or a `NEXT_PUBLIC_` variable.
 
-⸻
+## Quality checks
 
-We’re building something unconventional, simple, and transparent—join us on this journey toward a more open, user-driven internet.
+```sh
+pnpm lint
+pnpm typecheck
+pnpm build
+```
+
+The database migrations and reconciliation runbook live in `supabase/`. New
+database writes are server-mediated: public tables are read-only through RLS,
+wallet challenges are single-use, likes are toggled atomically, media uploads
+are signed and verified before linking, and donation rows are created only after
+the matching Solana transfer is confirmed.
+
+## Deployment
+
+The GitHub repository is connected to the Vercel `money-nerds` project. Configure
+the variables from `.env.example` for Preview and Production, apply pending
+Supabase migrations, then deploy from the protected production branch. The
+canonical URL is <https://www.moneynerds.online>.

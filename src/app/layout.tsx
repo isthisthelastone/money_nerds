@@ -1,35 +1,102 @@
-// RootLayout.tsx
-
-import {ReactNode} from "react";
-import "../styles/global.css";
+import type {Metadata, Viewport} from "next";
+import type {ReactNode} from "react";
+import {WalletControl} from "@/components/features/WalletControl";
+import {SiteFooter, SiteHeader} from "@/components/site";
 import {ClientProvider} from "./ClientProvider";
+import "../styles/global.css";
 
-// src/app/layout.tsx or src/app/page.tsx (wherever you currently export metadata)
+const SITE_URL = "https://www.moneynerds.online";
 
-export const metadata = {
-    title: "money nerds",
-    description: "money nerds money nerds money nerds online",
-    // icons can stay here
-    icons: "/icon.svg",
+export const metadata: Metadata = {
+    metadataBase: new URL(SITE_URL),
+    applicationName: "Money Nerds",
+    title: {
+        default: "Money Nerds — Ask. Share. Fund.",
+        template: "%s | Money Nerds",
+    },
+    description:
+        "A wallet-native public board where memes, ideas, and real needs can receive direct support in SOL with zero platform commission.",
+    keywords: [
+        "Money Nerds",
+        "Solana donations",
+        "peer-to-peer funding",
+        "mutual aid",
+        "wallet-native community",
+    ],
+    creator: "Money Nerds",
+    publisher: "Money Nerds",
+    category: "community",
+    alternates: {
+        types: {
+            "application/rss+xml": `${SITE_URL}/feed.xml`,
+        },
+    },
+    icons: {
+        icon: "/icon.svg",
+        shortcut: "/icon.svg",
+    },
+    openGraph: {
+        type: "website",
+        locale: "en_US",
+        url: SITE_URL,
+        siteName: "Money Nerds",
+        title: "Money Nerds — Ask. Share. Fund.",
+        description:
+            "Post a meme, fund a need, or back an idea. Support moves directly between Solana wallets.",
+        images: [
+            {
+                url: "/og.png",
+                width: 1733,
+                height: 907,
+                alt: "Money Nerds — Ask. Share. Fund. Zero platform fees and direct Solana support.",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Money Nerds — Ask. Share. Fund.",
+        description:
+            "A wallet-native public board for direct Solana support, with zero platform commission.",
+        images: ["/og.png"],
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+        },
+    },
 };
 
-// Then define a separate export for the viewport:
-export const viewport = {
+export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
-    maximumScale: 1,
     viewportFit: "cover",
+    colorScheme: "dark",
+    themeColor: "#090b09",
 };
 
-export default function RootLayout({children}: { children: ReactNode }) {
+export default function RootLayout({children}: Readonly<{children: ReactNode}>) {
     return (
-        <html lang="en" className="bg-[#1e3a8a]">
-        <body
-            className="min-h-screen w-full bg-gradient-to-b from-blue-900 via-blue-600 to-blue-300 bg-fixed pt-[env(safe-area-inset-top)] items-center justify-items-center align-center">
-        <ClientProvider>
-            {children}
-        </ClientProvider>
-        </body>
+        <html lang="en">
+            <body>
+                <a className="skip-link" href="#main-content">
+                    Skip to content
+                </a>
+                <ClientProvider>
+                    <div className="site-app">
+                        <SiteHeader walletControl={<WalletControl />} />
+                        <div className="site-main" id="main-content" tabIndex={-1}>
+                            {children}
+                        </div>
+                        <SiteFooter />
+                    </div>
+                </ClientProvider>
+            </body>
         </html>
     );
 }

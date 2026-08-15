@@ -1,52 +1,32 @@
-'use client'
+"use client";
 
-import {WalletError} from '@solana/wallet-adapter-base'
-import {ConnectionProvider, WalletProvider} from '@solana/wallet-adapter-react'
-import {FC, ReactNode, useCallback, useMemo} from 'react'
-//import dynamic from 'next/dynamic'
-// Import wallet styles
-import '@solana/wallet-adapter-react-ui/styles.css'
-import dynamic from 'next/dynamic';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import type { WalletError } from "@solana/wallet-adapter-base";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
+import { type ReactNode, useCallback, useMemo } from "react";
+import { getSolanaRpcUrl } from "@/lib/config";
+import { WalletSessionProvider } from "@/components/providers/WalletSessionProvider";
 
-const WalletModalProvider = dynamic(
-    () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletModalProvider),
-    { ssr: false }
-);
+import "@solana/wallet-adapter-react-ui/styles.css";
 
-export interface WalletContextProviderProps {
-    children: ReactNode
-}
+export function SolanaWalletProvider({ children }: { children: ReactNode }) {
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    [],
+  );
+  const onError = useCallback((error: WalletError) => {
+    console.error("Solana wallet error", error);
+  }, []);
 
-export const SolanaWalletProvider: FC<WalletContextProviderProps> = ({children}) => {
-// Configure the network and endpoint
-
-    const wallets = useMemo(
-        () => [
-            new PhantomWalletAdapter(),
-            new SolflareWalletAdapter(),
-        ],
-        []
-    );
-
-// Handle wallet errors
-    const onError = useCallback((error: WalletError) => {
-        console.error('Wallet Error:', error)
-        // You can add more error handling here, like showing a toast notification
-    }, [])
-
-    return (
-        <ConnectionProvider
-            endpoint={process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string}>
-            <WalletProvider
-                wallets={wallets}
-                onError={onError}
-                autoConnect={true}
-            >
-                <WalletModalProvider key={"original one"}>
-                    {children}
-                </WalletModalProvider>
-            </WalletProvider>
-        </ConnectionProvider>
-    )
+  return (
+    <ConnectionProvider endpoint={getSolanaRpcUrl()}>
+      <WalletProvider wallets={wallets} onError={onError} autoConnect>
+        <WalletModalProvider>
+          <WalletSessionProvider>{children}</WalletSessionProvider>
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
 }
