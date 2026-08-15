@@ -1,209 +1,92 @@
-import {NextResponse} from 'next/server';
-import nacl from 'tweetnacl';
-import bs58 from 'bs58';
-import {createClient, type Session} from '@supabase/supabase-js';
-import {randomBytes} from 'crypto';
-import {supabase} from "../../../../../supabaseClient";
+import bs58 from "bs58";
+import nacl from "tweetnacl";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  createOpaqueSessionToken,
+  hashSessionToken,
+  sessionCookieOptions,
+} from "@/lib/auth/server";
+import { SESSION_COOKIE, SESSION_TTL_SECONDS } from "@/lib/config";
+import { apiError } from "@/lib/http";
+import { createAdminSupabase } from "@/lib/supabase/admin";
+import { normalizeWallet } from "@/lib/wallet";
 
-export const runtime = 'nodejs';
-
-// ----------- Interfaces -----------
-interface AdminUser {
-    id: string;
-    email: string;
-    // ... plus whatever other fields you might need
+interface VerifyBody {
+  challengeId?: unknown;
+  walletAddress?: unknown;
+  signature?: unknown;
 }
 
-/** The shape of the request body expected by this route */
-interface VerifyRequestBody {
-    nonce?: string;
-    publicKey?: string;
-    walletAddress?: string;
-    signature?: string | { type: 'Buffer'; data: number[] };
-}
+export async function POST(request: NextRequest) {
+  const body = (await request.json().catch(() => null)) as VerifyBody | null;
+  const challengeId = typeof body?.challengeId === "string" ? body.challengeId : "";
+  const walletAddress = normalizeWallet(body?.walletAddress);
+  const signature = typeof body?.signature === "string" ? body.signature : "";
 
-// ----------- Supabase Admin Helper -----------
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(challengeId) ||
+    !walletAddress ||
+    signature.length < 80 ||
+    signature.length > 100
+  ) {
+    return apiError("The wallet sign-in response is incomplete.");
+  }
 
-/**
- * A small helper to fetch a user by email from Supabase's Admin API (not the client).
- * If you prefer to do it via `supabaseAdmin.auth.admin.listUsers(...)`, you can.
- * This is just a direct fetch to the GoTrue REST endpoint.
- */
-async function getUserByEmail(email: string): Promise<AdminUser | undefined> {
-    try {
+  const supabase = createAdminSupabase();
+  const { data: challenge, error: challengeError } = await supabase
+    .from("wallet_challenges")
+    .select("id, wallet_address, message, expires_at, consumed_at, attempt_count")
+    .eq("id", challengeId)
+    .eq("wallet_address", walletAddress)
+    .is("consumed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .lt("attempt_count", 9)
+    .maybeSingle();
 
+  if (challengeError || !challenge) {
+    return apiError("This sign-in request expired or was already used.", 401);
+  }
 
-        // For a small/medium user base, you might do a single fetch
-        // with a large perPage to capture all users (or enough to find your user).
-        const {data, error} = await supabaseAdmin.auth.admin.listUsers({
-            page: 1,
-            perPage: 10000, // up to 10,000 users returned
-        });
+  const { data: attempt, error: attemptError } = await supabase
+    .from("wallet_challenges")
+    .update({ attempt_count: Number(challenge.attempt_count) + 1 })
+    .eq("id", challengeId)
+    .eq("attempt_count", challenge.attempt_count)
+    .is("consumed_at", null)
+    .select("id")
+    .maybeSingle();
+  if (attemptError || !attempt) {
+    return apiError("This sign-in request is already being checked. Try again.", 409);
+  }
 
-        if (error) {
-            console.error('[getUserByEmail] Error listing users:', error);
-            return undefined;
-        }
+  try {
+    const isValid = nacl.sign.detached.verify(
+      new TextEncoder().encode(challenge.message as string),
+      bs58.decode(signature),
+      bs58.decode(walletAddress),
+    );
+    if (!isValid) return apiError("The wallet signature is invalid.", 401);
+  } catch {
+    return apiError("The wallet signature could not be read.", 401);
+  }
 
-        // If no users are returned or data is empty, there's nothing to match
-        if (!data?.users?.length) {
-            return undefined;
-        }
+  const token = createOpaqueSessionToken();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+  const { error: sessionError } = await supabase.rpc("establish_wallet_session", {
+    p_challenge_id: challengeId,
+    p_wallet_address: walletAddress,
+    p_token_hash: hashSessionToken(token),
+    p_session_expires_at: expiresAt.toISOString(),
+  });
+  if (sessionError) {
+    console.error("Unable to create wallet session", sessionError);
+    return apiError("This sign-in request expired or was already used.", 409);
+  }
 
-        // Manually find the user in memory by matching on email
-        const foundUser = data.users.find((u) => u.email === email.toLowerCase());
-        return foundUser ? (foundUser as AdminUser) : undefined;
-    } catch (err) {
-        console.error('[getUserByEmail] Exception:', err);
-        return undefined;
-    }
-}
-
-// ----------- The POST Handler -----------
-export async function POST(request: Request) {
-    try {
-        // 1) Parse JSON from request
-        const body: VerifyRequestBody = await request.json() as VerifyRequestBody;
-        const {nonce, walletAddress: publicKey, signature} = body;
-
-        console.log('[VERIFY ROUTE] Received body:', body);
-
-        // Basic validations
-        if (!nonce || !publicKey || !signature) {
-            return NextResponse.json(
-                {error: 'Missing nonce, publicKey, or signature'},
-                {status: 400}
-            );
-        }
-
-        // 2) Decode the signature & verify with tweetnacl
-        let sigBytes: Uint8Array;
-        try {
-            if (typeof signature === 'string') {
-                // If the signature is a base58 string (common for Phantom)
-                sigBytes = bs58.decode(signature);
-            } else if (
-                typeof signature === 'object' &&
-                signature.type === 'Buffer' &&
-                Array.isArray(signature.data)
-            ) {
-                // If the signature came in as { type: 'Buffer', data: [...] }
-                sigBytes = new Uint8Array(signature.data);
-            } else {
-                throw new Error('Signature not in recognized format');
-            }
-
-            const msgBytes = new TextEncoder().encode(nonce);
-            const pubKeyBytes = bs58.decode(publicKey);
-
-            const isValid = nacl.sign.detached.verify(msgBytes, sigBytes, pubKeyBytes);
-            if (!isValid) {
-                return NextResponse.json({error: 'Invalid signature'}, {status: 401});
-            }
-        } catch (err) {
-            console.error('[VERIFY ROUTE] Signature decoding error:', err);
-            return NextResponse.json({error: 'Invalid signature format'}, {status: 400});
-        }
-
-        console.log('[VERIFY ROUTE] ✅ Signature verified for publicKey:', publicKey);
-
-        // 3) Use the publicKey as the unique "email"
-        const fakeEmail = `${publicKey}@example.com`;
-        console.log(fakeEmail, 'fakeEmail')
-        const randomPass = randomBytes(16).toString('hex');
-
-        // 4) Check if the user already exists
-        let existingUser = await getUserByEmail(fakeEmail);
-
-        console.log(existingUser, 'existingUser')
-
-        // 5) If user does not exist, create one
-        if (!existingUser) {
-            console.log('[VERIFY ROUTE] No existing user found. Creating user...');
-            const {data, error} = await supabaseAdmin.auth.admin.createUser({
-                email: fakeEmail,
-                password: randomPass,
-                user_metadata: {walletAddress: publicKey},
-                email_confirm: true, // so we skip "confirmation required" issues
-            });
-
-            if (error || !data?.user) {
-                console.error('[VERIFY ROUTE] Error creating user:', error);
-                return NextResponse.json(
-                    {error: error?.message || 'Failed to create user'},
-                    {status: 500}
-                );
-            }
-            existingUser = data.user as AdminUser;
-            console.log('[VERIFY ROUTE] Created user with ID:', existingUser.id);
-        } else {
-            // If user exists, we must update the password to match our new random password
-            // otherwise signInWithPassword will fail with "invalid login credentials"
-            console.log('[VERIFY ROUTE] Found existing user ID:', existingUser.id, '- updating password...');
-            const {data: updatedUser, error: updateError} = await supabaseAdmin.auth.admin.updateUserById(
-                existingUser.id,
-                {password: randomPass, email_confirm: true}
-            );
-            const {data: _, error: __} = await supabase.auth.signInWithPassword({
-                email: fakeEmail,
-                password: randomPass,
-            })
-
-            console.log(_, 'user signed in');
-            console.log(__, 'user signed in error ')
-            if (updateError || !updatedUser) {
-                console.error('[VERIFY ROUTE] Failed to update existing user:', updateError);
-                return NextResponse.json(
-                    {error: updateError?.message || 'Failed to update user'},
-                    {status: 500}
-                );
-            }
-        }
-
-        // 6) Now sign them in using the newly set random password
-        console.log('[VERIFY ROUTE] Attempting to sign in with randomPass...');
-        const {data: signInData, error: signInError} = await supabaseAdmin.auth.signInWithPassword({
-            email: fakeEmail,
-            password: randomPass,
-        });
-        const {data: _, error: __} = await supabase.auth.signInWithPassword({
-            email: fakeEmail,
-            password: randomPass,
-        })
-
-        const testdd = await supabase.auth.refreshSession()
-        const testff = testdd.data
-        console.log(testdd)
-        console.log(testff)
-        console.log(_, 'user signed in');
-        console.log(__, 'user signed in error ')
-
-        if (signInError || !signInData?.session) {
-            console.error('[VERIFY ROUTE] Sign-in error:', signInError);
-            return NextResponse.json(
-                {error: signInError?.message || 'Failed to sign user in'},
-                {status: 500}
-            );
-        }
-
-        // 7) Return session info
-        const session: Session = signInData.session;
-        console.log('[VERIFY ROUTE] ✔️ Auth flow successful for user:', fakeEmail);
-
-        return NextResponse.json({
-            message: 'Signature verified successfully',
-            access_token: session.access_token,
-            token_type: session.token_type,
-            expires_in: session.expires_in,
-            refresh_token: session.refresh_token,
-            user: signInData.user,
-        });
-    } catch (error: unknown) {
-        console.error('[VERIFY ROUTE] Uncaught error:', error);
-        return NextResponse.json({error: 'Internal server error'}, {status: 500});
-    }
+  const response = NextResponse.json({
+    walletAddress,
+    expiresAt: expiresAt.toISOString(),
+  });
+  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
+  return response;
 }

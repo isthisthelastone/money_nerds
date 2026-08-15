@@ -1,13 +1,8 @@
-'use client'
+"use client";
 
-import { ReactNode } from "react"
-import { SolanaWalletProvider } from "@/components/providers/SolanaWalletProvider"
+import type { ReactNode } from "react";
+import { SolanaWalletProvider } from "@/components/providers/SolanaWalletProvider";
 
 export function ClientProvider({ children }: { children: ReactNode }) {
-    return (
-        <SolanaWalletProvider >
-            {children}
-        </SolanaWalletProvider>
-    )
+  return <SolanaWalletProvider>{children}</SolanaWalletProvider>;
 }
-
