@@ -20,15 +20,21 @@ export async function getWalletSession(): Promise<WalletSession | null> {
   if (!token) return null;
 
   const supabase = createAdminSupabase();
-  const { data: session, error } = await supabase
-    .from("wallet_sessions")
-    .select("wallet_address, expires_at, revoked_at")
-    .eq("token_hash", hashSessionToken(token))
-    .is("revoked_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_wallet_session", {
+    p_token_hash: hashSessionToken(token),
+  });
+  const session = data as
+    | { wallet_address?: unknown; expires_at?: unknown }
+    | null;
 
-  if (error || !session) return null;
+  if (
+    error ||
+    !session ||
+    typeof session.wallet_address !== "string" ||
+    typeof session.expires_at !== "string"
+  ) {
+    return null;
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -37,9 +43,9 @@ export async function getWalletSession(): Promise<WalletSession | null> {
     .maybeSingle();
 
   return {
-    walletAddress: session.wallet_address as string,
+    walletAddress: session.wallet_address,
     profile: (profile as WalletProfile | null) ?? null,
-    expiresAt: session.expires_at as string,
+    expiresAt: session.expires_at,
   };
 }
 
@@ -61,4 +67,3 @@ export function sessionCookieOptions(expiresAt?: Date) {
     ...(expiresAt ? { expires: expiresAt } : {}),
   };
 }
-

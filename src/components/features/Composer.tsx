@@ -55,6 +55,14 @@ const ACCEPTED_TYPES: Record<string, MediaKind> = {
 };
 
 const MAX_BYTES = 15 * 1024 * 1024;
+const AUDIO_RECORDING_LIMIT_SECONDS = 120;
+const VIDEO_RECORDING_LIMIT_SECONDS = 60;
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
 
 function supportedRecorderMime(kind: "audio" | "video_circle") {
   const candidates =
@@ -73,12 +81,18 @@ export function Composer({
   onCancel,
 }: ComposerProps) {
   const router = useRouter();
-  const { authenticated, session, status: sessionStatus } = useWalletSession();
+  const {
+    authenticated,
+    session,
+    status: sessionStatus,
+    invalidateSession,
+  } = useWalletSession();
   const [nickname, setNickname] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("anything");
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [recording, setRecording] = useState<"audio" | "video_circle" | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -88,6 +102,7 @@ export function Composer({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const attachmentsRef = useRef<DraftAttachment[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     attachmentsRef.current = attachments;
@@ -96,6 +111,11 @@ export function Composer({
   useEffect(
     () => () => {
       attachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.preview));
+      if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
+      if (recorderRef.current?.state === "recording") {
+        recorderRef.current.onstop = null;
+        recorderRef.current.stop();
+      }
       streamRef.current?.getTracks().forEach((track) => track.stop());
     },
     [],
@@ -133,6 +153,10 @@ export function Composer({
   };
 
   const stopTracks = () => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
@@ -166,18 +190,41 @@ export function Composer({
         if (event.data.size) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
+        if (recordingTimerRef.current !== null) {
+          window.clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
         const type = (recorder.mimeType || (kind === "audio" ? "audio/webm" : "video/webm")).split(";")[0];
         const extension = type.includes("mp4") ? "mp4" : "webm";
         const blob = new Blob(chunksRef.current, { type });
-        const file = new File([blob], `${kind === "audio" ? "voice" : "circle"}-${Date.now()}.${extension}`, {
-          type,
-        });
-        appendFiles([file]);
+        if (blob.size > 0) {
+          const file = new File([blob], `${kind === "audio" ? "voice" : "circle"}-${Date.now()}.${extension}`, {
+            type,
+          });
+          appendFiles([file]);
+        } else {
+          setError("The recording was empty. Please try again.");
+        }
         stopTracks();
         setRecording(null);
+        setRecordingSeconds(0);
+      };
+      recorder.onerror = () => {
+        stopTracks();
+        setRecording(null);
+        setRecordingSeconds(0);
+        setError("Recording stopped unexpectedly. Please try again or upload a file.");
       };
       recorder.start(500);
       setRecording(kind);
+      setRecordingSeconds(0);
+      const startedAt = Date.now();
+      const limit = kind === "audio" ? AUDIO_RECORDING_LIMIT_SECONDS : VIDEO_RECORDING_LIMIT_SECONDS;
+      recordingTimerRef.current = window.setInterval(() => {
+        const elapsed = Math.min(limit, Math.floor((Date.now() - startedAt) / 1_000));
+        setRecordingSeconds(elapsed);
+        if (elapsed >= limit && recorder.state === "recording") recorder.stop();
+      }, 250);
     } catch (caught) {
       stopTracks();
       setRecording(null);
@@ -239,6 +286,7 @@ export function Composer({
           error?: string;
         };
         if (!signResponse.ok || signed.uploads?.length !== attachments.length) {
+          if (signResponse.status === 401) invalidateSession();
           throw new Error(signed.error ?? "The upload could not be prepared.");
         }
 
@@ -269,7 +317,10 @@ export function Composer({
         body: formData,
       });
       const payload = (await response.json()) as { id?: number; error?: string };
-      if (!response.ok || !payload.id) throw new Error(payload.error ?? "Publishing failed.");
+      if (!response.ok || !payload.id) {
+        if (response.status === 401) invalidateSession();
+        throw new Error(payload.error ?? "Publishing failed.");
+      }
       attachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview));
       setAttachments([]);
       setBody("");
@@ -371,7 +422,9 @@ export function Composer({
               <video ref={liveVideoRef} muted playsInline className="size-24 rounded-full bg-black object-cover" />
               <div>
                 <p className="font-medium text-[#f2efe6]">Recording a circle</p>
-                <p className="mt-1 text-xs text-white/50">Nothing uploads until you publish.</p>
+                <p className="mt-1 text-xs text-white/50">
+                  {formatDuration(recordingSeconds)} / {formatDuration(VIDEO_RECORDING_LIMIT_SECONDS)} · Nothing uploads until you publish.
+                </p>
               </div>
             </div>
           ) : null}
@@ -435,7 +488,9 @@ export function Composer({
             {recording ? (
               <button className="composer-tool recording" type="button" onClick={stopRecording}>
                 <CircleStop aria-hidden="true" size={17} />
-                Stop recording
+                Stop · {formatDuration(recordingSeconds)} / {formatDuration(
+                  recording === "audio" ? AUDIO_RECORDING_LIMIT_SECONDS : VIDEO_RECORDING_LIMIT_SECONDS,
+                )}
               </button>
             ) : (
               <>

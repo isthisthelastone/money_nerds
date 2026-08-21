@@ -1,6 +1,6 @@
 "use client";
 
-import { WalletModalButton } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Check, ChevronDown, Copy, ExternalLink, LogOut, RefreshCw, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { formatWallet } from "@/lib/format";
 
 export function WalletControl() {
   const wallet = useWallet();
+  const { setVisible: setWalletModalVisible } = useWalletModal();
   const { session, status, authenticated, error, retrySignIn, disconnect } =
     useWalletSession();
   const [open, setOpen] = useState(false);
@@ -18,18 +19,22 @@ export function WalletControl() {
 
   if (!wallet.connected || !address) {
     return (
-      <WalletModalButton className="mn-wallet-button">
+      <button
+        className="mn-wallet-button"
+        type="button"
+        onClick={() => setWalletModalVisible(true)}
+      >
         <Wallet aria-hidden="true" size={17} />
         Connect wallet
-      </WalletModalButton>
+      </button>
     );
   }
 
-  if (status === "signing" || status === "loading") {
+  if (status === "signing" || status === "loading" || status === "preparing") {
     return (
       <button className="button button-secondary wallet-status" type="button" disabled>
         <RefreshCw className="spin" aria-hidden="true" size={17} />
-        Sign to continue
+        {status === "signing" ? "Check wallet" : "Preparing"}
       </button>
     );
   }
@@ -39,7 +44,7 @@ export function WalletControl() {
       <div className="wallet-error-wrap">
         <button className="button button-accent" type="button" onClick={() => void retrySignIn()}>
           <RefreshCw aria-hidden="true" size={17} />
-          Retry sign-in
+          {error ? "Retry sign-in" : "Sign to continue"}
         </button>
         {error ? <span className="sr-only">{error}</span> : null}
       </div>
@@ -91,4 +96,3 @@ export function WalletControl() {
     </div>
   );
 }
-

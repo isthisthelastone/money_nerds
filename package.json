@@ -16,8 +16,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm build"
   },
   "dependencies": {
-    "@react-three/drei": "10.7.8",
-    "@react-three/fiber": "9.7.0",
+    "@solana-mobile/wallet-adapter-mobile": "2.3.0",
     "@solana/wallet-adapter-base": "0.9.27",
     "@solana/wallet-adapter-phantom": "0.9.29",
     "@solana/wallet-adapter-react": "0.15.39",
@@ -26,11 +25,11 @@
     "@solana/web3.js": "1.98.4",
     "@supabase/supabase-js": "2.112.3",
     "bs58": "6.0.0",
-    "lucide-react": "1.31.0",
+    "buffer": "6.0.3",
+    "lucide-react": "1.33.0",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "three": "0.185.1",
     "tweetnacl": "1.0.3"
   },
   "devDependencies": {
@@ -38,7 +37,6 @@
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
-    "@types/three": "0.185.4",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.1",
     "postcss": "8.5.26",

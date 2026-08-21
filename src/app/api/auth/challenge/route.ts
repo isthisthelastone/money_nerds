@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import bs58 from "bs58";
 import { NextResponse, type NextRequest } from "next/server";
-import { apiError } from "@/lib/http";
+import { SERVICE_WALLET } from "@/lib/config";
+import { apiError, readBoundedJsonBody, RequestBodyError } from "@/lib/http";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { normalizeWallet } from "@/lib/wallet";
 
@@ -22,16 +24,16 @@ function trustedOrigin(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > 512) {
-    return apiError("The sign-in request is too large.", 413);
-  }
-  const rawBody = await request.text();
-  if (rawBody.length > 512) return apiError("The sign-in request is too large.", 413);
   let body: { walletAddress?: unknown } | null = null;
   try {
-    body = JSON.parse(rawBody) as { walletAddress?: unknown };
-  } catch {
+    body = await readBoundedJsonBody<{ walletAddress?: unknown }>(request, 512);
+  } catch (error) {
+    if (error instanceof RequestBodyError && error.code === "REQUEST_TOO_LARGE") {
+      return apiError("The sign-in request is too large.", 413);
+    }
+    if (error instanceof RequestBodyError && error.code === "UNSUPPORTED_REQUEST_TYPE") {
+      return apiError("Send wallet sign-in details as JSON.", 415);
+    }
     return apiError("The sign-in request could not be read.");
   }
   const walletAddress = normalizeWallet(body?.walletAddress);
@@ -45,37 +47,46 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  const requestFingerprint = createHash("sha256")
+  const sourceDigest = createHash("sha256")
     .update(`money-nerds-auth:${sourceIp}`)
-    .digest("hex");
+    .digest();
+  const requestFingerprint = sourceDigest.toString("hex");
+  const sourceRateKey = bs58.encode(sourceDigest);
   const origin = trustedOrigin(request);
   const domain = new URL(origin).host;
   const message = `${domain} wants you to sign in with your Solana account:\n${walletAddress}\n\nSign in to Money Nerds. This request will not trigger a blockchain transaction or cost SOL.\n\nURI: ${origin}\nVersion: 1\nChain ID: mainnet-beta\nNonce: ${nonce}\nIssued At: ${issuedAt.toISOString()}\nExpiration Time: ${expiresAt.toISOString()}\nRequest ID: ${id}`;
 
   const supabase = createAdminSupabase();
-  const rateWindow = new Date(issuedAt.getTime() - 60_000).toISOString();
-  const [{ count: walletAttempts }, { count: sourceAttempts }, { count: globalAttempts }] = await Promise.all([
-    supabase
-      .from("wallet_challenges")
-      .select("id", { count: "exact", head: true })
-      .eq("wallet_address", walletAddress)
-      .gte("created_at", rateWindow),
-    supabase
-      .from("wallet_challenges")
-      .select("id", { count: "exact", head: true })
-      .eq("request_fingerprint", requestFingerprint)
-      .gte("created_at", rateWindow),
-    supabase
-      .from("wallet_challenges")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", rateWindow),
+  const rateResults = await Promise.all([
+    supabase.rpc("consume_wallet_rate_limit", {
+      p_wallet_address: walletAddress,
+      p_action: "auth_challenge",
+      p_limit: 5,
+      p_window_seconds: 60,
+    }),
+    supabase.rpc("consume_wallet_rate_limit", {
+      p_wallet_address: sourceRateKey,
+      p_action: "auth_source",
+      p_limit: 20,
+      p_window_seconds: 60,
+    }),
+    supabase.rpc("consume_wallet_rate_limit", {
+      p_wallet_address: SERVICE_WALLET,
+      p_action: "auth_global",
+      p_limit: 300,
+      p_window_seconds: 60,
+    }),
   ]);
-  if (
-    (walletAttempts ?? 0) >= 5 ||
-    (sourceAttempts ?? 0) >= 20 ||
-    (globalAttempts ?? 0) >= 300
-  ) {
-    return apiError("Too many sign-in requests. Wait a minute and try again.", 429);
+  const rateError = rateResults.find((result) => result.error)?.error;
+  if (rateError) {
+    const limited = rateError.message.includes("Wallet action rate limit exceeded");
+    if (!limited) console.error("Unable to check wallet sign-in rate", rateError);
+    return apiError(
+      limited
+        ? "Too many sign-in requests. Wait a minute and try again."
+        : "Wallet sign-in is temporarily unavailable. Please try again.",
+      limited ? 429 : 503,
+    );
   }
 
   const { error } = await supabase.from("wallet_challenges").insert({
@@ -90,6 +101,8 @@ export async function POST(request: NextRequest) {
     console.error("Unable to create wallet challenge", error);
     return apiError("Could not start wallet sign-in. Please try again.", 500);
   }
+
+  await supabase.rpc("prune_expired_private_rows");
 
   return NextResponse.json({ id, message, expiresAt: expiresAt.toISOString() });
 }

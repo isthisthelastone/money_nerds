@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft, ArrowRight, ExternalLink, Radio, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -5,17 +6,42 @@ import { Composer } from "@/components/features/Composer";
 import { DonateButton } from "@/components/features/DonateButton";
 import { PostCard } from "@/components/features/PostCard";
 import { Hero } from "@/components/site";
-import { SERVICE_WALLET } from "@/lib/config";
+import { SERVICE_WALLET, SITE_URL } from "@/lib/config";
 import { getFeed, getSiteStats } from "@/lib/data";
 import { formatSol } from "@/lib/format";
 import { CATEGORIES, type FeedParams } from "@/lib/models";
+import { serializeJsonLd } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const PAGE_SIZES = [6, 12, 24] as const;
 const SORTS = ["latest", "loved", "funded"] as const;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const values = await searchParams;
+  const hasQuery = Object.values(values).some((value) => value !== undefined);
+
+  return {
+    alternates: {
+      canonical: "/",
+      types: {
+        "application/rss+xml": `${SITE_URL}/feed.xml`,
+      },
+    },
+    robots: hasQuery
+      ? {
+          index: false,
+          follow: true,
+          googleBot: { index: false, follow: true },
+        }
+      : {
+          index: true,
+          follow: true,
+        },
+  };
+}
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -69,7 +95,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <Hero />
       <section className="site-shell pb-20" id="feed" aria-labelledby="feed-heading">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">

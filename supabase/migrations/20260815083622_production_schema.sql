@@ -533,16 +533,12 @@ create table if not exists public.wallet_challenges (
   consumed_at timestamptz,
   created_at timestamptz not null default now(),
   attempt_count smallint not null default 0,
-  request_fingerprint text,
   constraint wallet_challenges_wallet_shape check (
     wallet_address ~ '^[1-9A-HJ-NP-Za-km-z]{32,44}$'
   ),
   constraint wallet_challenges_message_length check (char_length(message) between 32 and 4096),
   constraint wallet_challenges_expiry check (expires_at > created_at),
-  constraint wallet_challenges_attempts check (attempt_count between 0 and 10),
-  constraint wallet_challenges_fingerprint check (
-    request_fingerprint is null or request_fingerprint ~ '^[0-9a-f]{64}$'
-  )
+  constraint wallet_challenges_attempts check (attempt_count between 0 and 10)
 );
 
 create table if not exists public.wallet_sessions (
@@ -1045,13 +1041,6 @@ create index if not exists comment_media_position_idx
 create index if not exists wallet_challenges_expiry_idx
   on public.wallet_challenges (expires_at)
   where consumed_at is null;
-create index if not exists wallet_challenges_rate_idx
-  on public.wallet_challenges (wallet_address, created_at desc);
-create index if not exists wallet_challenges_created_idx
-  on public.wallet_challenges (created_at desc);
-create index if not exists wallet_challenges_source_rate_idx
-  on public.wallet_challenges (request_fingerprint, created_at desc)
-  where request_fingerprint is not null;
 create index if not exists wallet_sessions_wallet_idx
   on public.wallet_sessions (wallet_address, expires_at desc)
   where revoked_at is null;
@@ -1226,8 +1215,11 @@ on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'media');
 
--- Supabase Storage's owner-issued table grants are constrained by RLS. There is
--- intentionally no INSERT, UPDATE, or DELETE policy for browser roles.
+-- Table grants are a second guardrail: even an accidentally permissive Storage
+-- policy cannot authorize browser writes without the corresponding SQL grant.
+revoke insert, update, delete, truncate, references, trigger
+  on storage.objects from anon, authenticated;
+grant select on storage.objects to anon, authenticated;
 grant select, insert, update, delete on storage.objects to service_role;
 
 -- Every exposed table is read-only to anon/authenticated. Custom sessions are not
@@ -1258,12 +1250,6 @@ drop policy if exists "Enable read access for all users" on public.posts;
 
 alter table public.wallet_challenges enable row level security;
 alter table public.wallet_sessions enable row level security;
-drop policy if exists clients_denied on public.wallet_challenges;
-create policy clients_denied on public.wallet_challenges
-for all to anon, authenticated using (false) with check (false);
-drop policy if exists clients_denied on public.wallet_sessions;
-create policy clients_denied on public.wallet_sessions
-for all to anon, authenticated using (false) with check (false);
 revoke all on public.wallet_challenges from public, anon, authenticated;
 revoke all on public.wallet_sessions from public, anon, authenticated;
 revoke all on internal.legacy_auth_wallet_links from public, anon, authenticated;
