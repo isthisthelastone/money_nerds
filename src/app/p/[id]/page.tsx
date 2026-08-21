@@ -5,8 +5,14 @@ import { notFound } from "next/navigation";
 import { PostCard } from "@/components/features/PostCard";
 import { SITE_URL } from "@/lib/config";
 import { getComments, getPost } from "@/lib/data";
+import { serializeJsonLd } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export function generateStaticParams() {
+  return [];
+}
 
 type RouteParams = Promise<{ id: string }>;
 
@@ -69,7 +75,7 @@ export default async function PostPage({ params }: { params: RouteParams }) {
 
   return (
     <main className="site-shell pb-20 pt-10 sm:pt-14">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <div className="mx-auto max-w-3xl">
         <Link className="mb-5 inline-flex items-center gap-2 text-sm text-white/50 transition hover:text-white" href="/#feed">
           <ArrowLeft aria-hidden="true" size={16} /> Back to the board
@@ -79,4 +85,3 @@ export default async function PostPage({ params }: { params: RouteParams }) {
     </main>
   );
 }
-

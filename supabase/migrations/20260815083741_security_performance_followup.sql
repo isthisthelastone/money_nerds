@@ -1,8 +1,8 @@
 begin;
 
--- Remove any Storage mutation grants issued by the migration executor. Supabase
--- Storage-owner defaults remain protected by the absence of write RLS policies;
--- signed upload tokens are authorized by Storage itself.
+-- Storage signed-upload tokens do not require ordinary table-write privileges.
+-- Remove Supabase's broad default grants so anon/authenticated can only read
+-- public objects and cannot attempt direct object mutations.
 revoke insert, update, delete, truncate, references, trigger
 on storage.objects from anon, authenticated;
 grant select on storage.objects to anon, authenticated;

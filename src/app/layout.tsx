@@ -2,10 +2,9 @@ import type {Metadata, Viewport} from "next";
 import type {ReactNode} from "react";
 import {WalletControl} from "@/components/features/WalletControl";
 import {SiteFooter, SiteHeader} from "@/components/site";
+import {SITE_URL} from "@/lib/config";
 import {ClientProvider} from "./ClientProvider";
 import "../styles/global.css";
-
-const SITE_URL = "https://www.moneynerds.online";
 
 export const metadata: Metadata = {
     metadataBase: new URL(SITE_URL),

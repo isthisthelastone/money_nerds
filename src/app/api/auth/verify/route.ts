@@ -7,7 +7,7 @@ import {
   sessionCookieOptions,
 } from "@/lib/auth/server";
 import { SESSION_COOKIE, SESSION_TTL_SECONDS } from "@/lib/config";
-import { apiError } from "@/lib/http";
+import { apiError, readBoundedJsonBody, RequestBodyError } from "@/lib/http";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { normalizeWallet } from "@/lib/wallet";
 
@@ -18,7 +18,18 @@ interface VerifyBody {
 }
 
 export async function POST(request: NextRequest) {
-  const body = (await request.json().catch(() => null)) as VerifyBody | null;
+  let body: VerifyBody | null = null;
+  try {
+    body = await readBoundedJsonBody<VerifyBody>(request, 2_048);
+  } catch (error) {
+    if (error instanceof RequestBodyError && error.code === "REQUEST_TOO_LARGE") {
+      return apiError("The sign-in response is too large.", 413);
+    }
+    if (error instanceof RequestBodyError && error.code === "UNSUPPORTED_REQUEST_TYPE") {
+      return apiError("Send the wallet signature as JSON.", 415);
+    }
+    return apiError("The sign-in response could not be read.");
+  }
   const challengeId = typeof body?.challengeId === "string" ? body.challengeId : "";
   const walletAddress = normalizeWallet(body?.walletAddress);
   const signature = typeof body?.signature === "string" ? body.signature : "";

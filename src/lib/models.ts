@@ -61,6 +61,16 @@ export interface WalletProfile {
   updated_at: string;
 }
 
+export interface WalletProfileStats extends WalletProfile {
+  post_count: number;
+  comment_count: number;
+  likes_given: number;
+  verified_donated_lamports: number;
+  verified_received_lamports: number;
+  legacy_donated_lamports: number;
+  legacy_received_lamports: number;
+}
+
 export interface DonationRecord {
   signature: string;
   donor_wallet: string;
@@ -72,6 +82,47 @@ export interface DonationRecord {
   slot: number | null;
   status: "verified";
   created_at: string;
+}
+
+export const PROFILE_PAGE_SIZES = [12, 25, 50] as const;
+export type ProfilePageSize = (typeof PROFILE_PAGE_SIZES)[number];
+export type ProfileActivitySection = "posts" | "comments" | "sent" | "received";
+
+export interface ProfileSectionParams {
+  page: number;
+  pageSize: ProfilePageSize;
+}
+
+export type ProfileActivityParams = Record<ProfileActivitySection, ProfileSectionParams>;
+
+export interface ProfilePage<T> {
+  items: T[];
+  page: number;
+  pageSize: ProfilePageSize;
+  total: number;
+  totalPages: number;
+  from: number;
+  to: number;
+}
+
+export interface WalletProfileReference {
+  wallet_address: string;
+  display_name: string | null;
+}
+
+export interface ProfileDonationRecord extends DonationRecord {
+  counterpart_wallet: string;
+  counterpart_profile: WalletProfileReference | null;
+  target_post_id: number | null;
+}
+
+export interface WalletProfileActivity {
+  profile: WalletProfile;
+  stats: WalletProfileStats;
+  posts: ProfilePage<PostCardData>;
+  comments: ProfilePage<CommentCardData>;
+  sent: ProfilePage<ProfileDonationRecord>;
+  received: ProfilePage<ProfileDonationRecord>;
 }
 
 export interface WalletSession {
@@ -86,4 +137,3 @@ export interface FeedParams {
   sort: "latest" | "loved" | "funded";
   category: string;
 }
-

@@ -1,7 +1,8 @@
 import {SITE_URL} from "@/lib/config";
 import {createPublicSupabase} from "@/lib/supabase/public";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
+export const revalidate = 900;
 
 function xml(value: unknown) {
     return String(value ?? "")

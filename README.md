@@ -41,8 +41,9 @@ pnpm build
 The database migrations and reconciliation runbook live in `supabase/`. New
 database writes are server-mediated: public tables are read-only through RLS,
 wallet challenges are single-use, likes are toggled atomically, media uploads
-are signed and verified before linking, and donation rows are created only after
-the matching Solana transfer is confirmed.
+are signed into private staging and atomically published after byte validation,
+and donation rows are created only after a finalized transfer matches a
+single-use server intent and on-chain memo.
 
 ## Deployment
 

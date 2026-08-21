@@ -16,10 +16,16 @@ export async function DELETE() {
   const token = await getSessionToken();
   if (token) {
     const supabase = createAdminSupabase();
-    await supabase
-      .from("wallet_sessions")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("token_hash", hashSessionToken(token));
+    const { error } = await supabase.rpc("revoke_wallet_session", {
+      p_token_hash: hashSessionToken(token),
+    });
+    if (error) {
+      console.error("Unable to revoke wallet session", error);
+      return NextResponse.json(
+        { error: "The wallet session could not be closed. Please retry." },
+        { status: 503 },
+      );
+    }
   }
 
   const response = NextResponse.json({ ok: true });
@@ -33,4 +39,3 @@ export async function DELETE() {
   });
   return response;
 }
-
