@@ -31,12 +31,7 @@ import {
 import { serializeJsonLd } from "@/lib/seo";
 import { normalizeWallet } from "@/lib/wallet";
 
-export const revalidate = 300;
-export const dynamicParams = true;
-
-export function generateStaticParams() {
-  return [];
-}
+export const dynamic = "force-dynamic";
 
 type RouteParams = Promise<{ wallet: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

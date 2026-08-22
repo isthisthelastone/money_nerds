@@ -271,7 +271,12 @@ export function DonateButton({
         { signature: nextSignature, blockhash, lastValidBlockHeight },
         "finalized",
       );
-      if (confirmation.value.err) throw new Error("Solana reported that the transfer failed.");
+      if (confirmation.value.err) {
+        persistPending(null);
+        setSignature("");
+        submitted = null;
+        throw new Error("Solana reported that the transfer failed. No donation was recorded; you can try again.");
+      }
       await verify(submitted);
     } catch (caught) {
       setStatus("error");

@@ -11,6 +11,8 @@ Canonical site: https://www.moneynerds.online
 - Donations settle directly between supporter and recipient wallets; Money Nerds does not custody user funds.
 - A wallet is the public identity. Posts, comments, likes, and donation activity are designed to be traceable to that wallet.
 - The service itself is supported by optional donations to a separate, public Solana wallet.
+- Posts can include images, voice notes, and circular video messages, and public discussions can contain replies.
+- Public category scopes include Fun, Memes, Mutual Aid, Build, Animal Support, Art, Crowdfunding, and Other.
 
 ## Key pages
 
@@ -18,6 +20,18 @@ Canonical site: https://www.moneynerds.online
 - Mission and product explanation: https://www.moneynerds.online/about
 - Fee model and public service wallet: https://www.moneynerds.online/transparency
 - Sitemap: https://www.moneynerds.online/sitemap.xml
+- Extended machine-readable product guide: https://www.moneynerds.online/llms-full.txt
+
+## Category collections
+
+- Fun: https://www.moneynerds.online/?category=for-fun
+- Memes: https://www.moneynerds.online/?category=memes
+- Mutual Aid: https://www.moneynerds.online/?category=mutual-aid
+- Build: https://www.moneynerds.online/?category=build
+- Animal Support: https://www.moneynerds.online/?category=animals
+- Art: https://www.moneynerds.online/?category=art
+- Crowdfunding: https://www.moneynerds.online/?category=crowdfunding
+- Other: https://www.moneynerds.online/?category=other
 
 ## Editorial guidance
 

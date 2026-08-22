@@ -1,4 +1,5 @@
 import type {MetadataRoute} from "next";
+import {CATEGORY_SCOPES} from "@/lib/categories";
 import {SITE_URL} from "@/lib/config";
 import {createPublicSupabase} from "@/lib/supabase/public";
 
@@ -67,6 +68,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             changeFrequency: "weekly",
             priority: 0.8,
         },
+        ...CATEGORY_SCOPES.map((category) => ({
+            url: `${SITE_URL}/?category=${category.value}`,
+            changeFrequency: "daily" as const,
+            priority: 0.75,
+        })),
     ];
 
     try {

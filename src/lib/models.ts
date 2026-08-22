@@ -1,13 +1,40 @@
-export const CATEGORIES = [
-  "anything",
+export const POST_CATEGORIES = [
   "for-fun",
+  "memes",
   "mutual-aid",
   "build",
   "animals",
   "art",
+  "crowdfunding",
+  "other",
 ] as const;
 
+export type PostCategory = (typeof POST_CATEGORIES)[number];
+
+export const CATEGORIES = ["anything", ...POST_CATEGORIES] as const;
+
 export type Category = (typeof CATEGORIES)[number];
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  anything: "Anything",
+  "for-fun": "Fun",
+  memes: "Memes",
+  "mutual-aid": "Mutual Aid",
+  build: "Build",
+  animals: "Animal Support",
+  art: "Art",
+  crowdfunding: "Crowdfunding",
+  other: "Other",
+};
+
+export function isCategory(value: string | undefined): value is Category {
+  return CATEGORIES.includes(value as Category);
+}
+
+export function isPostCategory(value: string | undefined): value is PostCategory {
+  return POST_CATEGORIES.includes(value as PostCategory);
+}
+
 export type MediaKind = "image" | "audio" | "video_circle";
 
 export interface MediaAsset {
@@ -135,5 +162,5 @@ export interface FeedParams {
   page: number;
   pageSize: number;
   sort: "latest" | "loved" | "funded";
-  category: string;
+  category: Category;
 }

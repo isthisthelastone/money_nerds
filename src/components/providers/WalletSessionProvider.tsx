@@ -65,7 +65,10 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   const revokePromise = useRef<Promise<boolean> | null>(null);
   const revocationRequired = useRef(false);
   const preparedChallenge = useRef<PreparedChallenge | null>(null);
-  const challengePromise = useRef<Promise<PreparedChallenge | null> | null>(null);
+  const challengeRequest = useRef<{
+    walletAddress: string;
+    promise: Promise<PreparedChallenge | null>;
+  } | null>(null);
   const walletAddress = wallet.connected ? (wallet.publicKey?.toBase58() ?? null) : null;
   const walletAddressRef = useRef<string | null>(walletAddress);
   const lastConnectedWallet = useRef<string | null>(walletAddress);
@@ -119,7 +122,8 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
       ) {
         return Promise.resolve(existing);
       }
-      if (challengePromise.current) return challengePromise.current;
+      const inFlight = challengeRequest.current;
+      if (inFlight?.walletAddress === address) return inFlight.promise;
 
       const request = fetch("/api/auth/challenge", {
         method: "POST",
@@ -147,19 +151,28 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
             walletAddress: address,
             expiresAt: challenge.expiresAt,
           };
-          if (walletAddressRef.current === address) preparedChallenge.current = nextChallenge;
+          if (
+            walletAddressRef.current === address &&
+            challengeRequest.current?.promise === request
+          ) {
+            preparedChallenge.current = nextChallenge;
+          }
           return nextChallenge;
         })
         .catch((caught) => {
-          if (mounted.current && walletAddressRef.current === address) {
+          if (
+            mounted.current &&
+            walletAddressRef.current === address &&
+            challengeRequest.current?.promise === request
+          ) {
             setError(caught instanceof Error ? caught.message : "Could not prepare wallet sign-in.");
             setStatus("error");
           }
           return null;
         });
-      challengePromise.current = request;
+      challengeRequest.current = { walletAddress: address, promise: request };
       void request.finally(() => {
-        if (challengePromise.current === request) challengePromise.current = null;
+        if (challengeRequest.current?.promise === request) challengeRequest.current = null;
       });
       return request;
     },

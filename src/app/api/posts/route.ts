@@ -1,12 +1,13 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { requireWalletSession } from "@/lib/auth/server";
-import { CATEGORIES } from "@/lib/models";
 import { apiError, unauthenticatedResponse } from "@/lib/http";
+import { notifyIndexNow } from "@/lib/indexnow";
 import {
   parseComposerPayload,
   validateUploadedMedia,
 } from "@/lib/media/server";
+import { isPostCategory } from "@/lib/models";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
 const MAX_COMPOSER_REQUEST_BYTES = 32 * 1024;
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await readComposerFormData(request);
     const payload = parseComposerPayload(formData);
-    if (!CATEGORIES.includes(payload.category as (typeof CATEGORIES)[number])) {
+    if (!isPostCategory(payload.category)) {
       return apiError("Choose a valid post category.");
     }
 
@@ -187,6 +188,9 @@ export async function POST(request: NextRequest) {
 
     revalidatePath("/");
     revalidatePath(`/u/${walletAddress}`);
+    after(async () => {
+      await notifyIndexNow(["/", `/p/${postId}`, `/?category=${payload.category}`]);
+    });
     return NextResponse.json({ id: postId }, { status: 201 });
   } catch (error) {
     console.error("Unable to create post", error);

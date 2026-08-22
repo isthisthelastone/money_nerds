@@ -1,7 +1,8 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { requireWalletSession } from "@/lib/auth/server";
 import { apiError, unauthenticatedResponse } from "@/lib/http";
+import { notifyIndexNow } from "@/lib/indexnow";
 import {
   parseComposerPayload,
   validateUploadedMedia,
@@ -246,6 +247,9 @@ export async function POST(request: NextRequest) {
     revalidatePath("/");
     revalidatePath(`/p/${postId}`);
     revalidatePath(`/u/${walletAddress}`);
+    after(async () => {
+      await notifyIndexNow([`/p/${postId}`]);
+    });
     return NextResponse.json({ id: commentId }, { status: 201 });
   } catch (error) {
     console.error("Unable to create comment", error);

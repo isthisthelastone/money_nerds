@@ -6,10 +6,11 @@ import { Composer } from "@/components/features/Composer";
 import { DonateButton } from "@/components/features/DonateButton";
 import { PostCard } from "@/components/features/PostCard";
 import { Hero } from "@/components/site";
+import { CATEGORY_SCOPES, categoryScope } from "@/lib/categories";
 import { SERVICE_WALLET, SITE_URL } from "@/lib/config";
 import { getFeed, getSiteStats } from "@/lib/data";
 import { formatSol } from "@/lib/format";
-import { CATEGORIES, type FeedParams } from "@/lib/models";
+import { isCategory, type FeedParams } from "@/lib/models";
 import { serializeJsonLd } from "@/lib/seo";
 
 export const revalidate = 60;
@@ -21,24 +22,48 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const values = await searchParams;
-  const hasQuery = Object.values(values).some((value) => value !== undefined);
+  const requestedCategory = first(values.category);
+  const scope = categoryScope(requestedCategory);
+  const categoryOnly = Boolean(scope) && Object.entries(values).every(
+    ([key, value]) => key === "category" || value === undefined,
+  );
+  const bareHome = Object.values(values).every((value) => value === undefined);
+  const canonical = scope ? `/?category=${scope.value}` : "/";
 
   return {
+    ...(scope
+      ? {
+          title: `${scope.label} posts — direct Solana support`,
+          description: `${scope.shortDescription} Explore wallet-owned requests and support people directly in SOL with zero platform commission.`,
+          openGraph: {
+            title: `${scope.label} posts on Money Nerds`,
+            description: scope.shortDescription,
+            url: `${SITE_URL}/?category=${scope.value}`,
+          },
+        }
+      : {}),
     alternates: {
-      canonical: "/",
+      canonical,
       types: {
         "application/rss+xml": `${SITE_URL}/feed.xml`,
       },
     },
-    robots: hasQuery
+    robots: bareHome || categoryOnly
       ? {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        }
+      : {
           index: false,
           follow: true,
           googleBot: { index: false, follow: true },
-        }
-      : {
-          index: true,
-          follow: true,
         },
   };
 }
@@ -58,9 +83,7 @@ function parseFeedParams(values: Awaited<SearchParams>): FeedParams {
     sort: SORTS.includes(requestedSort as (typeof SORTS)[number])
       ? (requestedSort as FeedParams["sort"])
       : "latest",
-    category: CATEGORIES.includes(requestedCategory as (typeof CATEGORIES)[number])
-      ? String(requestedCategory)
-      : "anything",
+    category: isCategory(requestedCategory) ? requestedCategory : "anything",
   };
 }
 
@@ -76,14 +99,16 @@ function pageHref(params: FeedParams, page: number) {
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const params = parseFeedParams(await searchParams);
+  const scope = categoryScope(params.category);
   const [{ posts, count }, stats] = await Promise.all([getFeed(params), getSiteStats()]);
   const totalPages = Math.max(1, Math.ceil(count / params.pageSize));
-  if (count > 0 && params.page > totalPages) redirect(pageHref(params, totalPages));
+  if (params.page > totalPages) redirect(pageHref(params, totalPages));
 
-  const jsonLd = {
+  const websiteJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Money Nerds",
+    alternateName: "MoneyNerds",
     url: "https://www.moneynerds.online",
     description: "A wallet-native public board for direct, zero-commission Solana support.",
     potentialAction: {
@@ -92,20 +117,65 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       "query-input": "required name=category",
     },
   };
+  const jsonLd = scope
+    ? {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "CollectionPage",
+            name: `${scope.label} posts on Money Nerds`,
+            url: `${SITE_URL}/?category=${scope.value}`,
+            description: scope.shortDescription,
+            isPartOf: { "@type": "WebSite", name: "Money Nerds", url: SITE_URL },
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Money Nerds", item: SITE_URL },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: scope.label,
+                item: `${SITE_URL}/?category=${scope.value}`,
+              },
+            ],
+          },
+        ],
+      }
+    : websiteJsonLd;
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <Hero />
-      <section className="site-shell pb-20" id="feed" aria-labelledby="feed-heading">
+      {scope ? null : <Hero />}
+      <section
+        className={`site-shell pb-20 ${scope ? "pt-8 sm:pt-12" : ""}`}
+        id="feed"
+        aria-labelledby="feed-heading"
+      >
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
+            {scope ? (
+              <div className="mb-6 rounded-[1.4rem] border border-[#c9ff55]/20 bg-[#c9ff55]/[0.055] p-5 sm:p-7">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
+                  Explore / {scope.label}
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#f2efe6] sm:text-4xl">
+                  {scope.label}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60 sm:text-base">
+                  {scope.shortDescription}
+                </p>
+              </div>
+            ) : null}
             <Composer />
             <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">The public board</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
+                  {scope ? `Category / ${scope.label}` : "The public board"}
+                </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#f2efe6]" id="feed-heading">
-                  Requests from real wallets
+                  {scope ? `${scope.label} posts from real wallets` : "Requests from real wallets"}
                 </h2>
               </div>
               <form className="flex flex-wrap gap-2" action="/" method="get">
@@ -119,13 +189,11 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 </label>
                 <label className="grid gap-1 text-[0.65rem] uppercase tracking-[0.12em] text-white/40">
                   Category
-                  <select name="category" defaultValue={params.category} className="feed-select">
-                    <option value="anything">Anything</option>
-                    <option value="for-fun">For fun</option>
-                    <option value="mutual-aid">Mutual aid</option>
-                    <option value="build">Build</option>
-                    <option value="animals">Animals</option>
-                    <option value="art">Art</option>
+                  <select name="category" defaultValue={params.category} className="feed-select" key={params.category}>
+                    <option value="anything">All</option>
+                    {CATEGORY_SCOPES.map((category) => (
+                      <option value={category.value} key={category.value}>{category.label}</option>
+                    ))}
                   </select>
                 </label>
                 <label className="grid gap-1 text-[0.65rem] uppercase tracking-[0.12em] text-white/40">
