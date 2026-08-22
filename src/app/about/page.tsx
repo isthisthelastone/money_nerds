@@ -112,10 +112,11 @@ export default function AboutPage() {
                 <ol className="site-steps">
                     <li>
                         <div>
-                            <h3>Connect a Solana wallet</h3>
+                            <h3>Choose how to sign in</h3>
                             <p>
-                                Your wallet establishes the public identity used for posts,
-                                comments, likes, and donations.
+                                Use a supported Solana wallet, or an enabled Google, Apple, or
+                                Telegram account. Money Nerds exposes a public profile ID—not your
+                                provider subject or email.
                             </p>
                         </div>
                     </li>
@@ -133,7 +134,9 @@ export default function AboutPage() {
                             <h3>Receive support directly</h3>
                             <p>
                                 A supporter approves the transaction in their own wallet. SOL
-                                settles to the recipient without a Money Nerds platform fee.
+                                settles to a verified recipient wallet without a Money Nerds
+                                platform fee. Account-backed profiles cannot receive until a real
+                                payout wallet has been independently verified.
                             </p>
                         </div>
                     </li>

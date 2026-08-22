@@ -818,6 +818,15 @@ body .wallet-adapter-modal-list-more svg {
   white-space: nowrap;
 }
 
+.wallet-popover-head small {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .wallet-popover > a,
 .wallet-popover > button {
   display: flex;
@@ -848,13 +857,178 @@ body .wallet-adapter-modal-list-more svg {
 }
 
 .wallet-error-wrap {
+  position: relative;
   display: inline-flex;
   align-items: center;
+}
+
+.wallet-auth-actions {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wallet-auth-actions > .button,
+.wallet-auth-actions > .mn-wallet-button {
+  min-width: 0;
+}
+
+.external-auth-options {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.auth-options-trigger {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line-bright);
+  border-radius: 0.78rem;
+  background: var(--panel);
+  color: var(--muted-strong);
+  transition: 160ms ease;
+  transition-property: border-color, background-color, color, transform;
+}
+
+.auth-options-trigger:hover,
+.auth-options-trigger[aria-expanded="true"] {
+  border-color: rgb(199 255 66 / 0.48);
+  background: var(--panel-raised);
+  color: var(--lime);
+  transform: translateY(-1px);
+}
+
+.external-auth-popover {
+  position: absolute;
+  top: calc(100% + 0.65rem);
+  right: 0;
+  z-index: 75;
+  display: grid;
+  width: min(18rem, calc(100vw - 1.5rem));
+  gap: 0.3rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line-bright);
+  border-radius: 1rem;
+  background: rgb(17 20 17 / 0.98);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 0.48);
+  backdrop-filter: blur(16px);
+}
+
+.external-auth-popover__head {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.2rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.external-auth-popover__head strong {
+  color: var(--paper);
+  font-size: 0.8rem;
+}
+
+.external-auth-popover__head span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.external-auth-popover > button {
+  display: flex;
+  width: 100%;
+  min-height: 2.8rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.68rem;
+  background: transparent;
+  color: var(--paper-soft);
+  font-size: 0.8rem;
+  font-weight: 720;
+  text-align: left;
+}
+
+.external-auth-popover > button:not(:disabled):hover {
+  border-color: rgb(199 255 66 / 0.22);
+  background: rgb(199 255 66 / 0.055);
+  color: var(--paper);
+}
+
+.external-auth-popover > button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.external-auth-error {
+  margin: 0.25rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid rgb(255 115 102 / 0.2);
+  color: #ffb0a8;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.external-identity-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wallet-error-message {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  z-index: 40;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgb(255 115 102 / 0.34);
+  border-radius: 0.68rem;
+  background: rgb(24 10 9 / 0.96);
+  box-shadow: 0 0.9rem 2.8rem rgb(0 0 0 / 0.42);
+  color: #ffb0a8;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.4;
 }
 
 .wallet-status {
   max-width: 100%;
   white-space: nowrap;
+}
+
+.telegram-login-dialog__inner {
+  min-height: 18rem;
+}
+
+.telegram-login-dialog__inner h2 {
+  margin: 0.8rem 3rem 0 0;
+  color: var(--paper);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  letter-spacing: -0.04em;
+}
+
+.telegram-login-dialog__inner > p:not(.form-message) {
+  margin: 0.75rem 0 0;
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.telegram-login-dialog__widget {
+  display: grid;
+  min-height: 4.5rem;
+  place-items: center;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.025);
 }
 
 .composer-tool {
@@ -1184,8 +1358,10 @@ body .wallet-adapter-modal-list-more svg {
   margin: 0 auto;
   border-radius: 50%;
   cursor: grab;
-  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .hero-coin[data-dragging] {
@@ -1239,11 +1415,26 @@ body .wallet-adapter-modal-list-more svg {
   animation: coin-float 5.5s ease-in-out infinite;
 }
 
+.hero-coin__scene::after {
+  position: absolute;
+  right: 18%;
+  bottom: 13%;
+  left: 22%;
+  z-index: 0;
+  height: 9%;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.64);
+  content: "";
+  filter: blur(1.15rem);
+  pointer-events: none;
+  transform: rotate(-4deg);
+}
+
 .hero-coin__model {
   position: relative;
+  z-index: 1;
   width: 70%;
   aspect-ratio: 1;
-  filter: drop-shadow(1.2rem 1.5rem 1.8rem rgb(0 0 0 / 0.48));
   transition: transform 90ms ease-out;
   transform-style: preserve-3d;
   will-change: transform;
@@ -1253,15 +1444,33 @@ body .wallet-adapter-modal-list-more svg {
   transition: none;
 }
 
-.hero-coin__model::before {
+.hero-coin__edge {
   position: absolute;
-  inset: 0;
-  border: 0.34rem solid #6f941e;
+  inset: 0.08rem;
+  border: 0.36rem solid #658718;
   border-radius: 50%;
-  background: linear-gradient(145deg, #90bc27, #38500e 68%, #1b2708);
-  box-shadow: inset -0.7rem -0.7rem 1.1rem rgb(0 0 0 / 0.35);
-  content: "";
-  transform: translate3d(1rem, 0.7rem, -1.5rem);
+  background:
+    radial-gradient(circle at 34% 26%, rgb(215 255 117 / 0.2), transparent 30%),
+    repeating-conic-gradient(
+      from 2deg,
+      #48620f 0deg 2deg,
+      #86ad24 2deg 4deg,
+      #b1df3c 4deg 5deg,
+      #597715 5deg 8deg
+    );
+  box-shadow:
+    inset 0.45rem 0.45rem 0.8rem rgb(255 255 255 / 0.1),
+    inset -0.7rem -0.75rem 1rem rgb(0 0 0 / 0.34);
+  pointer-events: none;
+  transform: translateZ(var(--coin-edge-depth));
+}
+
+.hero-coin__edge--ridge {
+  border-color: #9ac82a;
+  box-shadow:
+    inset 0.35rem 0.35rem 0.7rem rgb(255 255 255 / 0.13),
+    inset -0.65rem -0.7rem 0.95rem rgb(0 0 0 / 0.38),
+    0 0 0.08rem rgb(199 255 66 / 0.28);
 }
 
 .hero-coin__face {
@@ -1278,8 +1487,30 @@ body .wallet-adapter-modal-list-more svg {
     inset 0.45rem 0.55rem 1rem rgb(255 255 255 / 0.18),
     inset -0.85rem -0.9rem 1.2rem rgb(0 0 0 / 0.42),
     0 0 3rem rgb(199 255 66 / 0.14);
-  transform: translateZ(1rem);
+  backface-visibility: hidden;
+  pointer-events: none;
   transform-style: preserve-3d;
+}
+
+.hero-coin__face--front {
+  transform: translateZ(1rem);
+}
+
+.hero-coin__face--back {
+  border-color: #789f20;
+  background:
+    radial-gradient(circle at 35% 25%, rgb(255 255 255 / 0.13), transparent 24%),
+    radial-gradient(circle, #080c07 0 57%, #86b323 58% 67%, #121a0c 68% 75%, #66891a 76% 100%);
+  box-shadow:
+    inset 0.4rem 0.5rem 0.9rem rgb(255 255 255 / 0.12),
+    inset -0.85rem -0.9rem 1.2rem rgb(0 0 0 / 0.48),
+    0 0 2.4rem rgb(199 255 66 / 0.1);
+  transform: rotateY(180deg) translateZ(1rem);
+}
+
+.hero-coin__face--back .hero-coin__inner-ring {
+  border-color: #a6d62c;
+  background: radial-gradient(circle at 34% 25%, #151e11, #050805 68%);
 }
 
 .hero-coin__inner-ring {
@@ -1747,6 +1978,18 @@ body .wallet-adapter-modal-list-more svg {
 
   .site-header__wallet > * {
     max-width: 8.75rem;
+  }
+
+  .wallet-auth-actions > .mn-wallet-button,
+  .wallet-auth-actions > .button {
+    overflow: hidden;
+    padding-inline: 0.7rem;
+    text-overflow: ellipsis;
+  }
+
+  .auth-options-trigger {
+    width: 2.6rem;
+    height: 2.6rem;
   }
 
   .site-footer__grid,

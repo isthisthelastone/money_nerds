@@ -13,9 +13,14 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "check": "pnpm lint && pnpm typecheck && pnpm build"
+    "test": "node --test tests/*.test.mjs",
+    "test:auth": "node --test tests/external-auth.test.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
+    "@metamask/connect-solana": "2.1.1",
+    "@noble/hashes": "2.3.0",
+    "@scure/base": "2.3.0",
     "@solana-mobile/wallet-adapter-mobile": "2.3.0",
     "@solana/wallet-adapter-base": "0.9.27",
     "@solana/wallet-adapter-phantom": "0.9.29",

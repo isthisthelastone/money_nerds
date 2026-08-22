@@ -8,7 +8,7 @@ import { DonateButton } from "@/components/features/DonateButton";
 import { LikeButton } from "@/components/features/LikeButton";
 import { MediaGallery } from "@/components/features/MediaGallery";
 import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
-import type { CommentCardData } from "@/lib/models";
+import { IDENTITY_PROVIDER_LABELS, type CommentCardData } from "@/lib/models";
 
 interface CommentsPanelProps {
   postId: number;
@@ -227,6 +227,10 @@ function CommentBranch({
   const [replying, setReplying] = useState(false);
   const children = allComments.filter((candidate) => candidate.parent_id === comment.id);
   const authorLabel = comment.nickname || comment.legacy_author_label || "Anonymous nerd";
+  const externalAuthor = comment.author_identity_kind === "external";
+  const identityLabel = comment.author_identity_provider
+    ? IDENTITY_PROVIDER_LABELS[comment.author_identity_provider]
+    : "External";
 
   return (
     <div className={depth ? "ml-3 border-l border-white/10 pl-3 sm:ml-7 sm:pl-5" : ""}>
@@ -239,7 +243,15 @@ function CommentBranch({
           ) : (
             <strong className="font-medium text-white/65">{authorLabel}</strong>
           )}
-          {comment.author_wallet ? <span className="font-mono">{formatWallet(comment.author_wallet)}</span> : null}
+          {comment.author_wallet ? (
+            externalAuthor ? (
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.62rem] font-medium text-white/45">
+                {identityLabel} profile
+              </span>
+            ) : (
+              <span className="font-mono">{formatWallet(comment.author_wallet)}</span>
+            )
+          ) : null}
           <span aria-hidden="true">·</span>
           <time dateTime={comment.created_at} suppressHydrationWarning>
             {formatRelativeTime(comment.created_at)}
@@ -249,13 +261,17 @@ function CommentBranch({
         <MediaGallery media={comment.media} />
         <div className="mt-3 flex flex-wrap items-center gap-1">
           <LikeButton targetType="comment" targetId={comment.id} initialCount={comment.like_count} />
-          {comment.author_wallet ? (
+          {comment.author_wallet && !externalAuthor ? (
             <DonateButton
               recipientAddress={comment.author_wallet}
               targetType="comment"
               targetId={comment.id}
               label={comment.verified_donation_lamports ? `${formatSol(comment.verified_donation_lamports)} SOL` : "Fund"}
             />
+          ) : externalAuthor ? (
+            <span className="px-2 py-1.5 text-xs text-white/30" title="This profile has no verified Solana payout wallet">
+              SOL funding unavailable
+            </span>
           ) : null}
           <button className="post-action" type="button" onClick={() => setReplying((value) => !value)}>
             <Reply aria-hidden="true" size={17} /> Reply

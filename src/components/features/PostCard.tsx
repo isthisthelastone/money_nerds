@@ -1,7 +1,8 @@
 "use client";
 
-import { ExternalLink, MessageCircle } from "lucide-react";
+import { ExternalLink, Eye, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { CommentsPanel } from "@/components/features/CommentsPanel";
 import { DonateButton } from "@/components/features/DonateButton";
 import { LikeButton } from "@/components/features/LikeButton";
@@ -9,7 +10,13 @@ import { MediaGallery } from "@/components/features/MediaGallery";
 import { ShareButton } from "@/components/features/ShareButton";
 import { categoryHref } from "@/lib/categories";
 import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
-import { CATEGORY_LABELS, isCategory, type CommentCardData, type PostCardData } from "@/lib/models";
+import {
+  CATEGORY_LABELS,
+  IDENTITY_PROVIDER_LABELS,
+  isCategory,
+  type CommentCardData,
+  type PostCardData,
+} from "@/lib/models";
 
 export function PostCard({
   post,
@@ -22,6 +29,32 @@ export function PostCard({
 }) {
   const totalLikes = post.like_count + post.legacy_like_count;
   const postCategory = isCategory(post.category) ? post.category : "anything";
+  const externalAuthor = post.author_identity_kind === "external";
+  const identityLabel = post.author_identity_provider
+    ? IDENTITY_PROVIDER_LABELS[post.author_identity_provider]
+    : "External";
+  const [viewCount, setViewCount] = useState(post.view_count);
+
+  useEffect(() => {
+    if (!detail) return;
+    const controller = new AbortController();
+    void fetch(`/api/posts/${post.id}/view`, {
+      method: "POST",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as { viewCount?: unknown };
+        const nextCount = Number(payload.viewCount);
+        if (Number.isSafeInteger(nextCount) && nextCount >= 0) setViewCount(nextCount);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("Unable to record post view", error);
+        }
+      });
+    return () => controller.abort();
+  }, [detail, post.id]);
   return (
     <article className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#111311] shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
       <div className="p-5 sm:p-6">
@@ -43,7 +76,13 @@ export function PostCard({
               <Link className="text-base font-semibold text-[#f2efe6] transition hover:text-[#c9ff55]" href={`/u/${post.author_wallet}`}>
                 {post.nickname}
               </Link>
-              <span className="font-mono text-xs text-white/35">{formatWallet(post.author_wallet, 5, 5)}</span>
+              {externalAuthor ? (
+                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.65rem] font-medium text-white/45">
+                  {identityLabel} profile
+                </span>
+              ) : (
+                <span className="font-mono text-xs text-white/35">{formatWallet(post.author_wallet, 5, 5)}</span>
+              )}
             </div>
           </div>
           {!detail ? (
@@ -70,10 +109,19 @@ export function PostCard({
           <span className="flex items-center gap-1.5">
             <MessageCircle aria-hidden="true" size={14} /> {post.comment_count}
           </span>
+          <span className="flex items-center gap-1.5" title="Unique viewers">
+            <Eye aria-hidden="true" size={14} /> {viewCount}
+          </span>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <LikeButton targetType="post" targetId={post.id} initialCount={totalLikes} />
-          <DonateButton recipientAddress={post.author_wallet} targetType="post" targetId={post.id} />
+          {externalAuthor ? (
+            <span className="px-3 py-2 text-xs text-white/35" title="This profile has no verified Solana payout wallet">
+              SOL funding unavailable
+            </span>
+          ) : (
+            <DonateButton recipientAddress={post.author_wallet} targetType="post" targetId={post.id} />
+          )}
           <ShareButton path={`/p/${post.id}`} title={`${post.nickname} on Money Nerds`} />
         </div>
       </div>

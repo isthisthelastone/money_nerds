@@ -21,10 +21,16 @@ import type {
 } from "@/lib/models";
 import { createPublicSupabase } from "@/lib/supabase/public";
 
+function identityProvider(value: unknown) {
+  return value === "google" || value === "apple" || value === "telegram" ? value : null;
+}
+
 function normalizePost(row: Record<string, unknown>): PostCardData {
   return {
     id: Number(row.id),
     author_wallet: String(row.author_wallet),
+    author_identity_kind: row.author_identity_kind === "external" ? "external" : "wallet",
+    author_identity_provider: identityProvider(row.author_identity_provider),
     nickname: String(row.nickname ?? "Anonymous nerd"),
     body: String(row.body ?? ""),
     category: String(row.category ?? "anything"),
@@ -36,6 +42,7 @@ function normalizePost(row: Record<string, unknown>): PostCardData {
     verified_donation_lamports: Number(row.verified_donation_lamports ?? 0),
     legacy_donation_lamports: Number(row.legacy_donation_lamports ?? 0),
     comment_count: Number(row.comment_count ?? 0),
+    view_count: Number(row.view_count ?? 0),
     media: parseJsonArray<MediaAsset>(row.media),
   };
 }
@@ -46,6 +53,12 @@ function normalizeComment(row: Record<string, unknown>): CommentCardData {
     post_id: Number(row.post_id),
     parent_id: row.parent_id ? Number(row.parent_id) : null,
     author_wallet: row.author_wallet ? String(row.author_wallet) : null,
+    author_identity_kind: row.author_wallet
+      ? row.author_identity_kind === "external"
+        ? "external"
+        : "wallet"
+      : null,
+    author_identity_provider: identityProvider(row.author_identity_provider),
     legacy_author_label: row.legacy_author_label ? String(row.legacy_author_label) : null,
     nickname: String(row.nickname ?? "Anonymous nerd"),
     body: String(row.body ?? ""),
@@ -196,7 +209,7 @@ export const getWalletProfile = cache(async (walletAddress: string) => {
   const supabase = createPublicSupabase();
   const { data, error } = await supabase
     .from("profiles")
-    .select("wallet_address, display_name, bio, created_at, updated_at")
+    .select("wallet_address, identity_kind, identity_provider, display_name, bio, created_at, updated_at")
     .eq("wallet_address", walletAddress)
     .maybeSingle();
   if (error) throw new Error(`Unable to load wallet profile: ${error.message}`);
@@ -320,7 +333,7 @@ export const getProfileActivity = cache(
       if (!counterpartWallets.length) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("wallet_address, display_name")
+        .select("wallet_address, identity_kind, identity_provider, display_name")
         .in("wallet_address", counterpartWallets);
       if (error) throw new Error(`Unable to resolve donation wallets: ${error.message}`);
       return (data ?? []) as WalletProfileReference[];

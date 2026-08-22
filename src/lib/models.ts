@@ -36,6 +36,15 @@ export function isPostCategory(value: string | undefined): value is PostCategory
 }
 
 export type MediaKind = "image" | "audio" | "video_circle";
+export type ExternalIdentityProvider = "google" | "apple" | "telegram";
+export type ProfileIdentityKind = "wallet" | "external";
+export type AuthProvider = "wallet" | ExternalIdentityProvider;
+
+export const IDENTITY_PROVIDER_LABELS: Record<ExternalIdentityProvider, string> = {
+  google: "Google",
+  apple: "Apple",
+  telegram: "Telegram",
+};
 
 export interface MediaAsset {
   id: string;
@@ -52,6 +61,8 @@ export interface MediaAsset {
 export interface PostCardData {
   id: number;
   author_wallet: string;
+  author_identity_kind: ProfileIdentityKind;
+  author_identity_provider: ExternalIdentityProvider | null;
   nickname: string;
   body: string;
   category: Category | string;
@@ -63,6 +74,7 @@ export interface PostCardData {
   verified_donation_lamports: number;
   legacy_donation_lamports: number;
   comment_count: number;
+  view_count: number;
   media: MediaAsset[];
 }
 
@@ -71,6 +83,8 @@ export interface CommentCardData {
   post_id: number;
   parent_id: number | null;
   author_wallet: string | null;
+  author_identity_kind: ProfileIdentityKind | null;
+  author_identity_provider: ExternalIdentityProvider | null;
   legacy_author_label: string | null;
   nickname: string;
   body: string;
@@ -82,6 +96,8 @@ export interface CommentCardData {
 
 export interface WalletProfile {
   wallet_address: string;
+  identity_kind: ProfileIdentityKind;
+  identity_provider: ExternalIdentityProvider | null;
   display_name: string | null;
   bio: string | null;
   created_at: string;
@@ -134,6 +150,8 @@ export interface ProfilePage<T> {
 
 export interface WalletProfileReference {
   wallet_address: string;
+  identity_kind: ProfileIdentityKind;
+  identity_provider: ExternalIdentityProvider | null;
   display_name: string | null;
 }
 
@@ -156,6 +174,7 @@ export interface WalletSession {
   walletAddress: string;
   profile: WalletProfile | null;
   expiresAt: string;
+  authProvider: AuthProvider;
 }
 
 export interface FeedParams {
