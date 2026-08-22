@@ -20,7 +20,11 @@ interface IntentBody {
 export async function POST(request: NextRequest) {
   let donorWallet: string;
   try {
-    donorWallet = (await requireWalletSession()).walletAddress;
+    const session = await requireWalletSession();
+    if (session.authProvider !== "wallet") {
+      return apiError("Connect a verified Solana wallet before sending SOL.", 403);
+    }
+    donorWallet = session.walletAddress;
   } catch {
     return unauthenticatedResponse();
   }
@@ -74,6 +78,23 @@ export async function POST(request: NextRequest) {
   }
 
   if (recipientWallet === donorWallet) return apiError("A wallet cannot fund itself.");
+
+  const { data: externalRecipient, error: externalRecipientError } = await supabase.rpc(
+    "is_external_proxy_wallet",
+    { p_wallet_address: recipientWallet },
+  );
+  if (externalRecipientError) {
+    console.error("Unable to verify donation recipient eligibility", {
+      code: externalRecipientError.code,
+    });
+    return apiError("The donation recipient could not be verified. Please try again.", 503);
+  }
+  if (externalRecipient === true) {
+    return apiError(
+      "This profile has not linked a verified Solana payout wallet and cannot receive SOL yet.",
+      409,
+    );
+  }
 
   const { data, error } = await supabase.rpc("issue_donation_intent", {
     p_donor_wallet: donorWallet,

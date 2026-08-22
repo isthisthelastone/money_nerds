@@ -21,6 +21,7 @@ import {
 } from "@/lib/data";
 import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
 import {
+  IDENTITY_PROVIDER_LABELS,
   PROFILE_PAGE_SIZES,
   type ProfileActivityParams,
   type ProfileActivitySection,
@@ -111,10 +112,16 @@ export async function generateMetadata({
   if (!wallet) return { title: "Wallet not found" };
   const [profile, query] = await Promise.all([getWalletProfile(wallet), searchParams]);
   const name = profile?.display_name || formatWallet(wallet, 6, 6);
+  const externalProfile = profile?.identity_kind === "external";
+  const identityLabel = profile?.identity_provider
+    ? IDENTITY_PROVIDER_LABELS[profile.identity_provider]
+    : "External";
   const hasQuery = Object.values(query).some((value) => value !== undefined);
   return {
-    title: `${name} — public wallet profile`,
-    description: `Posts, comments, and verified Solana support connected to ${formatWallet(wallet, 8, 8)} on Money Nerds.`,
+    title: `${name} — public ${externalProfile ? `${identityLabel} profile` : "wallet profile"}`,
+    description: externalProfile
+      ? `Posts and comments from a ${identityLabel}-authenticated Money Nerds profile. Its public profile ID is not a Solana payout address.`
+      : `Posts, comments, and verified Solana support connected to ${formatWallet(wallet, 8, 8)} on Money Nerds.`,
     alternates: { canonical: `/u/${wallet}` },
     robots: hasQuery
       ? {
@@ -170,6 +177,10 @@ export default async function WalletProfilePage({
   const sentLamports = activity.stats.verified_donated_lamports;
   const receivedLamports = activity.stats.verified_received_lamports;
   const displayName = activity.profile.display_name || formatWallet(wallet, 6, 6);
+  const externalProfile = activity.profile.identity_kind === "external";
+  const identityLabel = activity.profile.identity_provider
+    ? IDENTITY_PROVIDER_LABELS[activity.profile.identity_provider]
+    : "External";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
@@ -179,7 +190,11 @@ export default async function WalletProfilePage({
       "@type": "Person",
       name: displayName,
       identifier: wallet,
-      description: activity.profile.bio || "A public Money Nerds wallet profile.",
+      description:
+        activity.profile.bio ||
+        (externalProfile
+          ? `A ${identityLabel}-authenticated Money Nerds profile. Its profile ID is not a Solana wallet.`
+          : "A public Money Nerds wallet profile."),
     },
   };
 
@@ -192,23 +207,32 @@ export default async function WalletProfilePage({
       <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#111311]">
         <div className="border-b border-white/8 bg-[radial-gradient(circle_at_80%_0%,rgba(201,255,85,.16),transparent_38%)] p-6 sm:p-9">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
-            <Radio aria-hidden="true" size={14} /> Public wallet identity
+            <Radio aria-hidden="true" size={14} /> Public {externalProfile ? `${identityLabel} profile` : "wallet identity"}
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
             <div className="min-w-0">
               <h1 className="text-3xl font-semibold tracking-tight text-[#f2efe6] sm:text-5xl">
                 {displayName}
               </h1>
-              <p className="mt-3 break-all font-mono text-xs text-white/45 sm:text-sm">
+              <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-white/35">
+                {externalProfile ? "Money Nerds profile ID" : "Solana wallet"}
+              </p>
+              <p className="mt-1 break-all font-mono text-xs text-white/45 sm:text-sm">
                 {wallet}
               </p>
+              {externalProfile ? (
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+                  This identifier keeps public activity traceable inside Money Nerds. It is not a Solana address and
+                  cannot receive SOL until a verified payout wallet is linked.
+                </p>
+              ) : null}
               {activity.profile.bio ? (
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60">
                   {activity.profile.bio}
                 </p>
               ) : null}
             </div>
-            <CopyWalletButton walletAddress={wallet} />
+            <CopyWalletButton walletAddress={wallet} label={externalProfile ? "Copy profile ID" : "Copy wallet"} />
           </div>
           {aliases.length ? (
             <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-white/40">
@@ -273,7 +297,7 @@ export default async function WalletProfilePage({
           ))}
           {!activity.posts.items.length ? (
             <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-white/40">
-              No posts from this wallet yet.
+              No posts from this profile yet.
             </p>
           ) : null}
         </div>

@@ -3,7 +3,13 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
-export function CopyWalletButton({ walletAddress }: { walletAddress: string }) {
+export function CopyWalletButton({
+  walletAddress,
+  label = "Copy wallet",
+}: {
+  walletAddress: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -17,8 +23,7 @@ export function CopyWalletButton({ walletAddress }: { walletAddress: string }) {
       }}
     >
       {copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-      {copied ? "Copied" : "Copy wallet"}
+      {copied ? "Copied" : label}
     </button>
   );
 }
-

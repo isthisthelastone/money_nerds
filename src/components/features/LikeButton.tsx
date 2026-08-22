@@ -86,7 +86,7 @@ export function LikeButton({
 
   const toggle = async () => {
     if (!authenticated) {
-      setMessageState({ targetKey, value: "Connect your wallet to react." });
+      setMessageState({ targetKey, value: "Sign in to react." });
       return;
     }
     if (loading) return;

@@ -70,6 +70,11 @@ export default async function PostPage({ params }: { params: RouteParams }) {
         interactionType: "https://schema.org/CommentAction",
         userInteractionCount: post.comment_count,
       },
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/ViewAction",
+        userInteractionCount: post.view_count,
+      },
     ],
   };
 

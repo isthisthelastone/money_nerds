@@ -24,21 +24,28 @@ export async function getWalletSession(): Promise<WalletSession | null> {
     p_token_hash: hashSessionToken(token),
   });
   const session = data as
-    | { wallet_address?: unknown; expires_at?: unknown }
+    | { wallet_address?: unknown; expires_at?: unknown; auth_provider?: unknown }
     | null;
 
   if (
     error ||
     !session ||
     typeof session.wallet_address !== "string" ||
-    typeof session.expires_at !== "string"
+    typeof session.expires_at !== "string" ||
+    !(
+      session.auth_provider === undefined ||
+      session.auth_provider === "wallet" ||
+      session.auth_provider === "google" ||
+      session.auth_provider === "apple" ||
+      session.auth_provider === "telegram"
+    )
   ) {
     return null;
   }
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("wallet_address, display_name, bio, created_at, updated_at")
+    .select("wallet_address, identity_kind, identity_provider, display_name, bio, created_at, updated_at")
     .eq("wallet_address", session.wallet_address)
     .maybeSingle();
 
@@ -46,6 +53,7 @@ export async function getWalletSession(): Promise<WalletSession | null> {
     walletAddress: session.wallet_address,
     profile: (profile as WalletProfile | null) ?? null,
     expiresAt: session.expires_at,
+    authProvider: session.auth_provider ?? "wallet",
   };
 }
 

@@ -30,6 +30,14 @@ import {
   type MediaKind,
   type PostCategory,
 } from "@/lib/models";
+import {
+  createCompatibleMediaRecorder,
+  isRecordingDeviceSelectionError,
+  recordedFileFromChunks,
+  recordingErrorMessage,
+  requestRecordingStream,
+  type RecordingKind,
+} from "@/lib/media/recording";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 interface DraftAttachment {
@@ -40,8 +48,6 @@ interface DraftAttachment {
   alt: string;
   source: "upload" | "recording";
 }
-
-type RecordingKind = "audio" | "video_circle";
 
 interface ComposerProps {
   mode?: "post" | "comment";
@@ -60,6 +66,13 @@ interface ActiveRecordingAttempt {
   timerId: number | null;
   discard: boolean;
   finalized: boolean;
+}
+
+interface PreparedRecording {
+  kind: RecordingKind;
+  stream: MediaStream;
+  audioDeviceId: string;
+  videoDeviceId: string;
 }
 
 const ACCEPTED_TYPES: Record<string, MediaKind> = {
@@ -88,12 +101,44 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function supportedRecorderMime(kind: RecordingKind) {
-  const candidates =
-    kind === "audio"
-      ? ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
-      : ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
-  return candidates.find((mime) => MediaRecorder.isTypeSupported(mime)) ?? "";
+function trackDeviceId(track: MediaStreamTrack | undefined) {
+  try {
+    return track?.getSettings().deviceId ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function uniqueInputDevices(devices: MediaDeviceInfo[], kind: MediaDeviceKind) {
+  const seen = new Set<string>();
+  return devices.filter((device) => {
+    if (device.kind !== kind) return false;
+    const key = `${device.deviceId}\u0000${device.groupId}\u0000${device.label}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function preparedStreamMatches(
+  prepared: PreparedRecording,
+  kind: RecordingKind,
+  audioDeviceId: string,
+  videoDeviceId: string,
+) {
+  if (prepared.kind !== kind) return false;
+  if (!prepared.stream.getAudioTracks().some((track) => track.readyState === "live")) return false;
+  if (
+    kind === "video_circle" &&
+    !prepared.stream.getVideoTracks().some((track) => track.readyState === "live")
+  ) {
+    return false;
+  }
+  if (audioDeviceId && audioDeviceId !== prepared.audioDeviceId) return false;
+  if (kind === "video_circle" && videoDeviceId && videoDeviceId !== prepared.videoDeviceId) {
+    return false;
+  }
+  return true;
 }
 
 export function Composer({
@@ -122,6 +167,8 @@ export function Composer({
   const [recordingStartBusy, setRecordingStartBusy] = useState(false);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioInputAvailable, setAudioInputAvailable] = useState(false);
+  const [videoInputAvailable, setVideoInputAvailable] = useState(false);
   const [selectedAudioDevice, setSelectedAudioDevice] = useState("");
   const [selectedVideoDevice, setSelectedVideoDevice] = useState("");
   const [retakeAttachmentId, setRetakeAttachmentId] = useState<string | null>(null);
@@ -136,6 +183,8 @@ export function Composer({
   const recordingAttemptSequence = useRef(0);
   const recordingStartInFlight = useRef(false);
   const activeRecordingRef = useRef<ActiveRecordingAttempt | null>(null);
+  const preparedRecordingRef = useRef<PreparedRecording | null>(null);
+  const grantedMediaRef = useRef({ audio: false, video: false });
 
   const cleanupRecordingAttempt = useCallback((attempt: ActiveRecordingAttempt) => {
     if (attempt.timerId !== null) {
@@ -147,6 +196,13 @@ export function Composer({
       liveVideoRef.current.srcObject = null;
     }
     if (activeRecordingRef.current === attempt) activeRecordingRef.current = null;
+  }, []);
+
+  const cleanupPreparedRecording = useCallback(() => {
+    const prepared = preparedRecordingRef.current;
+    if (!prepared) return;
+    prepared.stream.getTracks().forEach((track) => track.stop());
+    preparedRecordingRef.current = null;
   }, []);
 
   const discardActiveRecording = useCallback(() => {
@@ -177,13 +233,15 @@ export function Composer({
       mountedRef.current = false;
       invalidatePendingRecordingStart();
       attachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.preview));
+      cleanupPreparedRecording();
       discardActiveRecording();
     };
-  }, [discardActiveRecording, invalidatePendingRecordingStart]);
+  }, [cleanupPreparedRecording, discardActiveRecording, invalidatePendingRecordingStart]);
 
   useEffect(() => {
     if (authenticated) return;
     invalidatePendingRecordingStart();
+    cleanupPreparedRecording();
     discardActiveRecording();
     const resetTimer = window.setTimeout(() => {
       if (!mountedRef.current) return;
@@ -193,7 +251,7 @@ export function Composer({
       setRetakeAttachmentId(null);
     }, 0);
     return () => window.clearTimeout(resetTimer);
-  }, [authenticated, discardActiveRecording, invalidatePendingRecordingStart]);
+  }, [authenticated, cleanupPreparedRecording, discardActiveRecording, invalidatePendingRecordingStart]);
 
   useEffect(() => {
     const video = liveVideoRef.current;
@@ -253,6 +311,40 @@ export function Composer({
     event.target.value = "";
   };
 
+  const refreshRecordingDevices = useCallback(async (reportError = true) => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    setDeviceSetupBusy(true);
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (!mountedRef.current) return;
+      const microphones = uniqueInputDevices(devices, "audioinput");
+      const cameras = uniqueInputDevices(devices, "videoinput");
+      const prepared = preparedRecordingRef.current;
+      setAudioDevices(microphones);
+      setVideoDevices(cameras);
+      setAudioInputAvailable(
+        microphones.length > 0 ||
+        Boolean(prepared?.stream.getAudioTracks().some((track) => track.readyState === "live")),
+      );
+      setVideoInputAvailable(
+        cameras.length > 0 ||
+        Boolean(prepared?.stream.getVideoTracks().some((track) => track.readyState === "live")),
+      );
+      setSelectedAudioDevice((current) =>
+        current && microphones.some((device) => device.deviceId === current) ? current : "",
+      );
+      setSelectedVideoDevice((current) =>
+        current && cameras.some((device) => device.deviceId === current) ? current : "",
+      );
+    } catch {
+      if (reportError && mountedRef.current) {
+        setError("The device list could not be refreshed. You can still try the system default device.");
+      }
+    } finally {
+      if (mountedRef.current) setDeviceSetupBusy(false);
+    }
+  }, []);
+
   const prepareRecording = async (
     kind: RecordingKind,
     replaceAttachmentId: string | null = null,
@@ -262,46 +354,83 @@ export function Composer({
       setError("Recording is not supported in this browser. You can upload a file instead.");
       return;
     }
+    const setupId = recordingAttemptSequence.current + 1;
+    recordingAttemptSequence.current = setupId;
+    cleanupPreparedRecording();
     setRecordingSetup(kind);
     setRetakeAttachmentId(replaceAttachmentId);
     setDeviceSetupBusy(true);
     setAudioDevices([]);
     setVideoDevices([]);
+    setAudioInputAvailable(false);
+    setVideoInputAvailable(false);
     setSelectedAudioDevice("");
     setSelectedVideoDevice("");
 
     let permissionStream: MediaStream | null = null;
     try {
-      permissionStream = await navigator.mediaDevices.getUserMedia(
-        kind === "audio"
-          ? { audio: true }
-          : {
-              audio: true,
-              video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
-            },
-      );
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const microphones = devices.filter((device) => device.kind === "audioinput");
-      const cameras = devices.filter((device) => device.kind === "videoinput");
-      if (!microphones.length) throw new Error("NO_MICROPHONE");
-      if (kind === "video_circle" && !cameras.length) throw new Error("NO_CAMERA");
+      permissionStream = await requestRecordingStream(navigator.mediaDevices, kind);
+      if (!mountedRef.current || recordingAttemptSequence.current !== setupId) {
+        permissionStream.getTracks().forEach((track) => track.stop());
+        permissionStream = null;
+        return;
+      }
+      grantedMediaRef.current.audio = true;
+      if (kind === "video_circle") grantedMediaRef.current.video = true;
+
+      let devices: MediaDeviceInfo[] = [];
+      try {
+        devices = await navigator.mediaDevices.enumerateDevices();
+      } catch {
+        // The granted stream is enough to record even when Safari withholds the device list.
+      }
+      if (!mountedRef.current || recordingAttemptSequence.current !== setupId) {
+        permissionStream.getTracks().forEach((track) => track.stop());
+        permissionStream = null;
+        return;
+      }
+
+      const microphones = uniqueInputDevices(devices, "audioinput");
+      const cameras = uniqueInputDevices(devices, "videoinput");
+      const audioDeviceId = trackDeviceId(permissionStream.getAudioTracks()[0]);
+      const videoDeviceId = trackDeviceId(permissionStream.getVideoTracks()[0]);
       setAudioDevices(microphones);
       setVideoDevices(cameras);
-    } catch (caught) {
-      setRecordingSetup(null);
-      setRetakeAttachmentId(null);
-      setError(
-        caught instanceof DOMException && caught.name === "NotAllowedError"
-          ? "Camera or microphone access was not allowed. You can upload a file instead."
-          : caught instanceof Error && caught.message === "NO_CAMERA"
-            ? "No camera was found on this device."
-            : caught instanceof Error && caught.message === "NO_MICROPHONE"
-              ? "No microphone was found on this device."
-              : "Recording devices could not be detected on this device.",
+      setAudioInputAvailable(true);
+      setVideoInputAvailable(kind === "video_circle");
+      setSelectedAudioDevice(
+        microphones.some((device) => device.deviceId === audioDeviceId) ? audioDeviceId : "",
       );
-    } finally {
+      setSelectedVideoDevice(
+        cameras.some((device) => device.deviceId === videoDeviceId) ? videoDeviceId : "",
+      );
+      preparedRecordingRef.current = {
+        kind,
+        stream: permissionStream,
+        audioDeviceId,
+        videoDeviceId,
+      };
+      permissionStream = null;
+    } catch (caught) {
       permissionStream?.getTracks().forEach((track) => track.stop());
-      setDeviceSetupBusy(false);
+      if (mountedRef.current && recordingAttemptSequence.current === setupId) {
+        setRecordingSetup(null);
+        setRetakeAttachmentId(null);
+        setAudioInputAvailable(false);
+        setVideoInputAvailable(false);
+        setError(
+          recordingErrorMessage(
+            caught,
+            kind,
+            grantedMediaRef.current.audio &&
+              (kind === "audio" || grantedMediaRef.current.video),
+          ),
+        );
+      }
+    } finally {
+      if (mountedRef.current && recordingAttemptSequence.current === setupId) {
+        setDeviceSetupBusy(false);
+      }
     }
   };
 
@@ -314,10 +443,6 @@ export function Composer({
       setError("Recording is not supported in this browser. You can upload a file instead.");
       return;
     }
-    if (kind === "video_circle" && !selectedVideoDevice) {
-      setError("Choose a camera before recording your circle.");
-      return;
-    }
     if (recordingStartInFlight.current || activeRecordingRef.current) return;
 
     const attemptId = recordingAttemptSequence.current + 1;
@@ -328,24 +453,25 @@ export function Composer({
     let activeAttempt: ActiveRecordingAttempt | null = null;
 
     try {
-      pendingStream = await navigator.mediaDevices.getUserMedia(
-        kind === "audio"
-          ? {
-              audio: selectedAudioDevice
-                ? { deviceId: { exact: selectedAudioDevice } }
-                : true,
-            }
-          : {
-              audio: selectedAudioDevice
-                ? { deviceId: { exact: selectedAudioDevice } }
-                : true,
-              video: {
-                deviceId: { exact: selectedVideoDevice },
-                width: { ideal: 720 },
-                height: { ideal: 720 },
-              },
-            },
-      );
+      const prepared = preparedRecordingRef.current;
+      if (
+        prepared &&
+        preparedStreamMatches(
+          prepared,
+          kind,
+          selectedAudioDevice,
+          selectedVideoDevice,
+        )
+      ) {
+        pendingStream = prepared.stream;
+        preparedRecordingRef.current = null;
+      } else {
+        cleanupPreparedRecording();
+        pendingStream = await requestRecordingStream(navigator.mediaDevices, kind, {
+          audioDeviceId: selectedAudioDevice,
+          videoDeviceId: selectedVideoDevice,
+        });
+      }
       if (
         !mountedRef.current ||
         recordingAttemptSequence.current !== attemptId ||
@@ -356,8 +482,9 @@ export function Composer({
         return;
       }
 
-      const mimeType = supportedRecorderMime(kind);
-      const recorder = new MediaRecorder(pendingStream, mimeType ? { mimeType } : undefined);
+      grantedMediaRef.current.audio = true;
+      if (kind === "video_circle") grantedMediaRef.current.video = true;
+      const recorder = createCompatibleMediaRecorder(pendingStream, kind);
       const chunks: Blob[] = [];
       const attempt: ActiveRecordingAttempt = {
         id: attemptId,
@@ -383,23 +510,34 @@ export function Composer({
           !attempt.discard &&
           activeRecordingRef.current === attempt &&
           recordingAttemptSequence.current === attempt.id;
-        const type = (recorder.mimeType || (kind === "audio" ? "audio/webm" : "video/webm")).split(";")[0];
-        const extension = type.includes("mp4") ? "mp4" : "webm";
-        const blob = new Blob(chunks, { type });
         cleanupRecordingAttempt(attempt);
 
         if (!shouldKeepRecording) return;
-        if (blob.size > 0) {
-          const file = new File([blob], `${kind === "audio" ? "voice" : "circle"}-${Date.now()}.${extension}`, {
-            type,
+        void recordedFileFromChunks(kind, chunks, recorder.mimeType)
+          .then((file) => {
+            if (
+              !mountedRef.current ||
+              recordingAttemptSequence.current !== attempt.id ||
+              attempt.discard
+            ) {
+              return;
+            }
+            appendFiles([file], "recording", replaceAttachmentId);
+          })
+          .catch((fileError: unknown) => {
+            if (!mountedRef.current || recordingAttemptSequence.current !== attempt.id) return;
+            setError(
+              fileError instanceof Error && fileError.message === "EMPTY_RECORDING"
+                ? "The recording was empty. Please try again."
+                : "This browser created an unsupported recording format. Try again or upload a file.",
+            );
+          })
+          .finally(() => {
+            if (!mountedRef.current || recordingAttemptSequence.current !== attempt.id) return;
+            setRecording(null);
+            setRecordingSeconds(0);
+            setRetakeAttachmentId(null);
           });
-          appendFiles([file], "recording", replaceAttachmentId);
-        } else {
-          setError("The recording was empty. Please try again.");
-        }
-        setRecording(null);
-        setRecordingSeconds(0);
-        setRetakeAttachmentId(null);
       };
       recorder.onerror = () => {
         if (attempt.finalized) return;
@@ -413,7 +551,8 @@ export function Composer({
         setRetakeAttachmentId(null);
         setError("Recording stopped unexpectedly. Please try again or upload a file.");
       };
-      recorder.start(500);
+      // A single final chunk produces substantially more reliable MP4 metadata on iOS.
+      recorder.start();
       setRecordingSetup(null);
       setRecording(kind);
       setRecordingSeconds(0);
@@ -439,12 +578,16 @@ export function Composer({
       }
       if (mountedRef.current && recordingAttemptSequence.current === attemptId) {
         setRecording(null);
+        if (isRecordingDeviceSelectionError(caught)) {
+          void refreshRecordingDevices(false);
+        }
         setError(
-          caught instanceof DOMException && caught.name === "NotAllowedError"
-            ? "Camera or microphone access was not allowed. You can upload a file instead."
-            : caught instanceof DOMException && caught.name === "OverconstrainedError"
-              ? "That device is no longer available. Choose another one and try again."
-              : "Recording could not start on this device.",
+          recordingErrorMessage(
+            caught,
+            kind,
+            grantedMediaRef.current.audio &&
+              (kind === "audio" || grantedMediaRef.current.video),
+          ),
         );
       }
     } finally {
@@ -463,6 +606,7 @@ export function Composer({
   const removeAttachment = (id: string) => {
     if (retakeAttachmentId === id) {
       if (!activeRecordingRef.current) invalidatePendingRecordingStart();
+      cleanupPreparedRecording();
       setRecordingSetup(null);
       setRetakeAttachmentId(null);
     }
@@ -597,7 +741,7 @@ export function Composer({
         <div className="rounded-xl border border-dashed border-[#c9ff55]/35 bg-[#c9ff55]/5 p-4 text-sm text-white/70">
           {sessionStatus === "signing"
             ? "Approve the signature in your wallet to continue. This costs no SOL."
-            : "Connect your Solana wallet above to post, react, reply, and fund people."}
+            : "Sign in above to post, react, and reply. Connect a verified Solana wallet to fund people."}
         </div>
       ) : (
         <>
@@ -657,7 +801,7 @@ export function Composer({
                     {retakeAttachmentId ? "Retake" : "Set up"} {recordingSetup === "audio" ? "voice message" : "circle video"}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-white/55">
-                    Preview and replay the result before publishing. Nothing uploads until you publish.
+                    Your recording device stays active only while setup is open. Preview and replay the result before publishing; nothing uploads until you publish.
                   </p>
                 </div>
                 <button
@@ -665,6 +809,7 @@ export function Composer({
                   type="button"
                   onClick={() => {
                     invalidatePendingRecordingStart();
+                    cleanupPreparedRecording();
                     setRecordingSetup(null);
                     setRetakeAttachmentId(null);
                     setError(null);
@@ -689,11 +834,13 @@ export function Composer({
                           className="min-h-11 rounded-xl border border-white/12 bg-[#151815] px-3 text-sm normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
                           value={selectedVideoDevice}
                           onChange={(event) => setSelectedVideoDevice(event.target.value)}
-                          required
                         >
-                          <option value="" disabled>Choose a camera</option>
+                          <option value="">System default camera (front preferred)</option>
                           {videoDevices.map((device, index) => (
-                            <option key={device.deviceId} value={device.deviceId}>
+                            <option
+                              key={`${device.deviceId || "default"}-${device.groupId || index}-${index}`}
+                              value={device.deviceId}
+                            >
                               {device.label || `Camera ${index + 1}`}
                             </option>
                           ))}
@@ -709,7 +856,10 @@ export function Composer({
                       >
                         <option value="">System default microphone</option>
                         {audioDevices.map((device, index) => (
-                          <option key={device.deviceId} value={device.deviceId}>
+                          <option
+                            key={`${device.deviceId || "default"}-${device.groupId || index}-${index}`}
+                            value={device.deviceId}
+                          >
                             {device.label || `Microphone ${index + 1}`}
                           </option>
                         ))}
@@ -719,7 +869,7 @@ export function Composer({
                   {recordingSetup === "video_circle" ? (
                     <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-white/50">
                       <Camera className="mt-0.5 shrink-0" aria-hidden="true" size={14} />
-                      Choose a camera for every new circle so you always know whether front, back, or an external camera will record.
+                      The granted camera is reused by default. Choose another camera here when you want to switch front, back, or external devices.
                     </p>
                   ) : null}
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -728,8 +878,8 @@ export function Composer({
                       type="button"
                       disabled={
                         recordingStartBusy ||
-                        !audioDevices.length ||
-                        (recordingSetup === "video_circle" && !selectedVideoDevice)
+                        !audioInputAvailable ||
+                        (recordingSetup === "video_circle" && !videoInputAvailable)
                       }
                       onClick={() => void startRecording(recordingSetup, retakeAttachmentId)}
                     >
@@ -745,8 +895,17 @@ export function Composer({
                     <button
                       className="button button-secondary"
                       type="button"
+                      disabled={deviceSetupBusy || recordingStartBusy}
+                      onClick={() => void refreshRecordingDevices()}
+                    >
+                      <RotateCcw aria-hidden="true" size={16} /> Refresh devices
+                    </button>
+                    <button
+                      className="button button-secondary"
+                      type="button"
                       onClick={() => {
                         invalidatePendingRecordingStart();
+                        cleanupPreparedRecording();
                         setRecordingSetup(null);
                         setRetakeAttachmentId(null);
                         setError(null);

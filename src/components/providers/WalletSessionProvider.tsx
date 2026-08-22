@@ -34,6 +34,25 @@ interface WalletSessionContextValue {
 }
 
 const WalletSessionContext = createContext<WalletSessionContextValue | null>(null);
+const LAST_WALLET_STORAGE_KEY = "money-nerds:last-solana-wallet";
+
+function readRememberedWallet() {
+  try {
+    return window.localStorage.getItem(LAST_WALLET_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberWallet(name: string | null) {
+  try {
+    if (name) window.localStorage.setItem(LAST_WALLET_STORAGE_KEY, name);
+    else window.localStorage.removeItem(LAST_WALLET_STORAGE_KEY);
+  } catch {
+    // Wallet Adapter can still connect when storage is unavailable; only automatic
+    // restoration across an iOS page lifecycle is lost.
+  }
+}
 
 interface PreparedChallenge {
   id: string;
@@ -64,12 +83,14 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   const refreshPromise = useRef<Promise<WalletSession | null | undefined> | null>(null);
   const revokePromise = useRef<Promise<boolean> | null>(null);
   const revocationRequired = useRef(false);
+  const pageLifecycleHidden = useRef(false);
   const preparedChallenge = useRef<PreparedChallenge | null>(null);
   const challengeRequest = useRef<{
     walletAddress: string;
     promise: Promise<PreparedChallenge | null>;
   } | null>(null);
   const walletAddress = wallet.connected ? (wallet.publicKey?.toBase58() ?? null) : null;
+  const selectedWalletName = wallet.wallet?.adapter.name ?? null;
   const walletAddressRef = useRef<string | null>(walletAddress);
   const lastConnectedWallet = useRef<string | null>(walletAddress);
 
@@ -85,7 +106,7 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const invalidateSession = useCallback(
-    (message = "Your wallet session ended. Sign again to continue.") => {
+    (message = "Your session ended. Sign in again to continue.") => {
       sessionChecked.current = true;
       attemptedWallet.current = null;
       clearLocalSession("error", message);
@@ -194,11 +215,22 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
           setSession(nextSession);
           setError(null);
 
-          if (nextSession?.walletAddress === walletAddressRef.current) {
+          const activeWallet = walletAddressRef.current;
+          if (nextSession && nextSession.authProvider !== "wallet") {
+            attemptedWallet.current = null;
+            preparedChallenge.current = null;
             setStatus("authenticated");
-          } else if (!nextSession && hadSession && walletAddressRef.current) {
+          } else if (nextSession?.walletAddress === activeWallet) {
+            setStatus("authenticated");
+          } else if (!nextSession && hadSession) {
             setStatus("error");
-            setError("Your wallet session ended. Sign again to continue.");
+            setError("Your session ended. Sign in again to continue.");
+          } else if (signing.current) {
+            setStatus("signing");
+          } else if (activeWallet && challengeRequest.current?.walletAddress === activeWallet) {
+            // The initial cookie check and challenge prefetch run concurrently. Do
+            // not expose an actionable Sign button until its challenge is ready.
+            setStatus("preparing");
           } else {
             setStatus("disconnected");
           }
@@ -221,7 +253,8 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const signIn = useCallback(async () => {
+  const signIn = useCallback(async (prepared?: PreparedChallenge | null) => {
+    if (sessionRef.current && sessionRef.current.authProvider !== "wallet") return;
     const signingWallet = wallet.publicKey?.toBase58();
     if (!wallet.connected || !signingWallet || !wallet.signMessage || signing.current) {
       if (wallet.connected && !wallet.signMessage) {
@@ -238,19 +271,18 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     setStatus("signing");
 
     try {
-      const challenge = preparedChallenge.current;
+      const challenge = prepared ?? preparedChallenge.current;
       if (
         !challenge ||
         challenge.walletAddress !== signingWallet ||
         new Date(challenge.expiresAt).getTime() <= Date.now() + 5_000
       ) {
-        void prepareChallenge(signingWallet);
-        throw new Error("Sign-in is being prepared. Tap Sign to continue again in a moment.");
+        throw new Error("The sign-in request expired. Retry to prepare a new one.");
       }
 
-      // Keep the wallet interaction adjacent to the user's click. Android Chrome
-      // blocks Mobile Wallet Adapter navigation when it begins from an effect or
-      // after unrelated network work.
+      // Retry keeps this adjacent to the click. Fresh Phantom iOS and MetaMask
+      // connections also continue here through their injected/relay providers;
+      // Android Mobile Wallet Adapter is excluded from that automatic path.
       const signature = await wallet.signMessage(
         new TextEncoder().encode(challenge.message),
       );
@@ -312,7 +344,7 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     } finally {
       signing.current = false;
     }
-  }, [prepareChallenge, revokeServerSession, router, wallet]);
+  }, [revokeServerSession, router, wallet]);
 
   useEffect(() => {
     mounted.current = true;
@@ -332,18 +364,57 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   useEffect(() => {
+    const markHidden = () => {
+      pageLifecycleHidden.current = true;
+    };
     const refreshIfVisible = () => {
-      if (document.visibilityState === "visible") void refreshSession(false);
+      if (document.visibilityState === "visible") {
+        pageLifecycleHidden.current = false;
+        void refreshSession(false);
+      }
+    };
+    const restoreFromPageCache = () => {
+      pageLifecycleHidden.current = false;
+      void refreshSession(false);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") markHidden();
+      else refreshIfVisible();
     };
     window.addEventListener("focus", refreshIfVisible);
     window.addEventListener("online", refreshIfVisible);
-    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("pagehide", markHidden);
+    window.addEventListener("pageshow", restoreFromPageCache);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       window.removeEventListener("focus", refreshIfVisible);
       window.removeEventListener("online", refreshIfVisible);
-      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("pagehide", markHidden);
+      window.removeEventListener("pageshow", restoreFromPageCache);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [refreshSession]);
+
+  useEffect(() => {
+    if (!wallet.connected || !selectedWalletName) return;
+    rememberWallet(selectedWalletName);
+  }, [selectedWalletName, wallet.connected]);
+
+  useEffect(() => {
+    if (
+      !session ||
+      session.authProvider !== "wallet" ||
+      wallet.connected ||
+      wallet.connecting ||
+      wallet.wallet
+    ) return;
+    const rememberedName = readRememberedWallet();
+    if (!rememberedName) return;
+    const rememberedWallet = wallet.wallets.find(
+      ({ adapter }) => adapter.name === rememberedName,
+    );
+    if (rememberedWallet) wallet.select(rememberedWallet.adapter.name);
+  }, [session, wallet]);
 
   useEffect(() => {
     if (!session) return;
@@ -359,9 +430,23 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     const previousWallet = lastConnectedWallet.current;
     lastConnectedWallet.current = walletAddress;
 
+    // The cookie is the authoritative identity. A wallet restored in the
+    // background must neither replace nor revoke an external-provider session.
+    if (!sessionChecked.current || (session && session.authProvider !== "wallet")) {
+      attemptedWallet.current = null;
+      preparedChallenge.current = null;
+      return;
+    }
+
     if (!walletAddress) {
       if (previousWallet) {
         attemptedWallet.current = null;
+        if (pageLifecycleHidden.current || document.visibilityState === "hidden") {
+          // iOS wallet hand-offs and page reloads can emit a transient adapter
+          // disconnect without `beforeunload`. Preserve the HTTP-only session;
+          // the selected wallet is restored after the page becomes visible again.
+          return;
+        }
         void revokeServerSession().then((revoked) => {
           if (!mounted.current) return;
           clearLocalSession(
@@ -429,20 +514,51 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     });
   }, [clearLocalSession, prepareChallenge, revokeServerSession, session, status, walletAddress]);
 
+  useEffect(() => {
+    if (
+      !walletAddress ||
+      !sessionChecked.current ||
+      (session && session.authProvider !== "wallet") ||
+      session?.walletAddress === walletAddress ||
+      status !== "disconnected" ||
+      signing.current ||
+      attemptedWallet.current === walletAddress ||
+      selectedWalletName === "Mobile Wallet Adapter"
+    ) return;
+
+    const challenge = preparedChallenge.current;
+    if (
+      !challenge ||
+      challenge.walletAddress !== walletAddress ||
+      new Date(challenge.expiresAt).getTime() <= Date.now() + 5_000
+    ) return;
+
+    // A fresh Phantom iOS or MetaMask connection should flow straight into its
+    // signature request. Keep Android MWA on the explicit button path because
+    // its app navigation must begin directly from a user gesture.
+    attemptedWallet.current = walletAddress;
+    void signIn(challenge);
+  }, [selectedWalletName, session, signIn, status, walletAddress]);
+
   const retrySignIn = useCallback(async () => {
     attemptedWallet.current = null;
     setError(null);
     if (!sessionChecked.current) {
       const checkedSession = await refreshSession();
       if (checkedSession === undefined) return;
+      if (checkedSession && checkedSession.authProvider !== "wallet") return;
       if (checkedSession?.walletAddress === walletAddressRef.current) return;
+    }
+    if (sessionRef.current && sessionRef.current.authProvider !== "wallet") {
+      setStatus("authenticated");
+      return;
     }
     if (sessionRef.current?.walletAddress === walletAddressRef.current) {
       setStatus("authenticated");
       return;
     }
     const address = walletAddressRef.current;
-    const challenge = preparedChallenge.current;
+    let challenge = preparedChallenge.current;
     if (
       address &&
       (!challenge ||
@@ -451,36 +567,39 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     ) {
       setStatus("preparing");
       setError(null);
-      const nextChallenge = await prepareChallenge(address);
-      if (
-        nextChallenge?.walletAddress === address &&
-        walletAddressRef.current === address
-      ) setStatus("disconnected");
-      return;
+      challenge = await prepareChallenge(address);
+      if (!challenge || challenge.walletAddress !== address || walletAddressRef.current !== address) {
+        return;
+      }
     }
-    await signIn();
+    await signIn(challenge);
   }, [prepareChallenge, refreshSession, signIn]);
 
   const disconnect = useCallback(async () => {
     setError(null);
     attemptedWallet.current = null;
     lastConnectedWallet.current = null;
+    rememberWallet(null);
     const revoked = await revokeServerSession();
     await wallet.disconnect().catch(() => undefined);
     clearLocalSession(
       revoked ? "disconnected" : "error",
       revoked
         ? null
-        : "The wallet disconnected, but the server session could not be closed. Retry before reconnecting.",
+        : "Your session could not be closed. Check your connection and retry.",
     );
     router.refresh();
   }, [clearLocalSession, revokeServerSession, router, wallet]);
 
   const walletMatchesSession = Boolean(
-    walletAddress && session?.walletAddress === walletAddress,
+    walletAddress && session?.authProvider === "wallet" && session.walletAddress === walletAddress,
   );
+  const externalSessionAuthenticated = Boolean(session && session.authProvider !== "wallet");
+  const identityMatchesSession = externalSessionAuthenticated || walletMatchesSession;
   const resolvedStatus: SessionStatus = status === "loading"
     ? "loading"
+    : externalSessionAuthenticated
+      ? "authenticated"
     : status === "preparing"
       ? "preparing"
     : status === "signing"
@@ -497,13 +616,13 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
     () => ({
       session,
       status: resolvedStatus,
-      authenticated: resolvedStatus === "authenticated" && walletMatchesSession,
+      authenticated: resolvedStatus === "authenticated" && identityMatchesSession,
       error,
       retrySignIn,
       disconnect,
       invalidateSession,
     }),
-    [disconnect, error, invalidateSession, resolvedStatus, retrySignIn, session, walletMatchesSession],
+    [disconnect, error, identityMatchesSession, invalidateSession, resolvedStatus, retrySignIn, session],
   );
 
   return (

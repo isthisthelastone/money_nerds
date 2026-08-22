@@ -1,18 +1,44 @@
 "use client";
 
-import type { KeyboardEvent, PointerEvent } from "react";
-import { useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleDollarSign, Move3d, Radio } from "lucide-react";
 
 const INITIAL_ROTATION = { x: 8, y: -18 };
+const EDGE_LAYER_COUNT = 21;
+const COIN_EDGE_LAYERS = Array.from({ length: EDGE_LAYER_COUNT }, (_, index) => {
+  const depth = -0.9 + (index * 1.8) / (EDGE_LAYER_COUNT - 1);
+  return (
+    <i
+      className={`hero-coin__edge${index % 4 === 0 ? " hero-coin__edge--ridge" : ""}`}
+      key={index}
+      style={{ "--coin-edge-depth": `${depth.toFixed(2)}rem` } as CSSProperties}
+    />
+  );
+});
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function CoinFace({ side }: { side: "front" | "back" }) {
+  return (
+    <div className={`hero-coin__face hero-coin__face--${side}`}>
+      <span className="hero-coin__inner-ring">
+        <span className="hero-coin__monogram">
+          <i className="hero-coin__bar hero-coin__bar--left" />
+          <i className="hero-coin__bar hero-coin__bar--slash" />
+          <i className="hero-coin__bar hero-coin__bar--right" />
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function HeroCoin() {
   const [rotation, setRotation] = useState(INITIAL_ROTATION);
   const [dragging, setDragging] = useState(false);
+  const coinRef = useRef<HTMLElement>(null);
   const rotationRef = useRef(INITIAL_ROTATION);
   const dragRef = useRef<{
     pointerId: number;
@@ -23,14 +49,73 @@ export function HeroCoin() {
     moved: boolean;
   } | null>(null);
 
-  const updateRotation = (next: { x: number; y: number }) => {
+  const updateRotation = useCallback((next: { x: number; y: number }) => {
     rotationRef.current = next;
     setRotation(next);
-  };
+  }, []);
 
-  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+  const finishPointerInteraction = useCallback(
+    (pointerId: number | null, turnOnTap = false) => {
+      const drag = dragRef.current;
+      if (!drag || (pointerId !== null && drag.pointerId !== pointerId)) return;
+
+      dragRef.current = null;
+      setDragging(false);
+
+      if (turnOnTap && !drag.moved) {
+        updateRotation({ x: rotationRef.current.x, y: rotationRef.current.y + 36 });
+      }
+
+      const coin = coinRef.current;
+      if (coin?.hasPointerCapture(drag.pointerId)) {
+        try {
+          coin.releasePointerCapture(drag.pointerId);
+        } catch {
+          // The browser may already have released capture while dispatching cancellation.
+        }
+      }
+    },
+    [updateRotation],
+  );
+
+  useEffect(() => {
+    const coin = coinRef.current;
+    const handleWindowPointerUp = (event: globalThis.PointerEvent) => {
+      finishPointerInteraction(event.pointerId, true);
+    };
+    const handleWindowPointerCancel = (event: globalThis.PointerEvent) => {
+      finishPointerInteraction(event.pointerId);
+    };
+    const handleWindowBlur = () => {
+      finishPointerInteraction(null);
+    };
+
+    window.addEventListener("pointerup", handleWindowPointerUp, true);
+    window.addEventListener("pointercancel", handleWindowPointerCancel, true);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      window.removeEventListener("pointerup", handleWindowPointerUp, true);
+      window.removeEventListener("pointercancel", handleWindowPointerCancel, true);
+      window.removeEventListener("blur", handleWindowBlur);
+
+      const drag = dragRef.current;
+      dragRef.current = null;
+      if (drag && coin?.hasPointerCapture(drag.pointerId)) {
+        try {
+          coin.releasePointerCapture(drag.pointerId);
+        } catch {
+          // Capture can disappear during unmount without a matching pointer event.
+        }
+      }
+    };
+  }, [finishPointerInteraction]);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!event.isPrimary || dragRef.current) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (event.pointerType !== "mouse" && event.cancelable) event.preventDefault();
+    event.currentTarget.focus({ preventScroll: true });
     dragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -40,11 +125,18 @@ export function HeroCoin() {
       moved: false,
     };
     setDragging(true);
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Window listeners still guarantee cleanup if capture is unavailable.
+    }
   };
 
-  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
+  const handlePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.cancelable) event.preventDefault();
 
     const deltaX = event.clientX - drag.startX;
     const deltaY = event.clientY - drag.startY;
@@ -53,20 +145,6 @@ export function HeroCoin() {
       x: clamp(drag.rotationX - deltaY * 0.35, -42, 42),
       y: drag.rotationY + deltaX * 0.48,
     });
-  };
-
-  const finishPointerInteraction = (event: PointerEvent<HTMLElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    if (!drag.moved) {
-      updateRotation({ x: rotationRef.current.x, y: rotationRef.current.y + 36 });
-    }
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragRef.current = null;
-    setDragging(false);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -92,32 +170,29 @@ export function HeroCoin() {
 
   return (
     <figure
+      ref={coinRef}
       className="hero-coin"
       data-dragging={dragging || undefined}
       aria-label="Interactive 3D coin representing direct wallet-to-wallet funding"
       aria-describedby="hero-coin-instructions"
+      aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home"
       tabIndex={0}
       onDoubleClick={() => updateRotation(INITIAL_ROTATION)}
       onKeyDown={handleKeyDown}
-      onPointerCancel={finishPointerInteraction}
+      onLostPointerCapture={(event) => finishPointerInteraction(event.pointerId)}
+      onPointerCancel={(event) => finishPointerInteraction(event.pointerId)}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerUp={finishPointerInteraction}
+      onPointerUp={(event) => finishPointerInteraction(event.pointerId, true)}
     >
       <div className="hero-coin__scene" aria-hidden="true">
         <div
           className="hero-coin__model"
           style={{ transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) rotateZ(-4deg)` }}
         >
-          <div className="hero-coin__face">
-            <span className="hero-coin__inner-ring">
-              <span className="hero-coin__monogram">
-                <i className="hero-coin__bar hero-coin__bar--left" />
-                <i className="hero-coin__bar hero-coin__bar--slash" />
-                <i className="hero-coin__bar hero-coin__bar--right" />
-              </span>
-            </span>
-          </div>
+          {COIN_EDGE_LAYERS}
+          <CoinFace side="front" />
+          <CoinFace side="back" />
         </div>
       </div>
       <span className="hero-coin__label hero-coin__label--top">
@@ -127,7 +202,12 @@ export function HeroCoin() {
         <CircleDollarSign aria-hidden="true" size={12} /> No platform cut
       </span>
       <figcaption className="hero-coin__hint" id="hero-coin-instructions">
-        <Move3d aria-hidden="true" size={13} /> Drag or swipe to rotate · tap to turn
+        <Move3d aria-hidden="true" size={13} />
+        <span aria-hidden="true">Drag or swipe to rotate · tap to turn</span>
+        <span className="sr-only">
+          Drag or swipe to rotate the coin, or tap to turn it. Use the arrow keys to rotate it and press Home to
+          reset it.
+        </span>
       </figcaption>
     </figure>
   );

@@ -35,6 +35,7 @@ const connectSources = [
   "wss://*.alchemy.com",
   "https://*.quiknode.pro",
   "wss://*.quiknode.pro",
+  "wss://mm-sdk-relay.api.cx.metamask.io",
   "https://phantom.app",
   "https://*.phantom.app",
   "https://solflare.com",
@@ -45,7 +46,7 @@ const connectSources = [
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://telegram.org${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
@@ -54,7 +55,7 @@ const contentSecurityPolicy = [
   `connect-src ${[...new Set(connectSources)].join(" ")}`,
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
-  "frame-src 'self' https://phantom.app https://*.phantom.app https://solflare.com https://*.solflare.com",
+  "frame-src 'self' https://oauth.telegram.org https://phantom.app https://*.phantom.app https://solflare.com https://*.solflare.com",
   "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
