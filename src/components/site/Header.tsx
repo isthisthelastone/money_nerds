@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type {ReactNode} from "react";
 import {BadgeDollarSign, Menu} from "lucide-react";
+import {CategoryNav} from "./CategoryNav";
 
 const navigation = [
     {href: "/", label: "Home"},
@@ -58,6 +59,7 @@ export function SiteHeader({walletControl, children}: SiteHeaderProps) {
                     </nav>
                 </details>
             </div>
+            <CategoryNav />
         </header>
     );
 }

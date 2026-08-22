@@ -7,17 +7,9 @@ import { DonateButton } from "@/components/features/DonateButton";
 import { LikeButton } from "@/components/features/LikeButton";
 import { MediaGallery } from "@/components/features/MediaGallery";
 import { ShareButton } from "@/components/features/ShareButton";
+import { categoryHref } from "@/lib/categories";
 import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
-import type { CommentCardData, PostCardData } from "@/lib/models";
-
-const CATEGORY_LABEL: Record<string, string> = {
-  anything: "Anything",
-  "for-fun": "For fun",
-  "mutual-aid": "Mutual aid",
-  build: "Build",
-  animals: "Animals",
-  art: "Art",
-};
+import { CATEGORY_LABELS, isCategory, type CommentCardData, type PostCardData } from "@/lib/models";
 
 export function PostCard({
   post,
@@ -29,15 +21,19 @@ export function PostCard({
   initialComments?: CommentCardData[];
 }) {
   const totalLikes = post.like_count + post.legacy_like_count;
+  const postCategory = isCategory(post.category) ? post.category : "anything";
   return (
     <article className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#111311] shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
       <div className="p-5 sm:p-6">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs text-white/40">
-              <span className="rounded-full bg-[#c9ff55]/10 px-2.5 py-1 font-medium text-[#c9ff55]">
-                {CATEGORY_LABEL[post.category] ?? "Anything"}
-              </span>
+              <a
+                className="rounded-full bg-[#c9ff55]/10 px-2.5 py-1 font-medium text-[#c9ff55] transition hover:bg-[#c9ff55]/20"
+                href={categoryHref(postCategory)}
+              >
+                {CATEGORY_LABELS[postCategory]}
+              </a>
               <span>#{post.id}</span>
               <time dateTime={post.created_at} suppressHydrationWarning>
                 {formatRelativeTime(post.created_at)}
@@ -92,4 +88,3 @@ export function PostCard({
     </article>
   );
 }
-

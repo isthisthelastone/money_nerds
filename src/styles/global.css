@@ -298,6 +298,72 @@ h6 {
   max-width: min(11.5rem, 36vw);
 }
 
+.site-category-nav {
+  border-top: 1px solid rgb(255 255 255 / 0.055);
+  background: rgb(7 9 7 / 0.74);
+}
+
+.site-category-nav__inner {
+  display: flex;
+  min-height: 2.85rem;
+  align-items: center;
+  gap: 0.32rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.site-category-nav__inner::-webkit-scrollbar {
+  display: none;
+}
+
+.site-category-nav__label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: inline-flex;
+  min-height: 1.9rem;
+  flex: none;
+  align-items: center;
+  padding-right: 0.65rem;
+  background: linear-gradient(90deg, rgb(7 9 7) 76%, transparent);
+  color: var(--lime);
+  font-family: var(--font-code);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.site-category-nav__item {
+  display: inline-flex;
+  min-height: 1.9rem;
+  flex: none;
+  align-items: center;
+  padding: 0.35rem 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--muted-strong);
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  transition: 150ms ease;
+  transition-property: border-color, background-color, color;
+}
+
+.site-category-nav__item:hover {
+  border-color: var(--line-bright);
+  background: var(--panel-raised);
+  color: var(--paper);
+}
+
+.site-category-nav__item[data-active] {
+  border-color: rgb(199 255 66 / 0.36);
+  background: rgb(199 255 66 / 0.11);
+  color: var(--lime-soft);
+}
+
 .site-mobile-nav {
   position: relative;
   display: none;
@@ -819,6 +885,19 @@ body .wallet-adapter-modal-list-more svg {
   color: #ff9a90;
 }
 
+.media-thumbnail-box {
+  width: min(16rem, 100%);
+  aspect-ratio: 1;
+}
+
+.media-thumbnail-box img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -891,6 +970,64 @@ body .wallet-adapter-modal-list-more svg {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+.media-preview-dialog {
+  width: min(90rem, calc(100% - 1.5rem));
+  max-width: none;
+  max-height: calc(100dvh - 1.5rem);
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 1.25rem;
+  background: transparent;
+  color: var(--paper);
+}
+
+.media-preview-dialog[open] {
+  animation: dialog-enter 180ms ease-out;
+}
+
+.media-preview-dialog::backdrop {
+  background: rgb(1 3 1 / 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.media-preview-dialog__inner {
+  display: grid;
+  max-height: calc(100dvh - 1.5rem);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--line-bright);
+  border-radius: 1.25rem;
+  background: var(--panel);
+  box-shadow: 0 2rem 7rem rgb(0 0 0 / 0.7);
+}
+
+.media-preview-dialog__canvas {
+  display: flex;
+  min-height: min(28rem, 52dvh);
+  max-height: calc(100dvh - 10rem);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: clamp(0.5rem, 2vw, 1.25rem);
+  border-block: 1px solid var(--line);
+  background:
+    linear-gradient(45deg, rgb(255 255 255 / 0.018) 25%, transparent 25%),
+    linear-gradient(-45deg, rgb(255 255 255 / 0.018) 25%, transparent 25%),
+    #070907;
+  background-position: 0 0, 0.5rem 0.5rem;
+  background-size: 1rem 1rem;
+}
+
+.media-preview-dialog__canvas img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100dvh - 12rem);
+  object-fit: contain;
 }
 
 .donation-dialog {
@@ -1045,6 +1182,18 @@ body .wallet-adapter-modal-list-more svg {
   width: min(100%, 33rem);
   aspect-ratio: 1;
   margin: 0 auto;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.hero-coin[data-dragging] {
+  cursor: grabbing;
+}
+
+.hero-coin:focus-visible {
+  outline-offset: 0.45rem;
 }
 
 .hero-coin::before {
@@ -1078,22 +1227,30 @@ body .wallet-adapter-modal-list-more svg {
 @keyframes coin-float {
   0%,
   100% {
-    transform: rotateX(8deg) rotateY(-18deg) rotateZ(-5deg) translateY(-1%);
+    transform: translateY(-1%);
   }
 
   50% {
-    transform: rotateX(4deg) rotateY(4deg) rotateZ(2deg) translateY(2%);
+    transform: translateY(2%);
   }
+}
+
+.hero-coin__scene {
+  animation: coin-float 5.5s ease-in-out infinite;
 }
 
 .hero-coin__model {
   position: relative;
   width: 70%;
   aspect-ratio: 1;
-  animation: coin-float 8s ease-in-out infinite;
   filter: drop-shadow(1.2rem 1.5rem 1.8rem rgb(0 0 0 / 0.48));
+  transition: transform 90ms ease-out;
   transform-style: preserve-3d;
   will-change: transform;
+}
+
+.hero-coin[data-dragging] .hero-coin__model {
+  transition: none;
 }
 
 .hero-coin__model::before {
@@ -1202,6 +1359,35 @@ body .wallet-adapter-modal-list-more svg {
 .hero-coin__label--bottom {
   bottom: 14%;
   left: 1%;
+}
+
+.hero-coin__hint {
+  position: absolute;
+  right: 50%;
+  bottom: 4.5%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: 86%;
+  padding: 0.46rem 0.66rem;
+  border: 1px solid rgb(199 255 66 / 0.2);
+  border-radius: 999px;
+  background: rgb(9 11 9 / 0.82);
+  color: var(--muted-strong);
+  font-family: var(--font-code);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  pointer-events: none;
+  transform: translateX(50%);
+  backdrop-filter: blur(10px);
+}
+
+.hero-coin__hint svg {
+  flex: none;
+  color: var(--lime);
 }
 
 .site-page {
@@ -1522,6 +1708,21 @@ body .wallet-adapter-modal-list-more svg {
 }
 
 @media (max-width: 42rem) {
+  .media-preview-dialog {
+    width: calc(100% - 0.75rem);
+    max-height: calc(100dvh - 0.75rem);
+  }
+
+  .media-preview-dialog__inner {
+    max-height: calc(100dvh - 0.75rem);
+    border-radius: 1rem;
+  }
+
+  .media-preview-dialog__canvas {
+    min-height: 42dvh;
+    max-height: calc(100dvh - 11rem);
+  }
+
   .site-shell {
     width: min(calc(100% - 1.25rem), var(--site-width));
   }

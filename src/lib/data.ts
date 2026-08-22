@@ -135,6 +135,8 @@ export async function getFeed(params: FeedParams) {
   const from = (params.page - 1) * params.pageSize;
   const to = from + params.pageSize - 1;
   let query = supabase.from("post_cards").select("*", { count: "exact" });
+  // `anything` is the stable public URL sentinel for the unfiltered feed.
+  // It also remains a valid legacy stored value, so existing posts need no rewrite.
   if (params.category !== "anything") query = query.eq("category", params.category);
 
   const sortColumn =
@@ -148,6 +150,22 @@ export async function getFeed(params: FeedParams) {
     .order("id", { ascending: false })
     .range(from, to);
   const { data, count, error } = await query;
+  // PostgREST returns 416/PGRST103 instead of an empty array when an offset is
+  // beyond the available rows. Recover the exact count so the page can either
+  // show a valid empty category or redirect an out-of-range page safely.
+  if (error?.code === "PGRST103") {
+    let countQuery = supabase
+      .from("post_cards")
+      .select("*", { count: "exact", head: true });
+    if (params.category !== "anything") {
+      countQuery = countQuery.eq("category", params.category);
+    }
+    const { count: exactCount, error: countError } = await countQuery;
+    if (countError) {
+      throw new Error(`Unable to count the feed: ${countError.message}`);
+    }
+    return { posts: [], count: exactCount ?? 0 };
+  }
   if (error) throw new Error(`Unable to load the feed: ${error.message}`);
   return {
     posts: (data ?? []).map((row) => normalizePost(row as Record<string, unknown>)),
