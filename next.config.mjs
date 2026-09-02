@@ -74,6 +74,15 @@ const nextConfig = {
   agentRules: false,
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/icon.svg",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

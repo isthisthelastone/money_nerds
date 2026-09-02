@@ -39,7 +39,7 @@ export function SiteFooter() {
                                 rel="noreferrer"
                                 target="_blank"
                             >
-                                Solana service wallet <ArrowUpRight aria-hidden="true" size={13} />
+                                Public service ledger <ArrowUpRight aria-hidden="true" size={13} />
                             </a>
                             <a href="mailto:unluckypleasure@yandex.ru">Contact</a>
                         </div>

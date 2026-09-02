@@ -1,27 +1,32 @@
 # Money Nerds
 
-Money Nerds is a wallet-native public board for asks, ideas, memes, and mutual
-aid. People publish with a Solana wallet and can receive SOL directly from other
-wallets. The platform takes no commission and never custodies user funds.
+Money Nerds is a public board for asks, ideas, memes, and mutual aid. People sign
+in once, publish a request, and receive direct support through the crypto routes
+they choose. The platform takes no commission and never custodies user funds.
 
 ## Product surface
 
-- One wallet connection and signature creates the secure app session; optional
-  Google, Apple, and Telegram sessions use privacy-preserving public profile IDs.
-- Posts, threaded replies, atomic likes, and direct verified SOL support.
+- Clerk provides one application session across Telegram and supported desktop
+  Web3 sign-in methods. Google and Apple are feature-gated until their production
+  credentials are configured.
+- Every Clerk identity is linked to a stable Supabase profile, preserving posts,
+  comments, aliases, payout routes, and verified sent/received activity.
+- Posts, replies, unique views, atomic likes, and direct verified funding.
 - Images, uploaded or recorded audio, and circular video attachments up to 15 MB.
-- Public wallet profiles with aliases, activity, and verified transaction links.
+- Public profiles with aliases, activity, funding routes, totals, and verified
+  transaction links.
 - Responsive editorial UI, a reduced-motion-safe 3D hero, SSR metadata, JSON-LD,
-  dynamic sitemap, RSS, robots, manifest, and `llms.txt`.
+  dynamic sitemap, RSS, robots, manifest, `llms.txt`, and `llms-full.txt`.
 - Explicit separation between verified on-chain transfers and unsigned legacy
   donation history.
-- A private-proof/public-route payout registry validates Solana, Ethereum,
-  Bitcoin, TRON, TON, and Injective addresses. Only SOL transfer execution is
-  enabled until each additional chain has ownership and finality verification.
+- Per-post funding snapshots support SOL, USDC and USDT on Solana; ETH and USDT
+  on Ethereum; BTC; TRX and USDT on TRON; TON; and INJ. Solana/SPL and injected
+  EVM wallets submit in-browser; the other networks use wallet deep links or QR
+  handoff and verify the supplied transaction hash before recording a donation.
 
 ## Stack
 
-Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Solana Wallet Adapter,
+Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Clerk, Solana Wallet Adapter,
 Supabase Postgres/Storage, and Vercel. Production targets Node 24 and pnpm 10.
 
 ## Local development
@@ -45,10 +50,10 @@ pnpm build
 
 The database migrations and reconciliation runbook live in `supabase/`. New
 database writes are server-mediated: public tables are read-only through RLS,
-wallet challenges are single-use, likes are toggled atomically, media uploads
-are signed into private staging and atomically published after byte validation,
-and donation rows are created only after a finalized transfer matches a
-single-use server intent and on-chain memo.
+likes are toggled atomically, media uploads are signed into private staging and
+atomically published after byte validation, funding intents are single-use, and
+donation rows are created only after the selected network verifier confirms the
+recipient, asset, amount, intent reference, and finality requirements.
 
 ## Deployment
 
@@ -57,47 +62,25 @@ the variables from `.env.example` for Preview and Production, apply pending
 Supabase migrations, then deploy from the protected production branch. The
 canonical URL is <https://www.moneynerds.online>.
 
-## Optional Google, Apple, and Telegram sign-in
+## Authentication and profile sync
 
-External sign-in is disabled by default. Apply
-`20260822044356_external_identity_sessions.sql` before deploying the matching
-application code, set a stable `EXTERNAL_AUTH_SECRET` of at least 32 bytes, and
-set `EXTERNAL_AUTH_ORIGIN` to the exact site origin (for production,
-`https://www.moneynerds.online`). The secret derives privacy-preserving profile
-IDs and must be backed up; rotating it requires a deliberate identity migration.
+Clerk is the authentication authority; Supabase stores the durable public Money
+Nerds profile and activity graph. Request-time synchronization is authoritative,
+and `/api/auth/clerk/webhook` provides eventual synchronization for Clerk user
+create/update/delete events when `CLERK_WEBHOOK_SIGNING_SECRET` is configured.
 
-For Google or Apple, configure that provider in the Supabase Authentication
-dashboard and register Supabase's provider callback with Google or Apple:
+Keep `PROFILE_IDENTITY_SECRET` and `EXTERNAL_AUTH_SECRET` stable and backed up.
+They derive privacy-preserving profile IDs and must not be rotated without an
+identity migration. Configure Telegram with BotFather and expose only the bot
+username to browser code. Google requires a production OAuth client in Clerk;
+Apple additionally requires its Services ID, Team ID, key ID, and private key.
+Set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED` or `NEXT_PUBLIC_AUTH_APPLE_ENABLED` only
+after the corresponding Clerk strategy is fully configured.
 
-```text
-https://hqluarhwllbisizcirhg.supabase.co/auth/v1/callback
-```
-
-Add the corresponding application callbacks to Supabase's redirect allowlist:
-
-```text
-https://www.moneynerds.online/api/auth/oauth/google/callback/**
-https://www.moneynerds.online/api/auth/oauth/apple/callback/**
-```
-
-Google requires its OAuth client ID and secret in Supabase. Apple additionally
-requires the Services ID, Team ID, key ID, and private key; rotate Apple's
-generated client secret before it expires. Use equivalent localhost callback
-allowlist entries for local testing.
-
-For Telegram, configure the production domain with BotFather, then set the bot
-token and username from BotFather in `TELEGRAM_BOT_TOKEN` and
-`TELEGRAM_BOT_USERNAME`. Never expose the token to browser code.
-
-Only after each provider is fully configured, set its `AUTH_*_ENABLED` flag to
-`true` in that environment. `/api/auth/providers` reports only safe availability
-metadata, so clients should render a provider control only when `available` is
-true. External identities expose a deterministic Money Nerds profile ID, never
-an email or provider subject. That profile ID is not a Solana payout address;
-SOL funding requires a separately verified payout wallet.
-
-The related production migrations run in this order:
+The current profile and multi-currency schema is completed by:
 
 1. `20260822044349_post_unique_views.sql`
 2. `20260822044356_external_identity_sessions.sql`
 3. `20260822044404_verified_payout_accounts.sql`
+4. `20260822095500_clerk_multicurrency_post_funding.sql`
+5. `20260822113000_multicurrency_funding_fk_indexes.sql`
