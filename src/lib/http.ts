@@ -5,7 +5,7 @@ export function apiError(message: string, status = 400, details?: unknown) {
 }
 
 export function unauthenticatedResponse() {
-  return apiError("Connect and sign your wallet to continue.", 401);
+  return apiError("Sign in to continue.", 401);
 }
 
 export type RequestBodyErrorCode =

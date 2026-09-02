@@ -40,7 +40,7 @@ export async function GET() {
 <channel>
   <title>Money Nerds — public board</title>
   <link>${SITE_URL}</link>
-  <description>Wallet-native posts receiving direct support in SOL.</description>
+  <description>Public posts receiving direct support across multiple crypto networks.</description>
   <language>en</language>
   <atom:link href="${SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />
   <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>

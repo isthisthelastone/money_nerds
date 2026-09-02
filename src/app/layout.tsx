@@ -1,9 +1,10 @@
-import type {Metadata, Viewport} from "next";
-import type {ReactNode} from "react";
-import {WalletControl} from "@/components/features/WalletControl";
-import {SiteFooter, SiteHeader} from "@/components/site";
-import {SITE_URL} from "@/lib/config";
-import {ClientProvider} from "./ClientProvider";
+import { ClerkProvider } from "@clerk/nextjs";
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import { WalletControl } from "@/components/features/WalletControl";
+import { SiteFooter, SiteHeader } from "@/components/site";
+import { SITE_URL } from "@/lib/config";
+import { ClientProvider } from "./ClientProvider";
 import "../styles/global.css";
 
 export const metadata: Metadata = {
@@ -14,17 +15,20 @@ export const metadata: Metadata = {
         template: "%s | Money Nerds",
     },
     description:
-        "A wallet-native public board where memes, ideas, and real needs can receive direct support in SOL with zero platform commission.",
+        "A public board where memes, ideas, and real needs receive direct multi-currency support with zero platform commission.",
     keywords: [
         "Money Nerds",
-        "Solana donations",
+        "crypto donations",
+        "multi-currency crowdfunding",
         "peer-to-peer funding",
         "zero fee crowdfunding",
-        "Solana crowdfunding",
+        "Bitcoin crowdfunding",
+        "Ethereum crowdfunding",
+        "TON crowdfunding",
         "crypto mutual aid",
         "meme funding",
         "mutual aid",
-        "wallet-native community",
+        "transparent community funding",
     ],
     creator: "Money Nerds",
     publisher: "Money Nerds",
@@ -45,13 +49,13 @@ export const metadata: Metadata = {
         siteName: "Money Nerds",
         title: "Money Nerds — Ask. Share. Fund.",
         description:
-            "Post a meme, fund a need, or back an idea. Support moves directly between Solana wallets.",
+            "Post a meme, fund a need, or back an idea. Support moves directly between people across leading crypto networks.",
         images: [
             {
                 url: "/og.png",
                 width: 1733,
                 height: 907,
-                alt: "Money Nerds — Ask. Share. Fund. Zero platform fees and direct Solana support.",
+                alt: "Money Nerds — Ask. Share. Fund. Zero platform fees and direct multi-currency support.",
             },
         ],
     },
@@ -59,7 +63,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "Money Nerds — Ask. Share. Fund.",
         description:
-            "A wallet-native public board for direct Solana support, with zero platform commission.",
+            "A public board for direct multi-currency support, with zero platform commission.",
         images: ["/og.png"],
     },
     robots: {
@@ -87,18 +91,35 @@ export default function RootLayout({children}: Readonly<{children: ReactNode}>) 
     return (
         <html lang="en">
             <body>
-                <a className="skip-link" href="#main-content">
-                    Skip to content
-                </a>
-                <ClientProvider>
-                    <div className="site-app">
-                        <SiteHeader walletControl={<WalletControl />} />
-                        <div className="site-main" id="main-content" tabIndex={-1}>
-                            {children}
+                <ClerkProvider
+                    dynamic
+                    signInUrl="/sign-in"
+                    signUpUrl="/sign-up"
+                    signInFallbackRedirectUrl="/"
+                    signUpFallbackRedirectUrl="/"
+                    appearance={{
+                        variables: {
+                            colorPrimary: "#c7ff42",
+                            colorBackground: "#111411",
+                            colorForeground: "#f2eee4",
+                            colorMutedForeground: "#a5ada2",
+                            borderRadius: "0.9rem",
+                        },
+                    }}
+                >
+                    <a className="skip-link" href="#main-content">
+                        Skip to content
+                    </a>
+                    <ClientProvider>
+                        <div className="site-app">
+                            <SiteHeader walletControl={<WalletControl />} />
+                            <div className="site-main" id="main-content" tabIndex={-1}>
+                                {children}
+                            </div>
+                            <SiteFooter />
                         </div>
-                        <SiteFooter />
-                    </div>
-                </ClientProvider>
+                    </ClientProvider>
+                </ClerkProvider>
             </body>
         </html>
     );

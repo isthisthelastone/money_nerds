@@ -173,7 +173,7 @@ export function HeroCoin() {
       ref={coinRef}
       className="hero-coin"
       data-dragging={dragging || undefined}
-      aria-label="Interactive 3D coin representing direct wallet-to-wallet funding"
+      aria-label="Interactive 3D coin representing direct multi-network funding"
       aria-describedby="hero-coin-instructions"
       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home"
       tabIndex={0}

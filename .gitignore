@@ -4,6 +4,8 @@ build/
 .next/
 .env
 .env.local
+.env*.local
+!.env.example
 
 # Logs
 logs/
@@ -40,3 +42,4 @@ jspm_packages/
 *.class
 *.o
 *.so
+.vercel

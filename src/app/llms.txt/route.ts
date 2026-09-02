@@ -1,16 +1,18 @@
 const llmsText = `# Money Nerds
 
-> Money Nerds is a wallet-native public board where people can post memes, ideas, projects, or real needs and receive direct support in SOL.
+> Money Nerds is a public funding board where people can post memes, ideas, projects, or real needs and receive direct support across multiple crypto networks.
 
 Canonical site: https://www.moneynerds.online
 
 ## Core facts
 
 - Money Nerds charges zero platform commission on user-to-user donations.
-- Solana network fees still apply and are shown by the connected wallet.
-- Donations settle directly between supporter and recipient wallets; Money Nerds does not custody user funds.
-- A wallet is the public identity. Posts, comments, likes, and donation activity are designed to be traceable to that wallet.
-- The service itself is supported by optional donations to a separate, public Solana wallet.
+- Supported funding assets are SOL, USDC on Solana, USDT on Solana, ETH, USDT ERC-20, BTC, TRX, USDT TRC-20, TON, and INJ.
+- Each blockchain can charge its own network fee; Money Nerds does not add a platform fee.
+- Donations settle directly to recipient-published addresses; Money Nerds does not custody user funds.
+- Sign-in uses Clerk with Google, Apple, Telegram, and Web3 options when enabled in the live configuration. Each account maps to a stable, Supabase-backed public profile without publishing its provider subject or email address.
+- Posts, comments, likes, and linked funding activity are designed to be traceable to the public profile that performed them.
+- The service itself is supported by optional donations to separate service funding destinations, including its disclosed public Solana account.
 - Posts can include images, voice notes, and circular video messages, and public discussions can contain replies.
 - Public category scopes include Fun, Memes, Mutual Aid, Build, Animal Support, Art, Crowdfunding, and Other.
 

@@ -9,7 +9,8 @@ import { LikeButton } from "@/components/features/LikeButton";
 import { MediaGallery } from "@/components/features/MediaGallery";
 import { ShareButton } from "@/components/features/ShareButton";
 import { categoryHref } from "@/lib/categories";
-import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
+import { formatAtomicAmount, formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
+import { isPayoutAsset, PAYOUT_ASSET_CONFIG } from "@/lib/funding/payouts";
 import {
   CATEGORY_LABELS,
   IDENTITY_PROVIDER_LABELS,
@@ -98,9 +99,25 @@ export function PostCard({
         ) : null}
         <MediaGallery media={post.media} />
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-white/8 py-3 text-xs text-white/45">
-          <span>
-            <strong className="font-semibold text-white/75">{formatSol(post.verified_donation_lamports)} SOL</strong> verified funding
-          </span>
+          {post.funding_totals.length ? (
+            post.funding_totals.map((total) => {
+              const config = isPayoutAsset(total.asset)
+                ? PAYOUT_ASSET_CONFIG[total.asset]
+                : null;
+              return (
+                <span key={total.asset}>
+                  <strong className="font-semibold text-white/75">
+                    {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset}
+                  </strong>{" "}
+                  verified
+                </span>
+              );
+            })
+          ) : (
+            <span>
+              <strong className="font-semibold text-white/75">{formatSol(post.verified_donation_lamports)} SOL</strong> verified funding
+            </span>
+          )}
           {post.legacy_donation_lamports ? (
             <span title="Imported from the original app without an available transaction signature">
               +{formatSol(post.legacy_donation_lamports)} SOL legacy record
@@ -115,13 +132,7 @@ export function PostCard({
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <LikeButton targetType="post" targetId={post.id} initialCount={totalLikes} />
-          {externalAuthor ? (
-            <span className="px-3 py-2 text-xs text-white/35" title="This profile has no verified Solana payout wallet">
-              SOL funding unavailable
-            </span>
-          ) : (
-            <DonateButton recipientAddress={post.author_wallet} targetType="post" targetId={post.id} />
-          )}
+          <DonateButton recipientAddress={post.author_wallet} targetType="post" targetId={post.id} />
           <ShareButton path={`/p/${post.id}`} title={`${post.nickname} on Money Nerds`} />
         </div>
       </div>

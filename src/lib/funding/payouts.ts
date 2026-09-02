@@ -5,6 +5,8 @@ import bs58 from "bs58";
 
 export const PAYOUT_ASSETS = [
   "SOL",
+  "USDC-SOL",
+  "USDT-SOL",
   "ETH",
   "USDT-ERC20",
   "BTC",
@@ -15,20 +17,21 @@ export const PAYOUT_ASSETS = [
 ] as const;
 
 export type PayoutAsset = (typeof PAYOUT_ASSETS)[number];
-export type PayoutChainNamespace = "solana" | "eip155" | "bip122" | "tron" | "ton";
+export type PayoutChainNamespace = "solana" | "eip155" | "bip122" | "tron" | "ton" | "cosmos";
 export type PayoutAssetKind = "native" | "token";
 
 export interface PayoutAssetConfig {
   asset: PayoutAsset;
-  symbol: "SOL" | "ETH" | "USDT" | "BTC" | "TRX" | "TON" | "INJ";
+  symbol: "SOL" | "USDC" | "ETH" | "USDT" | "BTC" | "TRX" | "TON" | "INJ";
   chainNamespace: PayoutChainNamespace;
   networkReference: string;
   caipNetworkId: string;
   networkName: string;
   decimals: number;
   kind: PayoutAssetKind;
-  tokenStandard: "ERC20" | "TRC20" | null;
+  tokenStandard: "SPL" | "ERC20" | "TRC20" | null;
   contractAddress: string | null;
+  walletMode: "solana" | "evm" | "manual";
 }
 
 const SOLANA_MAINNET_REFERENCE = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
@@ -48,6 +51,33 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "solana",
+  },
+  "USDC-SOL": {
+    asset: "USDC-SOL",
+    symbol: "USDC",
+    chainNamespace: "solana",
+    networkReference: SOLANA_MAINNET_REFERENCE,
+    caipNetworkId: `solana:${SOLANA_MAINNET_REFERENCE}`,
+    networkName: "Solana Mainnet",
+    decimals: 6,
+    kind: "token",
+    tokenStandard: "SPL",
+    contractAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    walletMode: "solana",
+  },
+  "USDT-SOL": {
+    asset: "USDT-SOL",
+    symbol: "USDT",
+    chainNamespace: "solana",
+    networkReference: SOLANA_MAINNET_REFERENCE,
+    caipNetworkId: `solana:${SOLANA_MAINNET_REFERENCE}`,
+    networkName: "Solana Mainnet",
+    decimals: 6,
+    kind: "token",
+    tokenStandard: "SPL",
+    contractAddress: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+    walletMode: "solana",
   },
   ETH: {
     asset: "ETH",
@@ -60,6 +90,7 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "evm",
   },
   "USDT-ERC20": {
     asset: "USDT-ERC20",
@@ -72,6 +103,7 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "token",
     tokenStandard: "ERC20",
     contractAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    walletMode: "evm",
   },
   BTC: {
     asset: "BTC",
@@ -84,6 +116,7 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "manual",
   },
   TRX: {
     asset: "TRX",
@@ -96,6 +129,7 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "manual",
   },
   "USDT-TRC20": {
     asset: "USDT-TRC20",
@@ -108,6 +142,7 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "token",
     tokenStandard: "TRC20",
     contractAddress: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+    walletMode: "manual",
   },
   TON: {
     asset: "TON",
@@ -120,20 +155,30 @@ export const PAYOUT_ASSET_CONFIG: Record<PayoutAsset, PayoutAssetConfig> = {
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "manual",
   },
   INJ: {
     asset: "INJ",
     symbol: "INJ",
-    chainNamespace: "eip155",
-    networkReference: "1776",
-    caipNetworkId: "eip155:1776",
-    networkName: "Injective EVM Mainnet",
+    chainNamespace: "cosmos",
+    networkReference: "injective-1",
+    caipNetworkId: "cosmos:injective-1",
+    networkName: "Injective Mainnet",
     decimals: 18,
     kind: "native",
     tokenStandard: null,
     contractAddress: null,
+    walletMode: "manual",
   },
 };
+
+export interface FundingOption {
+  id: string;
+  asset: PayoutAsset;
+  address: string;
+  config: PayoutAssetConfig;
+  verificationStatus: "self_declared" | "verified";
+}
 
 export interface VerifiedPayoutOption {
   id: string;
@@ -159,6 +204,116 @@ export function payoutRouteMatches(
     config.chainNamespace === chainNamespace &&
     config.networkReference === networkReference
   );
+}
+
+const DECIMAL_AMOUNT_PATTERN = /^(?:0|[1-9]\d*)(?:\.(\d+))?$/;
+const MAX_UINT_256 = (1n << 256n) - 1n;
+
+/** Convert a human amount to its exact smallest-unit representation without floats. */
+export function decimalAmountToAtomic(asset: PayoutAsset, input: string) {
+  const value = input.trim();
+  if (value.length > 96) return null;
+  const match = DECIMAL_AMOUNT_PATTERN.exec(value);
+  if (!match) return null;
+  const decimals = PAYOUT_ASSET_CONFIG[asset].decimals;
+  const fraction = match[1] ?? "";
+  if (fraction.length > decimals) return null;
+  const [whole = "0"] = value.split(".");
+  const atomic = BigInt(whole) * 10n ** BigInt(decimals) +
+    BigInt((fraction + "0".repeat(decimals)).slice(0, decimals) || "0");
+  if (atomic < 1n || atomic > MAX_UINT_256) return null;
+  return atomic;
+}
+
+export function isValidAtomicAmount(value: string) {
+  if (!/^[1-9]\d{0,77}$/.test(value)) return false;
+  try {
+    return BigInt(value) <= MAX_UINT_256;
+  } catch {
+    return false;
+  }
+}
+
+export function atomicAmountToDecimal(asset: PayoutAsset, atomicInput: string | bigint) {
+  const atomic = typeof atomicInput === "bigint" ? atomicInput : BigInt(atomicInput);
+  const decimals = PAYOUT_ASSET_CONFIG[asset].decimals;
+  if (!decimals) return atomic.toString();
+  const padded = atomic.toString().padStart(decimals + 1, "0");
+  const whole = padded.slice(0, -decimals);
+  const fraction = padded.slice(-decimals).replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
+export function buildPaymentUri(
+  asset: PayoutAsset,
+  address: string,
+  atomicAmount: string,
+  intentId: string,
+) {
+  const config = PAYOUT_ASSET_CONFIG[asset];
+  const amount = atomicAmountToDecimal(asset, atomicAmount);
+  const memo = `moneynerds:${intentId}`;
+  const query = new URLSearchParams({ amount, memo });
+
+  if (config.chainNamespace === "solana") {
+    if (config.contractAddress) query.set("spl-token", config.contractAddress);
+    return `solana:${address}?${query.toString()}`;
+  }
+  if (asset === "BTC") {
+    return `bitcoin:${address}?${new URLSearchParams({
+      amount,
+      label: "Money Nerds",
+      message: memo,
+    }).toString()}`;
+  }
+  if (asset === "TON") {
+    return `ton://transfer/${address}?${new URLSearchParams({
+      amount: atomicAmount,
+      text: memo,
+    }).toString()}`;
+  }
+  if (asset === "TRX" || asset === "USDT-TRC20") {
+    return `tron:${address}?${query.toString()}`;
+  }
+  if (asset === "INJ") return `injective:${address}?${query.toString()}`;
+  if (asset === "ETH") return `ethereum:${address}@1?value=${atomicAmount}`;
+  return `ethereum:${config.contractAddress}@1/transfer?address=${address}&uint256=${atomicAmount}`;
+}
+
+export function transactionExplorerUrl(asset: PayoutAsset, transactionId: string) {
+  const encoded = encodeURIComponent(transactionId);
+  switch (PAYOUT_ASSET_CONFIG[asset].chainNamespace) {
+    case "solana":
+      return `https://solscan.io/tx/${encoded}`;
+    case "eip155":
+      return `https://etherscan.io/tx/${encoded}`;
+    case "bip122":
+      return `https://mempool.space/tx/${encoded}`;
+    case "tron":
+      return `https://tronscan.org/#/transaction/${encoded}`;
+    case "ton":
+      return `https://tonviewer.com/transaction/${encoded}`;
+    case "cosmos":
+      return `https://explorer.injective.network/transaction/${encoded}`;
+  }
+}
+
+export function addressExplorerUrl(asset: PayoutAsset, address: string) {
+  const encoded = encodeURIComponent(address);
+  switch (PAYOUT_ASSET_CONFIG[asset].chainNamespace) {
+    case "solana":
+      return `https://solscan.io/account/${encoded}`;
+    case "eip155":
+      return `https://etherscan.io/address/${encoded}`;
+    case "bip122":
+      return `https://mempool.space/address/${encoded}`;
+    case "tron":
+      return `https://tronscan.org/#/address/${encoded}`;
+    case "ton":
+      return `https://tonviewer.com/${encoded}`;
+    case "cosmos":
+      return `https://explorer.injective.network/account/${encoded}`;
+  }
 }
 
 function equalBytes(left: Uint8Array, right: Uint8Array) {
@@ -323,6 +478,21 @@ function normalizeTonAddress(value: string) {
   return normalizeTonRawAddress(value) ?? normalizeTonFriendlyAddress(value);
 }
 
+function normalizeInjectiveAddress(value: string) {
+  const hasLower = value !== value.toUpperCase();
+  const hasUpper = value !== value.toLowerCase();
+  if (hasLower && hasUpper) return null;
+  const normalized = value.toLowerCase();
+  try {
+    const decoded = bech32.decode(normalized, 90);
+    const bytes = bech32.fromWords(decoded.words);
+    if (decoded.prefix !== "inj" || bytes.length !== 20 || allZero(bytes)) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizePayoutAddress(asset: string, input: string) {
   const value = input.trim();
   if (!isPayoutAsset(asset) || !value || value.length > 128) return null;
@@ -338,5 +508,7 @@ export function normalizePayoutAddress(asset: string, input: string) {
       return normalizeTronAddress(value);
     case "ton":
       return normalizeTonAddress(value);
+    case "cosmos":
+      return normalizeInjectiveAddress(value);
   }
 }

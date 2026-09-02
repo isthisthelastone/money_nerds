@@ -4,6 +4,10 @@ import { requireWalletSession } from "@/lib/auth/server";
 import { apiError, unauthenticatedResponse } from "@/lib/http";
 import { notifyIndexNow } from "@/lib/indexnow";
 import {
+  MAX_FUNDING_OPTIONS_JSON_LENGTH,
+  parseFundingOptions,
+} from "@/lib/funding/options";
+import {
   parseComposerPayload,
   validateUploadedMedia,
 } from "@/lib/media/server";
@@ -65,7 +69,7 @@ async function readComposerFormData(request: NextRequest) {
     throw new Error("INVALID_REQUEST_BODY");
   }
 
-  const expectedFields = ["nickname", "body", "category", "mediaIds"];
+  const expectedFields = ["nickname", "body", "category", "mediaIds", "fundingOptions"];
   if (expectedFields.some((field) => formData.getAll(field).length > 1)) {
     throw new Error("INVALID_REQUEST_BODY");
   }
@@ -85,6 +89,12 @@ async function readComposerFormData(request: NextRequest) {
   }
   if (String(formData.get("mediaIds") ?? "[]").length > 256) {
     throw new Error("INVALID_MEDIA_METADATA");
+  }
+  if (
+    String(formData.get("fundingOptions") ?? "[]").length >
+    MAX_FUNDING_OPTIONS_JSON_LENGTH
+  ) {
+    throw new Error("INVALID_FUNDING_OPTIONS");
   }
   return formData;
 }
@@ -114,6 +124,9 @@ function classifyPublishError(message: string) {
   if (message.includes("Invalid nickname")) return "NICKNAME_REQUIRED";
   if (message.includes("Invalid post body")) return "MESSAGE_REQUIRED";
   if (message.includes("Invalid media list")) return "INVALID_MEDIA_METADATA";
+  if (message.includes("Invalid funding") || message.includes("Unsupported funding")) {
+    return "INVALID_FUNDING_OPTIONS";
+  }
   return "POST_NOT_CREATED";
 }
 
@@ -136,6 +149,9 @@ function postErrorResponse(code: string) {
     MEDIA_UPLOAD_EXPIRED: { message: "One attachment expired. Attach it again.", status: 410 },
     MEDIA_UPLOAD_INCOMPLETE: { message: "One attachment did not finish uploading.", status: 409 },
     INVALID_MEDIA_CONTENT: { message: "One attachment's contents do not match its file type.", status: 415 },
+    INVALID_FUNDING_OPTIONS: { message: "Funding options could not be read.", status: 400 },
+    INVALID_FUNDING_ADDRESS: { message: "Check every selected mainnet funding address.", status: 400 },
+    TOO_MANY_FUNDING_OPTIONS: { message: "Choose each supported funding asset only once.", status: 400 },
     RATE_LIMITED: { message: "You are posting too quickly. Try again later.", status: 429 },
     RATE_LIMIT_UNAVAILABLE: { message: "Posting is temporarily unavailable. Try again.", status: 503 },
     POST_NOT_CREATED: { message: "Your post could not be published.", status: 500 },
@@ -161,6 +177,9 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await readComposerFormData(request);
     const payload = parseComposerPayload(formData);
+    const fundingOptions = parseFundingOptions(
+      String(formData.get("fundingOptions") ?? "[]"),
+    );
     if (!isPostCategory(payload.category)) {
       return apiError("Choose a valid post category.");
     }
@@ -178,6 +197,7 @@ export async function POST(request: NextRequest) {
       p_body: payload.body,
       p_category: payload.category,
       p_media_ids: payload.mediaIds,
+      p_funding_options: fundingOptions,
     });
     if (publishError) {
       throw new Error(classifyPublishError(publishError.message), { cause: publishError });

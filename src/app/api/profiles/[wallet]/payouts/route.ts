@@ -4,7 +4,7 @@ import {
   normalizePayoutAddress,
   PAYOUT_ASSET_CONFIG,
   payoutRouteMatches,
-  type VerifiedPayoutOption,
+  type PayoutAsset,
 } from "@/lib/funding/payouts";
 import { apiError } from "@/lib/http";
 import { createPublicSupabase } from "@/lib/supabase/public";
@@ -15,20 +15,41 @@ interface PayoutRow {
   chain_namespace: unknown;
   network_reference: unknown;
   asset: unknown;
-  normalized_address: unknown;
+  recipient_address: unknown;
+  verification_status: unknown;
   verified_at: unknown;
   created_at: unknown;
 }
-function readPayoutOption(row: PayoutRow): VerifiedPayoutOption | null {
+interface PublicPayoutOption {
+  id: string;
+  profileWallet: string;
+  asset: PayoutAsset;
+  address: string;
+  verificationStatus: "self_declared" | "verified";
+  verifiedAt: string | null;
+  createdAt: string;
+  config: (typeof PAYOUT_ASSET_CONFIG)[PayoutAsset];
+}
+
+function readPayoutOption(row: PayoutRow): PublicPayoutOption | null {
   const asset = typeof row.asset === "string" ? row.asset : "";
   const chainNamespace = typeof row.chain_namespace === "string" ? row.chain_namespace : "";
   const networkReference = typeof row.network_reference === "string" ? row.network_reference : "";
-  const address = typeof row.normalized_address === "string" ? row.normalized_address : "";
+  const address = typeof row.recipient_address === "string" ? row.recipient_address : "";
+  const verificationStatus =
+    row.verification_status === "self_declared" || row.verification_status === "verified"
+      ? row.verification_status
+      : null;
   if (
     typeof row.id !== "string" ||
     typeof row.profile_wallet !== "string" ||
-    typeof row.verified_at !== "string" ||
     typeof row.created_at !== "string" ||
+    !verificationStatus ||
+    !(
+      row.verified_at === null ||
+      row.verified_at === undefined ||
+      typeof row.verified_at === "string"
+    ) ||
     !isPayoutAsset(asset) ||
     !payoutRouteMatches(asset, chainNamespace, networkReference) ||
     normalizePayoutAddress(asset, address) !== address
@@ -40,7 +61,8 @@ function readPayoutOption(row: PayoutRow): VerifiedPayoutOption | null {
     profileWallet: row.profile_wallet,
     asset,
     address,
-    verifiedAt: row.verified_at,
+    verificationStatus,
+    verifiedAt: typeof row.verified_at === "string" ? row.verified_at : null,
     createdAt: row.created_at,
     config: PAYOUT_ASSET_CONFIG[asset],
   };
@@ -56,28 +78,29 @@ export async function GET(
 
   const supabase = createPublicSupabase();
   const { data, error } = await supabase
-    .from("verified_payout_accounts")
+    .from("profile_funding_routes")
     .select(
-      "id, profile_wallet, chain_namespace, network_reference, asset, normalized_address, verified_at, created_at",
+      "id, profile_wallet, chain_namespace, network_reference, asset, recipient_address, verification_status, verified_at, created_at",
     )
     .eq("profile_wallet", profileWallet)
+    .in("verification_status", ["self_declared", "verified"])
     .order("asset", { ascending: true })
     .order("verified_at", { ascending: false });
 
   if (error) {
-    console.error("Unable to load verified payout options", error);
-    return apiError("Verified payout options are temporarily unavailable.", 503);
+    console.error("Unable to load profile funding options", error);
+    return apiError("Funding options are temporarily unavailable.", 503);
   }
 
   const options = (data as PayoutRow[] | null | undefined)
     ?.map(readPayoutOption)
-    .filter((option): option is VerifiedPayoutOption => option !== null) ?? [];
+    .filter((option): option is PublicPayoutOption => option !== null) ?? [];
 
   return NextResponse.json(
     { profileWallet, options },
     {
       headers: {
-        "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+        "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=120",
       },
     },
   );

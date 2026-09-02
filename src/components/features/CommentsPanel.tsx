@@ -7,7 +7,8 @@ import { Composer } from "@/components/features/Composer";
 import { DonateButton } from "@/components/features/DonateButton";
 import { LikeButton } from "@/components/features/LikeButton";
 import { MediaGallery } from "@/components/features/MediaGallery";
-import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
+import { formatAtomicAmount, formatRelativeTime, formatWallet } from "@/lib/format";
+import { isPayoutAsset, PAYOUT_ASSET_CONFIG } from "@/lib/funding/payouts";
 import { IDENTITY_PROVIDER_LABELS, type CommentCardData } from "@/lib/models";
 
 interface CommentsPanelProps {
@@ -259,19 +260,29 @@ function CommentBranch({
         </header>
         {comment.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/75">{comment.body}</p> : null}
         <MediaGallery media={comment.media} />
+        {comment.funding_totals.length ? (
+          <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] text-white/45">
+            {comment.funding_totals.map((total) => {
+              const config = isPayoutAsset(total.asset)
+                ? PAYOUT_ASSET_CONFIG[total.asset]
+                : null;
+              return (
+                <span key={total.asset} className="rounded-full border border-white/8 px-2 py-1">
+                  {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset} verified
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-1">
           <LikeButton targetType="comment" targetId={comment.id} initialCount={comment.like_count} />
-          {comment.author_wallet && !externalAuthor ? (
+          {comment.author_wallet ? (
             <DonateButton
               recipientAddress={comment.author_wallet}
               targetType="comment"
               targetId={comment.id}
-              label={comment.verified_donation_lamports ? `${formatSol(comment.verified_donation_lamports)} SOL` : "Fund"}
+              label="Fund"
             />
-          ) : externalAuthor ? (
-            <span className="px-2 py-1.5 text-xs text-white/30" title="This profile has no verified Solana payout wallet">
-              SOL funding unavailable
-            </span>
           ) : null}
           <button className="post-action" type="button" onClick={() => setReplying((value) => !value)}>
             <Reply aria-hidden="true" size={17} /> Reply

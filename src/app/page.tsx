@@ -33,8 +33,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   return {
     ...(scope
       ? {
-          title: `${scope.label} posts — direct Solana support`,
-          description: `${scope.shortDescription} Explore wallet-owned requests and support people directly in SOL with zero platform commission.`,
+          title: `${scope.label} posts — direct multi-currency support`,
+          description: `${scope.shortDescription} Explore public requests and support people directly across supported crypto networks with zero platform commission.`,
           openGraph: {
             title: `${scope.label} posts on Money Nerds`,
             description: scope.shortDescription,
@@ -110,7 +110,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     name: "Money Nerds",
     alternateName: "MoneyNerds",
     url: "https://www.moneynerds.online",
-    description: "A wallet-native public board for direct, zero-commission Solana support.",
+    description: "A public board for direct, zero-commission support across multiple crypto networks.",
     potentialAction: {
       "@type": "SearchAction",
       target: "https://www.moneynerds.online/?category={category}",
@@ -175,7 +175,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                   {scope ? `Category / ${scope.label}` : "The public board"}
                 </p>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#f2efe6]" id="feed-heading">
-                  {scope ? `${scope.label} posts from real wallets` : "Requests from real wallets"}
+                  {scope ? `${scope.label} posts from public profiles` : "Requests from public profiles"}
                 </h2>
               </div>
               <form className="flex flex-wrap gap-2" action="/" method="get">
@@ -239,7 +239,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 <Radio aria-hidden="true" size={14} /> Open ledger
               </p>
               <h2 className="mt-3 text-xl font-semibold text-[#f2efe6]">The platform lives on voluntary support.</h2>
-              <p className="mt-2 text-sm leading-6 text-white/55">We never skim user-to-user funding. The service wallet and every transfer stay public.</p>
+              <p className="mt-2 text-sm leading-6 text-white/55">We never skim user-to-user funding. Service funding routes and verified transfers stay public.</p>
               <div className="mt-5">
                 <DonateButton recipientAddress={SERVICE_WALLET} targetType="service" label="Support Money Nerds" />
               </div>
@@ -254,16 +254,16 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                   <dt className="text-sm text-white/50">Posts</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{stats.posts}</dd>
                 </div>
                 <div className="flex items-end justify-between gap-3 border-b border-white/8 pb-3">
-                  <dt className="flex items-center gap-1.5 text-sm text-white/50"><Users aria-hidden="true" size={14} /> Wallets</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{stats.profiles}</dd>
+                  <dt className="flex items-center gap-1.5 text-sm text-white/50"><Users aria-hidden="true" size={14} /> Profiles</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{stats.profiles}</dd>
                 </div>
                 <div className="flex items-end justify-between gap-3">
-                  <dt className="text-sm text-white/50">Verified flow</dt><dd className="text-xl font-semibold text-[#c9ff55]">{formatSol(stats.verifiedLamports)} SOL</dd>
+                  <dt className="text-sm text-white/50">Verified SOL flow</dt><dd className="text-xl font-semibold text-[#c9ff55]">{formatSol(stats.verifiedLamports)} SOL</dd>
                 </div>
               </dl>
             </div>
             <div className="rounded-[1.4rem] border border-white/10 bg-[#111311] p-5 text-sm leading-6 text-white/50">
               <strong className="block text-[#f2efe6]">Safety note</strong>
-              Money Nerds verifies wallet ownership and transfer records—not the truth of every request. Fund thoughtfully.
+              Money Nerds links activity to authenticated profiles and verifies supported transfer records—not the truth of every request. Fund thoughtfully.
             </div>
           </aside>
         </div>

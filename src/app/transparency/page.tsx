@@ -33,9 +33,9 @@ export default function TransparencyPage() {
                 <p className="site-kicker">Open ledger, plain language</p>
                 <h1>Trust should be inspectable.</h1>
                 <p className="site-page-hero__lede">
-                    Money Nerds is built around a simple rule: user donations go to the person
-                    who made the ask. The platform takes no commission and keeps its own support
-                    wallet public.
+                    Money Nerds is built around a simple rule: user donations go directly to a
+                    destination published by the person who made the ask. The platform takes no
+                    commission and keeps its own support wallet public.
                 </p>
             </header>
 
@@ -50,31 +50,36 @@ export default function TransparencyPage() {
                         </span>
                         <h3>The supporter chooses</h3>
                         <p>
-                            A supporter enters an amount and reviews the recipient before any
-                            transaction is prepared.
+                            A supporter selects an accepted asset, enters an amount, and reviews
+                            the network and recipient address before sending.
                         </p>
                     </article>
                     <article className="site-card">
                         <span className="site-card__icon" aria-hidden="true">
                             <ShieldCheck size={22} />
                         </span>
-                        <h3>The wallet approves</h3>
+                        <h3>The supporter approves</h3>
                         <p>
-                            The connected wallet displays the transfer and network fee. Nothing
-                            moves until its owner signs.
+                            A compatible wallet or sending app displays the transfer and network
+                            fee. Nothing moves until its owner approves it.
                         </p>
                     </article>
                     <article className="site-card">
                         <span className="site-card__icon" aria-hidden="true">
                             <Blocks size={22} />
                         </span>
-                        <h3>Solana settles</h3>
+                        <h3>The network settles</h3>
                         <p>
                             The transfer goes from supporter to recipient. Its signature can be
-                            inspected independently on a block explorer.
+                            inspected independently on the relevant block explorer.
                         </p>
                     </article>
                 </div>
+                <p className="site-note">
+                    <CircleDollarSign aria-hidden="true" size={18} />
+                    Supported routes include SOL, USDC, and USDT on Solana; ETH and USDT on
+                    Ethereum; BTC; TRX and USDT on TRON; TON; and INJ.
+                </p>
             </section>
 
             <section className="site-section" aria-labelledby="service-wallet-title">
@@ -112,10 +117,10 @@ export default function TransparencyPage() {
                         <span className="site-card__icon" aria-hidden="true">
                             <Eye size={22} />
                         </span>
-                        <h3>Public wallet identity</h3>
+                        <h3>Public profile identity</h3>
                         <p>
-                            Posts and activity can be traced to the wallet that created them,
-                            while a nickname can remain informal and change over time.
+                            Posts, comments, and linked funding activity stay attached to a stable
+                            public profile, while its nickname can change over time.
                         </p>
                     </article>
                     <article className="site-card">
@@ -124,8 +129,8 @@ export default function TransparencyPage() {
                         </span>
                         <h3>Direct recipient</h3>
                         <p>
-                            The transaction review must clearly identify the wallet receiving the
-                            donation before the supporter signs it.
+                            The transaction review must clearly identify the destination address
+                            receiving the donation before the supporter approves it.
                         </p>
                     </article>
                     <article className="site-card">
@@ -142,8 +147,8 @@ export default function TransparencyPage() {
 
                 <p className="site-note">
                     <Info aria-hidden="true" size={18} />
-                    Public-chain visibility does not prove that every story in a post is true.
-                    Supporters should review context, wallet history, and risk before donating.
+                    Public blockchain visibility does not prove that every story in a post is true.
+                    Supporters should review context, profile and funding history, and risk before donating.
                 </p>
             </section>
 

@@ -36,7 +36,7 @@ export function isPostCategory(value: string | undefined): value is PostCategory
 }
 
 export type MediaKind = "image" | "audio" | "video_circle";
-export type ExternalIdentityProvider = "google" | "apple" | "telegram";
+export type ExternalIdentityProvider = "google" | "apple" | "telegram" | "clerk";
 export type ProfileIdentityKind = "wallet" | "external";
 export type AuthProvider = "wallet" | ExternalIdentityProvider;
 
@@ -44,6 +44,7 @@ export const IDENTITY_PROVIDER_LABELS: Record<ExternalIdentityProvider, string> 
   google: "Google",
   apple: "Apple",
   telegram: "Telegram",
+  clerk: "Clerk",
 };
 
 export interface MediaAsset {
@@ -56,6 +57,12 @@ export interface MediaAsset {
   height: number | null;
   duration_seconds: number | null;
   position?: number;
+}
+
+export interface TargetFundingTotal {
+  asset: string;
+  received_atomic: string;
+  donation_count: number;
 }
 
 export interface PostCardData {
@@ -75,6 +82,7 @@ export interface PostCardData {
   legacy_donation_lamports: number;
   comment_count: number;
   view_count: number;
+  funding_totals: TargetFundingTotal[];
   media: MediaAsset[];
 }
 
@@ -91,6 +99,7 @@ export interface CommentCardData {
   created_at: string;
   like_count: number;
   verified_donation_lamports: number;
+  funding_totals: TargetFundingTotal[];
   media: MediaAsset[];
 }
 
@@ -99,6 +108,7 @@ export interface WalletProfile {
   identity_kind: ProfileIdentityKind;
   identity_provider: ExternalIdentityProvider | null;
   display_name: string | null;
+  avatar_url?: string | null;
   bio: string | null;
   created_at: string;
   updated_at: string;
@@ -115,16 +125,49 @@ export interface WalletProfileStats extends WalletProfile {
 }
 
 export interface DonationRecord {
+  record_id: string;
+  source: "multichain" | "legacy_sol";
   signature: string;
   donor_wallet: string;
   recipient_wallet: string;
+  donor_profile_wallet: string | null;
+  recipient_profile_wallet: string | null;
+  sender_address: string;
+  recipient_address: string;
   post_id: number | null;
   comment_id: number | null;
   target_type: "post" | "comment" | "service";
+  chain_namespace: string;
+  network_reference: string;
+  asset: string;
+  amount_atomic: string;
   lamports: number;
   slot: number | null;
+  transfer_index: number;
   status: "verified";
   created_at: string;
+}
+
+export interface ProfileFundingTotal {
+  profile_wallet: string;
+  chain_namespace: string;
+  network_reference: string;
+  asset: string;
+  sent_atomic: string;
+  received_atomic: string;
+  sent_count: number;
+  received_count: number;
+}
+
+export interface ProfileFundingRoute {
+  id: string;
+  profile_wallet: string;
+  asset: string;
+  chain_namespace: string;
+  network_reference: string;
+  recipient_address: string;
+  verification_status: "self_declared" | "verified";
+  verified_at: string | null;
 }
 
 export const PROFILE_PAGE_SIZES = [12, 25, 50] as const;
@@ -168,6 +211,8 @@ export interface WalletProfileActivity {
   comments: ProfilePage<CommentCardData>;
   sent: ProfilePage<ProfileDonationRecord>;
   received: ProfilePage<ProfileDonationRecord>;
+  funding_totals: ProfileFundingTotal[];
+  funding_routes: ProfileFundingRoute[];
 }
 
 export interface WalletSession {

@@ -19,7 +19,13 @@ import {
   getProfileActivity,
   getWalletProfile,
 } from "@/lib/data";
-import { formatRelativeTime, formatSol, formatWallet } from "@/lib/format";
+import { formatAtomicAmount, formatRelativeTime, formatWallet } from "@/lib/format";
+import {
+  addressExplorerUrl,
+  isPayoutAsset,
+  PAYOUT_ASSET_CONFIG,
+  transactionExplorerUrl,
+} from "@/lib/funding/payouts";
 import {
   IDENTITY_PROVIDER_LABELS,
   PROFILE_PAGE_SIZES,
@@ -120,8 +126,8 @@ export async function generateMetadata({
   return {
     title: `${name} — public ${externalProfile ? `${identityLabel} profile` : "wallet profile"}`,
     description: externalProfile
-      ? `Posts and comments from a ${identityLabel}-authenticated Money Nerds profile. Its public profile ID is not a Solana payout address.`
-      : `Posts, comments, and verified Solana support connected to ${formatWallet(wallet, 8, 8)} on Money Nerds.`,
+      ? `Posts, comments, and transparent multi-network funding from a ${identityLabel}-authenticated Money Nerds profile.`
+      : `Posts, comments, and transparent multi-network funding connected to ${formatWallet(wallet, 8, 8)} on Money Nerds.`,
     alternates: { canonical: `/u/${wallet}` },
     robots: hasQuery
       ? {
@@ -174,8 +180,10 @@ export default async function WalletProfilePage({
       ].filter(Boolean),
     ),
   );
-  const sentLamports = activity.stats.verified_donated_lamports;
-  const receivedLamports = activity.stats.verified_received_lamports;
+  const sentAssetCount = activity.funding_totals.filter((total) => total.sent_count > 0).length;
+  const receivedAssetCount = activity.funding_totals.filter(
+    (total) => total.received_count > 0,
+  ).length;
   const displayName = activity.profile.display_name || formatWallet(wallet, 6, 6);
   const externalProfile = activity.profile.identity_kind === "external";
   const identityLabel = activity.profile.identity_provider
@@ -193,8 +201,8 @@ export default async function WalletProfilePage({
       description:
         activity.profile.bio ||
         (externalProfile
-          ? `A ${identityLabel}-authenticated Money Nerds profile. Its profile ID is not a Solana wallet.`
-          : "A public Money Nerds wallet profile."),
+          ? `A ${identityLabel}-authenticated Money Nerds profile with transparent direct-funding activity.`
+          : "A public Money Nerds profile with transparent direct-funding activity."),
     },
   };
 
@@ -207,32 +215,41 @@ export default async function WalletProfilePage({
       <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#111311]">
         <div className="border-b border-white/8 bg-[radial-gradient(circle_at_80%_0%,rgba(201,255,85,.16),transparent_38%)] p-6 sm:p-9">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
-            <Radio aria-hidden="true" size={14} /> Public {externalProfile ? `${identityLabel} profile` : "wallet identity"}
+            <Radio aria-hidden="true" size={14} /> Public {externalProfile ? `${identityLabel} profile` : "Money Nerds profile"}
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
             <div className="min-w-0">
-              <h1 className="text-3xl font-semibold tracking-tight text-[#f2efe6] sm:text-5xl">
-                {displayName}
-              </h1>
+              <div className="flex items-center gap-3 sm:gap-4">
+                {activity.profile.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={activity.profile.avatar_url}
+                    alt=""
+                    className="size-12 rounded-full border border-white/12 bg-black/20 object-cover sm:size-16"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : null}
+                <h1 className="text-3xl font-semibold tracking-tight text-[#f2efe6] sm:text-5xl">
+                  {displayName}
+                </h1>
+              </div>
               <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-white/35">
-                {externalProfile ? "Money Nerds profile ID" : "Solana wallet"}
+                Money Nerds profile ID
               </p>
               <p className="mt-1 break-all font-mono text-xs text-white/45 sm:text-sm">
                 {wallet}
               </p>
-              {externalProfile ? (
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
-                  This identifier keeps public activity traceable inside Money Nerds. It is not a Solana address and
-                  cannot receive SOL until a verified payout wallet is linked.
-                </p>
-              ) : null}
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+                This stable profile ID links posts, comments, and verified transfers. Funding
+                destinations are listed separately for each asset and network.
+              </p>
               {activity.profile.bio ? (
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60">
                   {activity.profile.bio}
                 </p>
               ) : null}
             </div>
-            <CopyWalletButton walletAddress={wallet} label={externalProfile ? "Copy profile ID" : "Copy wallet"} />
+            <CopyWalletButton walletAddress={wallet} label="Copy profile ID" />
           </div>
           {aliases.length ? (
             <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-white/40">
@@ -264,17 +281,94 @@ export default async function WalletProfilePage({
           <div className="p-5">
             <dt className="text-xs text-white/40">Verified sent</dt>
             <dd className="mt-2 text-xl font-semibold text-[#f2efe6]">
-              {formatSol(sentLamports)} SOL
+              {activity.sent.total} transfer{activity.sent.total === 1 ? "" : "s"}
             </dd>
+            <p className="mt-1 text-[0.68rem] text-white/35">Across {sentAssetCount} asset{sentAssetCount === 1 ? "" : "s"}</p>
           </div>
           <div className="p-5">
             <dt className="text-xs text-white/40">Verified received</dt>
             <dd className="mt-2 text-xl font-semibold text-[#c9ff55]">
-              {formatSol(receivedLamports)} SOL
+              {activity.received.total} transfer{activity.received.total === 1 ? "" : "s"}
             </dd>
+            <p className="mt-1 text-[0.68rem] text-white/35">Across {receivedAssetCount} asset{receivedAssetCount === 1 ? "" : "s"}</p>
           </div>
         </dl>
+        {activity.funding_routes.length ? (
+          <div className="border-t border-white/8 p-5 sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
+              Accepts direct funding
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {activity.funding_routes.map((route) => {
+                const asset = isPayoutAsset(route.asset) ? route.asset : null;
+                const explorer = asset
+                  ? addressExplorerUrl(asset, route.recipient_address)
+                  : null;
+                return (
+                  <a
+                    key={route.id}
+                    className="rounded-xl border border-white/8 bg-black/15 p-3 transition hover:border-[#c9ff55]/30"
+                    href={explorer ?? undefined}
+                    target={explorer ? "_blank" : undefined}
+                    rel={explorer ? "noreferrer" : undefined}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <strong className="text-sm text-[#f2efe6]">{route.asset}</strong>
+                      <span className={`rounded-full px-2 py-0.5 text-[0.62rem] ${
+                        route.verification_status === "verified"
+                          ? "bg-[#c9ff55]/12 text-[#dfff9c]"
+                          : "bg-white/7 text-white/45"
+                      }`}>
+                        {route.verification_status === "verified" ? "Ownership verified" : "User declared"}
+                      </span>
+                    </span>
+                    <code className="mt-2 block break-all font-mono text-[0.65rem] leading-4 text-white/35">
+                      {route.recipient_address}
+                    </code>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
       </section>
+
+      {activity.funding_totals.length ? (
+        <section className="mt-6 rounded-[1.4rem] border border-white/10 bg-[#111311] p-5 sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#c9ff55]">
+            Exact verified totals
+          </p>
+          <p className="mt-2 text-sm leading-6 text-white/48">
+            Assets stay separate; unlike currencies are never combined into a misleading total.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {activity.funding_totals.map((total) => {
+              const config = isPayoutAsset(total.asset)
+                ? PAYOUT_ASSET_CONFIG[total.asset]
+                : null;
+              return (
+                <div key={`${total.chain_namespace}:${total.network_reference}:${total.asset}`} className="rounded-xl border border-white/8 bg-black/15 p-3.5">
+                  <strong className="text-sm text-[#f2efe6]">{total.asset}</strong>
+                  <dl className="mt-2 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <dt className="text-white/35">Sent</dt>
+                      <dd className="mt-1 font-medium text-white/75">
+                        {formatAtomicAmount(total.sent_atomic, config?.decimals ?? 0)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-white/35">Received</dt>
+                      <dd className="mt-1 font-medium text-[#c9ff55]">
+                        {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-10" id="posts" aria-labelledby="wallet-posts-title">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -352,9 +446,16 @@ export default async function WalletProfilePage({
                   </Link>
                   <span>Comment #{comment.id}</span>
                   {comment.parent_id ? <span>Reply to #{comment.parent_id}</span> : null}
-                  {comment.verified_donation_lamports ? (
-                    <span>{formatSol(comment.verified_donation_lamports)} SOL received</span>
-                  ) : null}
+                  {comment.funding_totals.map((total) => {
+                    const config = isPayoutAsset(total.asset)
+                      ? PAYOUT_ASSET_CONFIG[total.asset]
+                      : null;
+                    return (
+                      <span key={total.asset}>
+                        {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset} received
+                      </span>
+                    );
+                  })}
                 </div>
               </article>
             ))}
@@ -522,14 +623,25 @@ function DonationLedger({
         {page.items.map((donation) => {
           const profileName = donation.counterpart_profile?.display_name;
           const counterpartLabel = profileName || formatWallet(donation.counterpart_wallet, 6, 6);
+          const asset = isPayoutAsset(donation.asset) ? donation.asset : null;
+          const amount = formatAtomicAmount(
+            donation.amount_atomic,
+            asset ? PAYOUT_ASSET_CONFIG[asset].decimals : 0,
+          );
+          const transactionUrl = asset
+            ? transactionExplorerUrl(asset, donation.signature)
+            : null;
+          const counterpartUrl = asset
+            ? addressExplorerUrl(asset, donation.counterpart_wallet)
+            : null;
           return (
             <article
-              key={donation.signature}
+              key={donation.record_id}
               className="border-t border-white/8 pt-4 text-sm first:border-0 first:pt-0"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <strong className="font-semibold text-[#f2efe6]">
-                  {formatSol(donation.lamports)} SOL
+                  {amount} {donation.asset}
                 </strong>
                 <time
                   className="text-[0.68rem] text-white/35"
@@ -550,14 +662,18 @@ function DonationLedger({
                       {counterpartLabel}
                     </Link>
                   ) : (
-                    <a
-                      className="font-medium text-[#9ccaff] hover:underline"
-                      href={`https://solscan.io/account/${donation.counterpart_wallet}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {counterpartLabel}
-                    </a>
+                    counterpartUrl ? (
+                      <a
+                        className="font-medium text-[#9ccaff] hover:underline"
+                        href={counterpartUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {counterpartLabel}
+                      </a>
+                    ) : (
+                      <span>{counterpartLabel}</span>
+                    )
                   )}
                 </p>
                 <code className="break-all font-mono text-[0.65rem] text-white/30">
@@ -567,16 +683,18 @@ function DonationLedger({
                   Target: <DonationTarget donation={donation} />
                 </p>
               </div>
-              <a
-                className="mt-2 inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-[#9ccaff] hover:underline"
-                href={`https://solscan.io/tx/${donation.signature}`}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`View ${formatSol(donation.lamports)} SOL donation on Solscan`}
-              >
-                View on Solscan · {formatWallet(donation.signature, 6, 6)}
-                <ExternalLink aria-hidden="true" size={12} />
-              </a>
+              {transactionUrl ? (
+                <a
+                  className="mt-2 inline-flex items-center gap-1.5 font-mono text-[0.68rem] text-[#9ccaff] hover:underline"
+                  href={transactionUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`View ${amount} ${donation.asset} donation in its network explorer`}
+                >
+                  View transaction · {formatWallet(donation.signature, 6, 6)}
+                  <ExternalLink aria-hidden="true" size={12} />
+                </a>
+              ) : null}
             </article>
           );
         })}

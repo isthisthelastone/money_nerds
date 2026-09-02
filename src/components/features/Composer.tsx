@@ -23,6 +23,11 @@ import {
   useState,
 } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
+import { FundingOptionsEditor } from "@/components/features/FundingOptionsEditor";
+import {
+  normalizeFundingOptions,
+  type FundingOptionInput,
+} from "@/lib/funding/options";
 import {
   CATEGORY_LABELS,
   isPostCategory,
@@ -160,6 +165,8 @@ export function Composer({
   const [nickname, setNickname] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [category, setCategory] = useState<PostCategory>("other");
+  const [fundingOptions, setFundingOptions] = useState<FundingOptionInput[]>([]);
+  const [fundingOptionsLoading, setFundingOptionsLoading] = useState(false);
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [recording, setRecording] = useState<RecordingKind | null>(null);
   const [recordingSetup, setRecordingSetup] = useState<RecordingKind | null>(null);
@@ -185,6 +192,45 @@ export function Composer({
   const activeRecordingRef = useRef<ActiveRecordingAttempt | null>(null);
   const preparedRecordingRef = useRef<PreparedRecording | null>(null);
   const grantedMediaRef = useRef({ audio: false, video: false });
+  const fundingOptionsEditedRef = useRef(false);
+
+  useEffect(() => {
+    if (mode !== "post" || !authenticated || !session?.walletAddress) return;
+    const controller = new AbortController();
+    fundingOptionsEditedRef.current = false;
+    setFundingOptionsLoading(true);
+    void fetch(`/api/profiles/${encodeURIComponent(session.walletAddress)}/payouts`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          options?: Array<{ asset?: unknown; address?: unknown }>;
+        };
+        if (fundingOptionsEditedRef.current) return;
+        const candidates = (payload.options ?? [])
+          .filter(
+            (option): option is { asset: FundingOptionInput["asset"]; address: string } =>
+              typeof option.asset === "string" && typeof option.address === "string",
+          )
+          .map((option) => ({ asset: option.asset, address: option.address }));
+        try {
+          setFundingOptions(normalizeFundingOptions(candidates));
+        } catch {
+          // Ignore stale or unsupported saved routes; server validation remains authoritative.
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!(caught instanceof DOMException && caught.name === "AbortError")) {
+          console.error("Unable to load saved funding routes", caught);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setFundingOptionsLoading(false);
+      });
+    return () => controller.abort();
+  }, [authenticated, mode, session?.walletAddress]);
 
   const cleanupRecordingAttempt = useCallback((attempt: ActiveRecordingAttempt) => {
     if (attempt.timerId !== null) {
@@ -634,6 +680,24 @@ export function Composer({
       return;
     }
 
+    let normalizedFundingOptions: FundingOptionInput[] = [];
+    if (mode === "post") {
+      if (fundingOptions.length === 0) {
+        setError("Choose at least one asset and funding destination for this ask.");
+        return;
+      }
+      try {
+        normalizedFundingOptions = normalizeFundingOptions(fundingOptions);
+      } catch (caught) {
+        setError(
+          caught instanceof Error && caught.message === "INVALID_FUNDING_ADDRESS"
+            ? "Check the mainnet address for every selected funding option."
+            : "Choose each funding asset only once and check its destination.",
+        );
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -682,6 +746,9 @@ export function Composer({
       formData.set("body", body.trim());
       formData.set("category", category);
       formData.set("mediaIds", JSON.stringify(mediaIds));
+      if (mode === "post") {
+        formData.set("fundingOptions", JSON.stringify(normalizedFundingOptions));
+      }
       if (postId) formData.set("postId", String(postId));
       if (parentId) formData.set("parentId", String(parentId));
 
@@ -740,8 +807,8 @@ export function Composer({
       {locked ? (
         <div className="rounded-xl border border-dashed border-[#c9ff55]/35 bg-[#c9ff55]/5 p-4 text-sm text-white/70">
           {sessionStatus === "signing"
-            ? "Approve the signature in your wallet to continue. This costs no SOL."
-            : "Sign in above to post, react, and reply. Connect a verified Solana wallet to fund people."}
+            ? "Finish signing in to continue."
+            : "Sign in above to post, react, reply, and fund people across supported networks."}
         </div>
       ) : (
         <>
@@ -789,6 +856,23 @@ export function Composer({
               placeholder={mode === "post" ? "Tell people what you need, why it matters, or make them laugh…" : "Write a thoughtful reply…"}
             />
           </label>
+
+          {mode === "post" ? (
+            fundingOptionsLoading ? (
+              <p className="mt-4 flex items-center gap-2 rounded-xl border border-white/8 bg-black/15 px-4 py-3 text-xs text-white/45">
+                <LoaderCircle className="spin" aria-hidden="true" size={15} /> Loading your saved funding destinations…
+              </p>
+            ) : (
+              <FundingOptionsEditor
+                value={fundingOptions}
+                disabled={submitting}
+                onChange={(next) => {
+                  fundingOptionsEditedRef.current = true;
+                  setFundingOptions(next);
+                }}
+              />
+            )
+          ) : null}
 
           {recordingSetup ? (
             <section

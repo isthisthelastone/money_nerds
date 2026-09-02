@@ -8,8 +8,25 @@ import { SESSION_COOKIE } from "@/lib/config";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
 export async function GET() {
+  const legacyToken = await getSessionToken();
   const session = await getWalletSession();
-  return NextResponse.json({ session });
+  const response = NextResponse.json({ session });
+  if (session && legacyToken) {
+    const supabase = createAdminSupabase();
+    await supabase.rpc("revoke_wallet_session", {
+      p_token_hash: hashSessionToken(legacyToken),
+    });
+    response.cookies.set(SESSION_COOKIE, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      expires: new Date(0),
+      maxAge: 0,
+    });
+  }
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }
 
 export async function DELETE() {

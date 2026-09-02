@@ -6,14 +6,14 @@ export function Hero() {
     return (
         <section className="site-hero site-shell" aria-labelledby="money-nerds-title">
             <div className="site-hero__copy">
-                <p className="site-kicker">Direct generosity on Solana</p>
+                <p className="site-kicker">Direct generosity across networks</p>
                 <h1 id="money-nerds-title">
                     Ask. Share.
                     <em>Get funded.</em>
                 </h1>
                 <p className="site-hero__lede">
                     Post a meme, fund a real need, or back an idea. Money Nerds is a
-                    wallet-native public board where support moves directly between people.
+                    public funding board where support moves directly between people.
                 </p>
 
                 <div className="site-actions">
@@ -33,7 +33,7 @@ export function Hero() {
                         <Blocks aria-hidden="true" size={14} /> Public on-chain
                     </li>
                     <li>
-                        <ShieldCheck aria-hidden="true" size={14} /> You control your wallet
+                        <ShieldCheck aria-hidden="true" size={14} /> You approve every transfer
                     </li>
                 </ul>
             </div>

@@ -9,7 +9,7 @@ import {
 } from "@/lib/media/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createPublicSupabase } from "@/lib/supabase/public";
-import type { CommentCardData, MediaAsset } from "@/lib/models";
+import type { CommentCardData, MediaAsset, TargetFundingTotal } from "@/lib/models";
 import { parseJsonArray } from "@/lib/format";
 
 const MAX_COMPOSER_REQUEST_BYTES = 32 * 1024;
@@ -181,6 +181,11 @@ export async function GET(request: NextRequest) {
     ...row,
     like_count: Number(row.like_count ?? 0),
     verified_donation_lamports: Number(row.verified_donation_lamports ?? 0),
+    funding_totals: parseJsonArray<TargetFundingTotal>(row.funding_totals).map((total) => ({
+      asset: String(total.asset),
+      received_atomic: String(total.received_atomic ?? "0"),
+      donation_count: Number(total.donation_count ?? 0),
+    })),
     media: parseJsonArray<MediaAsset>(row.media),
   })) as CommentCardData[];
   return NextResponse.json({

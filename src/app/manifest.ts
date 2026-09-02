@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Money Nerds — Ask. Share. Fund.",
         short_name: "Money Nerds",
         description:
-            "A wallet-native public board for direct Solana support with zero platform commission.",
+            "A public board for direct multi-currency support with zero platform commission.",
         start_url: "/",
         scope: "/",
         display: "standalone",

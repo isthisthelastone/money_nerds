@@ -1,16 +1,20 @@
+import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   checkExternalAuthRateLimit,
   clearExternalTransactionCookie,
   decodeExternalAuthTransaction,
-  establishExternalSession,
   externalAuthRedirect,
+  getExternalAuthOrigin,
   getExternalProviderAvailability,
   getTelegramBotToken,
-  setExternalSessionCookie,
   TELEGRAM_TRANSACTION_COOKIE,
 } from "@/lib/auth/external";
-import { constantTimeStringEqual, verifyTelegramLogin } from "@/lib/auth/external-core";
+import {
+  constantTimeStringEqual,
+  parseTelegramLoginPayload,
+  verifyTelegramLogin,
+} from "@/lib/auth/external-core";
 import { apiError, readBoundedJsonBody, RequestBodyError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +22,7 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ state: string }> };
 
 type CallbackResult =
-  | { ok: true; established: Awaited<ReturnType<typeof establishExternalSession>>; returnTo: string }
+  | { ok: true; signInUrl: string; returnTo: string }
   | { ok: false; code: string; returnTo: string };
 
 function clearTransaction(response: NextResponse) {
@@ -26,6 +30,11 @@ function clearTransaction(response: NextResponse) {
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("Referrer-Policy", "no-referrer");
   return response;
+}
+
+function telegramName(value: string | undefined) {
+  const normalized = value?.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return normalized ? normalized.slice(0, 256) : undefined;
 }
 
 async function verifyCallback(
@@ -71,9 +80,48 @@ async function verifyCallback(
   }
 
   try {
+    const telegram = parseTelegramLoginPayload(payload);
+    if (!telegram) return { ok: false, code: "invalid_callback", returnTo: transaction.returnTo };
+    const client = await clerkClient();
+    const externalId = `telegram:${verified.subject}`;
+    let users = await client.users.getUserList({ externalId: [externalId], limit: 2 });
+    if (users.totalCount > 1) {
+      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
+    }
+    let user = users.data.at(0);
+    if (!user) {
+      try {
+        user = await client.users.createUser({
+          externalId,
+          firstName: telegramName(telegram.first_name),
+          lastName: telegramName(telegram.last_name),
+          skipPasswordRequirement: true,
+        });
+      } catch {
+        // A concurrent callback may have created the same immutable Telegram
+        // identity. Re-read by unique externalId and continue only if it exists.
+        users = await client.users.getUserList({ externalId: [externalId], limit: 2 });
+        user = users.totalCount === 1 ? users.data.at(0) : undefined;
+      }
+    }
+    if (!user) {
+      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
+    }
+    const ticket = await client.signInTokens.createSignInToken({
+      userId: user.id,
+      expiresInSeconds: 60,
+    });
+    const signInUrl = new URL(ticket.url);
+    if (signInUrl.protocol !== "https:" || signInUrl.username || signInUrl.password) {
+      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
+    }
+    signInUrl.searchParams.set(
+      "redirect_url",
+      new URL(transaction.returnTo, getExternalAuthOrigin()).href,
+    );
     return {
       ok: true,
-      established: await establishExternalSession("telegram", verified.subject),
+      signInUrl: signInUrl.href,
       returnTo: transaction.returnTo,
     };
   } catch {
@@ -94,9 +142,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const response = NextResponse.redirect(externalAuthRedirect(result.returnTo, "success", "telegram"), 303);
-  setExternalSessionCookie(response, result.established);
-  return clearTransaction(response);
+  return clearTransaction(NextResponse.redirect(result.signInUrl, 303));
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -117,7 +163,5 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const result = await verifyCallback(request, state, payload);
   if (!result.ok) return clearTransaction(apiError("Telegram login could not be verified.", 401, { code: result.code }));
 
-  const response = NextResponse.json({ session: result.established.session });
-  setExternalSessionCookie(response, result.established);
-  return clearTransaction(response);
+  return clearTransaction(NextResponse.json({ redirectUrl: result.signInUrl }));
 }

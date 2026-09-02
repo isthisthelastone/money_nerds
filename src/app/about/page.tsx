@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
     title: "About",
     description:
-        "Why Money Nerds exists, how direct wallet-to-wallet support works, and what zero platform commission means.",
+        "Why Money Nerds exists, how direct multi-network support works, and what zero platform commission means.",
     alternates: {canonical: "/about"},
     openGraph: {
         url: "/about",
@@ -31,7 +31,7 @@ export default function AboutPage() {
                 <p className="site-page-hero__lede">
                     The internet made expression global. Money Nerds applies the same idea to
                     support: make an ask, share it publicly, and let another person fund it
-                    directly from their wallet.
+                    directly to a destination you publish.
                 </p>
             </header>
 
@@ -50,8 +50,9 @@ export default function AboutPage() {
                         </span>
                         <h3>Permissionless voice</h3>
                         <p>
-                            A connected wallet is the public identity. People can post without
-                            creating another email-and-password account.
+                            A stable public profile anchors each person’s activity. Sign in through
+                            an enabled social, Telegram, or Web3 option without creating another
+                            site-specific password.
                         </p>
                     </article>
                     <article className="site-card">
@@ -60,8 +61,8 @@ export default function AboutPage() {
                         </span>
                         <h3>Direct support</h3>
                         <p>
-                            Donations are signed by the supporter and sent to the recipient in
-                            SOL. Money Nerds does not custody the funds.
+                            Supporters send the selected asset straight to the recipient’s
+                            published address. Money Nerds does not custody user funds.
                         </p>
                     </article>
                     <article className="site-card">
@@ -70,8 +71,8 @@ export default function AboutPage() {
                         </span>
                         <h3>Public accountability</h3>
                         <p>
-                            Wallets and transaction signatures create a traceable public history
-                            that anyone can inspect on-chain.
+                            Public profiles connect posts, comments, and funding activity, while
+                            verified transaction identifiers can be inspected on-chain.
                         </p>
                     </article>
                 </div>
@@ -114,9 +115,9 @@ export default function AboutPage() {
                         <div>
                             <h3>Choose how to sign in</h3>
                             <p>
-                                Use a supported Solana wallet, or an enabled Google, Apple, or
-                                Telegram account. Money Nerds exposes a public profile ID—not your
-                                provider subject or email.
+                                Use an enabled Google, Apple, Telegram, or supported Web3 option.
+                                Money Nerds exposes a stable public profile ID—not your provider
+                                subject or email address.
                             </p>
                         </div>
                     </li>
@@ -124,8 +125,9 @@ export default function AboutPage() {
                         <div>
                             <h3>Post what you need</h3>
                             <p>
-                                Write the ask in plain language and add context. The community can
-                                respond, discuss, and decide what to support.
+                                Write the ask, add context, and choose the assets and destination
+                                addresses you accept. The community can respond, discuss, and
+                                decide what to support.
                             </p>
                         </div>
                     </li>
@@ -133,18 +135,18 @@ export default function AboutPage() {
                         <div>
                             <h3>Receive support directly</h3>
                             <p>
-                                A supporter approves the transaction in their own wallet. SOL
-                                settles to a verified recipient wallet without a Money Nerds
-                                platform fee. Account-backed profiles cannot receive until a real
-                                payout wallet has been independently verified.
+                                A supporter chooses one of your funding routes and approves the
+                                transfer in a compatible wallet or sending app. The selected
+                                network settles directly to your address without a Money Nerds
+                                platform fee.
                             </p>
                         </div>
                     </li>
                 </ol>
                 <p className="site-note">
                     <Info aria-hidden="true" size={18} />
-                    Zero platform commission does not mean zero network cost. Solana transaction
-                    fees are set by the network and shown by the connected wallet before approval.
+                    Zero platform commission does not mean zero network cost. Each blockchain
+                    sets its own fees, which the supporter should review before sending.
                 </p>
             </section>
 
@@ -153,8 +155,8 @@ export default function AboutPage() {
                     <p className="site-kicker">The public board is open</p>
                     <h2 id="join-title">A small ask can be a big answer.</h2>
                     <p>
-                        Browse what people are sharing, connect a wallet when you are ready, and
-                        decide what deserves your support.
+                        Browse what people are sharing, sign in when you are ready, and decide
+                        what deserves your support.
                     </p>
                 </div>
                 <Link className="site-button site-button--primary" href="/">

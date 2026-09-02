@@ -18,10 +18,12 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.8.0",
     "@metamask/connect-solana": "2.1.1",
     "@noble/hashes": "2.3.0",
     "@scure/base": "2.3.0",
     "@solana-mobile/wallet-adapter-mobile": "2.3.0",
+    "@solana/spl-token": "^0.4.15",
     "@solana/wallet-adapter-base": "0.9.27",
     "@solana/wallet-adapter-phantom": "0.9.29",
     "@solana/wallet-adapter-react": "0.15.39",
@@ -33,6 +35,7 @@
     "buffer": "6.0.3",
     "lucide-react": "1.33.0",
     "next": "16.3.1",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tweetnacl": "1.0.3"

@@ -18,7 +18,7 @@ export function SiteFooter() {
                         </Link>
                         <p className="site-footer__mission">
                             A public board where internet culture and direct generosity meet.
-                            Support goes from one wallet to another without a platform cut.
+                            Support goes straight to the recipient without a platform cut.
                         </p>
                     </div>
 
@@ -39,7 +39,7 @@ export function SiteFooter() {
                                 rel="noreferrer"
                                 target="_blank"
                             >
-                                Service wallet <ArrowUpRight aria-hidden="true" size={13} />
+                                Solana service wallet <ArrowUpRight aria-hidden="true" size={13} />
                             </a>
                             <a href="mailto:unluckypleasure@yandex.ru">Contact</a>
                         </div>
@@ -47,7 +47,7 @@ export function SiteFooter() {
                 </div>
 
                 <div className="site-footer__bottom">
-                    <span>© 2026 Money Nerds. Wallets are public identities.</span>
+                    <span>© 2026 Money Nerds. Public profiles link activity.</span>
                     <span className="site-footer__direct">
                         <Radio aria-hidden="true" size={13} />
                         Zero platform commission · Network fees apply

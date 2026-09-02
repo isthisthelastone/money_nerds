@@ -12,8 +12,11 @@ import type {
   ProfileActivityParams,
   ProfileActivitySection,
   ProfileDonationRecord,
+  ProfileFundingRoute,
+  ProfileFundingTotal,
   ProfilePage,
   ProfilePageSize,
+  TargetFundingTotal,
   WalletProfile,
   WalletProfileActivity,
   WalletProfileReference,
@@ -22,7 +25,12 @@ import type {
 import { createPublicSupabase } from "@/lib/supabase/public";
 
 function identityProvider(value: unknown) {
-  return value === "google" || value === "apple" || value === "telegram" ? value : null;
+  return value === "google" ||
+    value === "apple" ||
+    value === "telegram" ||
+    value === "clerk"
+    ? value
+    : null;
 }
 
 function normalizePost(row: Record<string, unknown>): PostCardData {
@@ -43,6 +51,11 @@ function normalizePost(row: Record<string, unknown>): PostCardData {
     legacy_donation_lamports: Number(row.legacy_donation_lamports ?? 0),
     comment_count: Number(row.comment_count ?? 0),
     view_count: Number(row.view_count ?? 0),
+    funding_totals: parseJsonArray<TargetFundingTotal>(row.funding_totals).map((total) => ({
+      asset: String(total.asset),
+      received_atomic: String(total.received_atomic ?? "0"),
+      donation_count: Number(total.donation_count ?? 0),
+    })),
     media: parseJsonArray<MediaAsset>(row.media),
   };
 }
@@ -65,6 +78,11 @@ function normalizeComment(row: Record<string, unknown>): CommentCardData {
     created_at: String(row.created_at),
     like_count: Number(row.like_count ?? 0),
     verified_donation_lamports: Number(row.verified_donation_lamports ?? 0),
+    funding_totals: parseJsonArray<TargetFundingTotal>(row.funding_totals).map((total) => ({
+      asset: String(total.asset),
+      received_atomic: String(total.received_atomic ?? "0"),
+      donation_count: Number(total.donation_count ?? 0),
+    })),
     media: parseJsonArray<MediaAsset>(row.media),
   };
 }
@@ -74,18 +92,41 @@ function normalizeDonation(row: Record<string, unknown>): DonationRecord {
     row.target_type === "post" || row.target_type === "comment"
       ? row.target_type
       : "service";
+  const donorProfile = row.donor_profile_wallet ? String(row.donor_profile_wallet) : null;
+  const recipientProfile = row.recipient_profile_wallet
+    ? String(row.recipient_profile_wallet)
+    : null;
+  const senderAddress = String(row.sender_address ?? "");
+  const recipientAddress = String(row.recipient_address ?? "");
+  const asset = String(row.asset ?? "SOL");
+  const amountAtomic = String(row.amount_atomic ?? "0");
+  const transactionHash = String(row.transaction_hash ?? "");
   return {
-    signature: String(row.signature),
-    donor_wallet: String(row.donor_wallet),
-    recipient_wallet: String(row.recipient_wallet),
+    record_id: String(row.record_id),
+    source: row.source === "multichain" ? "multichain" : "legacy_sol",
+    signature: transactionHash,
+    donor_wallet: donorProfile ?? senderAddress,
+    recipient_wallet: recipientProfile ?? recipientAddress,
+    donor_profile_wallet: donorProfile,
+    recipient_profile_wallet: recipientProfile,
+    sender_address: senderAddress,
+    recipient_address: recipientAddress,
     post_id: row.post_id === null || row.post_id === undefined ? null : Number(row.post_id),
     comment_id:
       row.comment_id === null || row.comment_id === undefined ? null : Number(row.comment_id),
     target_type: targetType,
-    lamports: Number(row.lamports),
-    slot: row.slot === null || row.slot === undefined ? null : Number(row.slot),
+    chain_namespace: String(row.chain_namespace ?? "solana"),
+    network_reference: String(row.network_reference ?? ""),
+    asset,
+    amount_atomic: amountAtomic,
+    lamports: asset === "SOL" ? Number(amountAtomic) : 0,
+    slot:
+      row.block_height === null || row.block_height === undefined
+        ? null
+        : Number(row.block_height),
+    transfer_index: Number(row.transfer_index ?? 0),
     status: "verified",
-    created_at: String(row.created_at),
+    created_at: String(row.block_time ?? row.verified_at),
   };
 }
 
@@ -209,7 +250,7 @@ export const getWalletProfile = cache(async (walletAddress: string) => {
   const supabase = createPublicSupabase();
   const { data, error } = await supabase
     .from("profiles")
-    .select("wallet_address, identity_kind, identity_provider, display_name, bio, created_at, updated_at")
+    .select("wallet_address, identity_kind, identity_provider, display_name, avatar_url, bio, created_at, updated_at")
     .eq("wallet_address", walletAddress)
     .maybeSingle();
   if (error) throw new Error(`Unable to load wallet profile: ${error.message}`);
@@ -225,7 +266,15 @@ export const getProfileActivity = cache(
     if (!profile) return null;
 
     const supabase = createPublicSupabase();
-    const [statsResult, postsCount, commentsCount, sentCount, receivedCount] = await Promise.all([
+    const [
+      statsResult,
+      postsCount,
+      commentsCount,
+      sentCount,
+      receivedCount,
+      fundingTotalsResult,
+      fundingRoutesResult,
+    ] = await Promise.all([
       supabase
         .from("profile_stats")
         .select("*")
@@ -240,22 +289,35 @@ export const getProfileActivity = cache(
         .select("id", { count: "exact", head: true })
         .eq("author_wallet", walletAddress),
       supabase
-        .from("donations")
-        .select("signature", { count: "exact", head: true })
-        .eq("donor_wallet", walletAddress)
-        .eq("status", "verified"),
+        .from("verified_funding_activity")
+        .select("record_id", { count: "exact", head: true })
+        .eq("donor_profile_wallet", walletAddress),
       supabase
-        .from("donations")
-        .select("signature", { count: "exact", head: true })
-        .eq("recipient_wallet", walletAddress)
-        .eq("status", "verified"),
+        .from("verified_funding_activity")
+        .select("record_id", { count: "exact", head: true })
+        .eq("recipient_profile_wallet", walletAddress),
+      supabase
+        .from("profile_funding_totals")
+        .select("*")
+        .eq("profile_wallet", walletAddress)
+        .order("asset", { ascending: true }),
+      supabase
+        .from("profile_funding_routes")
+        .select(
+          "id, profile_wallet, asset, chain_namespace, network_reference, recipient_address, verification_status, verified_at",
+        )
+        .eq("profile_wallet", walletAddress)
+        .in("verification_status", ["self_declared", "verified"])
+        .order("asset", { ascending: true }),
     ]);
     const countError =
       statsResult.error ||
       postsCount.error ||
       commentsCount.error ||
       sentCount.error ||
-      receivedCount.error;
+      receivedCount.error ||
+      fundingTotalsResult.error ||
+      fundingRoutesResult.error;
     if (countError) throw new Error(`Unable to load wallet profile: ${countError.message}`);
 
     const windows = {
@@ -265,7 +327,7 @@ export const getProfileActivity = cache(
       received: profilePageWindow(requestedParams.received, receivedCount.count ?? 0),
     };
     const donationFields =
-      "signature, donor_wallet, recipient_wallet, post_id, comment_id, target_type, lamports, slot, status, created_at";
+      "record_id, source, donor_profile_wallet, recipient_profile_wallet, target_type, post_id, comment_id, chain_namespace, network_reference, asset, amount_atomic, transaction_hash, transfer_index, sender_address, recipient_address, block_height, block_time, verified_at";
     const [postsResult, commentsResult, sentResult, receivedResult] = await Promise.all([
       supabase
         .from("post_cards")
@@ -282,20 +344,18 @@ export const getProfileActivity = cache(
         .order("id", { ascending: false })
         .range(windows.comments.offset, windows.comments.end),
       supabase
-        .from("donations")
+        .from("verified_funding_activity")
         .select(donationFields)
-        .eq("donor_wallet", walletAddress)
-        .eq("status", "verified")
-        .order("created_at", { ascending: false })
-        .order("signature", { ascending: false })
+        .eq("donor_profile_wallet", walletAddress)
+        .order("verified_at", { ascending: false })
+        .order("record_id", { ascending: false })
         .range(windows.sent.offset, windows.sent.end),
       supabase
-        .from("donations")
+        .from("verified_funding_activity")
         .select(donationFields)
-        .eq("recipient_wallet", walletAddress)
-        .eq("status", "verified")
-        .order("created_at", { ascending: false })
-        .order("signature", { ascending: false })
+        .eq("recipient_profile_wallet", walletAddress)
+        .order("verified_at", { ascending: false })
+        .order("record_id", { ascending: false })
         .range(windows.received.offset, windows.received.end),
     ]);
     const pageError =
@@ -316,9 +376,9 @@ export const getProfileActivity = cache(
     );
     const counterpartWallets = Array.from(
       new Set([
-        ...sent.map((donation) => donation.recipient_wallet),
-        ...received.map((donation) => donation.donor_wallet),
-      ]),
+        ...sent.map((donation) => donation.recipient_profile_wallet),
+        ...received.map((donation) => donation.donor_profile_wallet),
+      ].filter((value): value is string => Boolean(value))),
     );
     const commentIds = Array.from(
       new Set(
@@ -361,12 +421,19 @@ export const getProfileActivity = cache(
       donation: DonationRecord,
       direction: "sent" | "received",
     ): ProfileDonationRecord => {
+      const counterpartProfileWallet =
+        direction === "sent"
+          ? donation.recipient_profile_wallet
+          : donation.donor_profile_wallet;
       const counterpartWallet =
-        direction === "sent" ? donation.recipient_wallet : donation.donor_wallet;
+        counterpartProfileWallet ??
+        (direction === "sent" ? donation.recipient_address : donation.sender_address);
       return {
         ...donation,
         counterpart_wallet: counterpartWallet,
-        counterpart_profile: profileByWallet.get(counterpartWallet) ?? null,
+        counterpart_profile: counterpartProfileWallet
+          ? (profileByWallet.get(counterpartProfileWallet) ?? null)
+          : null,
         target_post_id:
           donation.target_type === "post"
             ? donation.post_id
@@ -401,6 +468,27 @@ export const getProfileActivity = cache(
         received.map((donation) => enrichDonation(donation, "received")),
         windows.received,
       ),
+      funding_totals: (fundingTotalsResult.data ?? []).map((row) => ({
+        profile_wallet: String(row.profile_wallet),
+        chain_namespace: String(row.chain_namespace),
+        network_reference: String(row.network_reference),
+        asset: String(row.asset),
+        sent_atomic: String(row.sent_atomic ?? "0"),
+        received_atomic: String(row.received_atomic ?? "0"),
+        sent_count: Number(row.sent_count ?? 0),
+        received_count: Number(row.received_count ?? 0),
+      })) as ProfileFundingTotal[],
+      funding_routes: (fundingRoutesResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        profile_wallet: String(row.profile_wallet),
+        asset: String(row.asset),
+        chain_namespace: String(row.chain_namespace),
+        network_reference: String(row.network_reference),
+        recipient_address: String(row.recipient_address),
+        verification_status:
+          row.verification_status === "verified" ? "verified" : "self_declared",
+        verified_at: row.verified_at ? String(row.verified_at) : null,
+      })) as ProfileFundingRoute[],
     };
   },
 );

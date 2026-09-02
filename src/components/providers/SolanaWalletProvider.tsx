@@ -13,7 +13,6 @@ import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 import { getSolanaRpcUrl } from "@/lib/config";
-import { WalletSessionProvider } from "@/components/providers/WalletSessionProvider";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -90,9 +89,9 @@ export function SolanaWalletProvider({ children }: { children: ReactNode }) {
 
   return (
     <ConnectionProvider endpoint={getSolanaRpcUrl()}>
-      <WalletProvider wallets={wallets} onError={onError} autoConnect>
+      <WalletProvider wallets={wallets} onError={onError} autoConnect={false}>
         <WalletModalProvider>
-          <WalletSessionProvider>{children}</WalletSessionProvider>
+          {children}
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
