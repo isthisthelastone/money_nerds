@@ -7,12 +7,10 @@ import { SITE_URL } from "@/lib/config";
 import { getComments, getPost } from "@/lib/data";
 import { serializeJsonLd } from "@/lib/seo";
 
-export const revalidate = 300;
-export const dynamicParams = true;
-
-export function generateStaticParams() {
-  return [];
-}
+// Clerk reads the request session in the shared layout. Rendering an on-demand
+// dynamic post as ISR makes Next.js attempt a static pass and fail with
+// DYNAMIC_SERVER_USAGE before the page can reach its public Supabase data.
+export const dynamic = "force-dynamic";
 
 type RouteParams = Promise<{ id: string }>;
 
