@@ -29,7 +29,7 @@ The product combines the low-friction browsing of an image board with the purpos
 
 ## Identity and transparency
 
-- Authentication uses Clerk. Depending on the enabled live configuration, people can sign in with Google, Apple, Telegram, or supported Web3 options.
+- Authentication uses Clerk. People can sign in with an email verification code, Telegram, or an enabled Web3 wallet on desktop and mobile. Provider-issued Google and Apple connections can be added when their production credentials are configured.
 - Every authenticated account maps to a stable public Money Nerds profile stored in Supabase. Provider subjects and email addresses are not exposed as public profile identifiers.
 - A sign-in identity and a funding destination are distinct: an author can publish network-specific recipient addresses for the assets they accept.
 - Public profile pages connect posts, comments, likes, verified donations sent, and verified donations received.

@@ -6,9 +6,10 @@ they choose. The platform takes no commission and never custodies user funds.
 
 ## Product surface
 
-- Clerk provides one application session across Telegram and supported desktop
-  Web3 sign-in methods. Google and Apple are feature-gated until their production
-  credentials are configured.
+- Clerk provides one application session across email verification codes,
+  Telegram, and supported Web3 sign-in methods on desktop and mobile. Google and
+  Apple remain feature-gated until their provider-issued production credentials
+  are configured.
 - Every Clerk identity is linked to a stable Supabase profile, preserving posts,
   comments, aliases, payout routes, and verified sent/received activity.
 - Posts, replies, unique views, atomic likes, and direct verified funding.

@@ -115,9 +115,10 @@ export default function AboutPage() {
                         <div>
                             <h3>Choose how to sign in</h3>
                             <p>
-                                Use an enabled Google, Apple, Telegram, or supported Web3 option.
-                                Money Nerds exposes a stable public profile ID—not your provider
-                                subject or email address.
+                                Use a private email code, Telegram, or a supported Web3 wallet on
+                                desktop or mobile. Configured social providers can join the same
+                                Clerk account. Money Nerds exposes a stable public profile ID—not
+                                your provider subject or email address.
                             </p>
                         </div>
                     </li>
