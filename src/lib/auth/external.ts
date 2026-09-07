@@ -36,6 +36,10 @@ import { normalizeWallet } from "@/lib/wallet";
 export const OAUTH_TRANSACTION_COOKIE = "mn_oauth_transaction";
 export const TELEGRAM_TRANSACTION_COOKIE = "mn_telegram_transaction";
 export const EXTERNAL_AUTH_TRANSACTION_TTL_SECONDS = 10 * 60;
+export const TELEGRAM_OIDC_CODE_VERIFIER_STORAGE_KEY = "telegram_oidc_code_verifier";
+export const TELEGRAM_OIDC_NONCE_STORAGE_KEY = "telegram_oidc_nonce";
+
+export type TelegramAuthFlow = "oidc" | "legacy";
 
 const ENABLE_ENV: Record<ExternalAuthProvider, string> = {
   google: "AUTH_GOOGLE_ENABLED",
@@ -56,6 +60,7 @@ export interface ExternalProviderAvailability {
   startUrl: string;
   callbackUrl: string | null;
   botUsername?: string;
+  telegramFlow?: TelegramAuthFlow;
   requiresSupabaseDashboard?: boolean;
 }
 
@@ -112,7 +117,7 @@ function oauthConfigurationProblem() {
   return null;
 }
 
-function telegramConfigurationProblem() {
+function telegramLegacyConfigurationProblem() {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
   const username = process.env.TELEGRAM_BOT_USERNAME?.trim().replace(/^@/, "") ?? "";
   if (!/^\d{5,12}:[A-Za-z0-9_-]{30,}$/.test(token)) return "TELEGRAM_BOT_TOKEN is missing or invalid.";
@@ -120,6 +125,34 @@ function telegramConfigurationProblem() {
     return "TELEGRAM_BOT_USERNAME is missing or invalid.";
   }
   return null;
+}
+
+function configuredTelegramFlow(): TelegramAuthFlow {
+  return process.env.TELEGRAM_OIDC_CLIENT_ID?.trim() || process.env.TELEGRAM_OIDC_CLIENT_SECRET?.trim()
+    ? "oidc"
+    : "legacy";
+}
+
+function telegramOidcConfigurationProblem() {
+  const clientId = process.env.TELEGRAM_OIDC_CLIENT_ID?.trim() ?? "";
+  const clientSecret = process.env.TELEGRAM_OIDC_CLIENT_SECRET?.trim() ?? "";
+  if (!/^[1-9][0-9]{0,19}$/.test(clientId)) {
+    return "TELEGRAM_OIDC_CLIENT_ID is missing or invalid.";
+  }
+  if (
+    Buffer.byteLength(clientSecret, "utf8") < 1 ||
+    Buffer.byteLength(clientSecret, "utf8") > 512 ||
+    /[\u0000-\u001f\u007f]/.test(clientSecret)
+  ) {
+    return "TELEGRAM_OIDC_CLIENT_SECRET is missing or invalid.";
+  }
+  return null;
+}
+
+function telegramConfigurationProblem() {
+  return configuredTelegramFlow() === "oidc"
+    ? telegramOidcConfigurationProblem()
+    : telegramLegacyConfigurationProblem();
 }
 
 export function getExternalAuthOrigin() {
@@ -137,16 +170,31 @@ export function getExternalAuthSecret() {
 }
 
 export function getTelegramBotToken() {
-  const status = getExternalProviderAvailability("telegram");
-  if (!status.available) throw new ExternalAuthConfigurationError(status.reason ?? "Telegram login is unavailable.");
+  const problem = telegramLegacyConfigurationProblem();
+  if (problem) throw new ExternalAuthConfigurationError(problem);
   return process.env.TELEGRAM_BOT_TOKEN!.trim();
+}
+
+export function getTelegramOidcConfiguration() {
+  const status = getExternalProviderAvailability("telegram");
+  if (!status.available || status.telegramFlow !== "oidc") {
+    throw new ExternalAuthConfigurationError(status.reason ?? "Telegram OIDC login is unavailable.");
+  }
+  return {
+    clientId: process.env.TELEGRAM_OIDC_CLIENT_ID!.trim(),
+    clientSecret: process.env.TELEGRAM_OIDC_CLIENT_SECRET!.trim(),
+    redirectUri: `${getExternalAuthOrigin()}/api/auth/telegram/oidc/callback`,
+  };
 }
 
 export function getExternalProviderAvailability(provider: ExternalAuthProvider): ExternalProviderAvailability {
   const origin = configuredExternalAuthOrigin();
+  const telegramFlow = provider === "telegram" ? configuredTelegramFlow() : undefined;
   const callbackUrl = origin
     ? provider === "telegram"
-      ? `${origin}/api/auth/telegram/callback/{state}`
+      ? telegramFlow === "oidc"
+        ? `${origin}/api/auth/telegram/oidc/callback`
+        : `${origin}/api/auth/telegram/callback/{state}`
       : `${origin}/api/auth/oauth/${provider}/callback/{state}`
     : null;
   const base: ExternalProviderAvailability = {
@@ -167,7 +215,10 @@ export function getExternalProviderAvailability(provider: ExternalAuthProvider):
     return {
       ...base,
       available: true,
-      botUsername: process.env.TELEGRAM_BOT_USERNAME!.trim().replace(/^@/, ""),
+      telegramFlow,
+      ...(telegramFlow === "legacy"
+        ? { botUsername: process.env.TELEGRAM_BOT_USERNAME!.trim().replace(/^@/, "") }
+        : {}),
     };
   }
   return { ...base, available: true, requiresSupabaseDashboard: true };

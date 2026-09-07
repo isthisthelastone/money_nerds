@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   checkExternalAuthRateLimit,
@@ -6,8 +7,12 @@ import {
   externalTransactionCookieOptions,
   getExternalAuthOrigin,
   getExternalProviderAvailability,
+  getTelegramOidcConfiguration,
+  TELEGRAM_OIDC_CODE_VERIFIER_STORAGE_KEY,
+  TELEGRAM_OIDC_NONCE_STORAGE_KEY,
   TELEGRAM_TRANSACTION_COOKIE,
 } from "@/lib/auth/external";
+import { createExternalAuthState } from "@/lib/auth/external-core";
 import { apiError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -32,13 +37,40 @@ export async function GET(request: NextRequest) {
 
   try {
     const transaction = createExternalAuthTransaction("telegram", request.nextUrl.searchParams.get("returnTo"));
-    const authUrl = `${getExternalAuthOrigin()}/api/auth/telegram/callback/${encodeURIComponent(transaction.state)}`;
-    const response = NextResponse.json({
-      provider: "telegram",
-      authUrl,
-      botUsername: availability.botUsername,
-      expiresAt: new Date(transaction.createdAt + 10 * 60 * 1_000).toISOString(),
-    });
+    let payload: Record<string, unknown>;
+    if (availability.telegramFlow === "oidc") {
+      const configuration = getTelegramOidcConfiguration();
+      const codeVerifier = createExternalAuthState();
+      const nonce = createExternalAuthState();
+      transaction.authStorage[TELEGRAM_OIDC_CODE_VERIFIER_STORAGE_KEY] = codeVerifier;
+      transaction.authStorage[TELEGRAM_OIDC_NONCE_STORAGE_KEY] = nonce;
+      const authorizationUrl = new URL("https://oauth.telegram.org/auth");
+      authorizationUrl.search = new URLSearchParams({
+        client_id: configuration.clientId,
+        redirect_uri: configuration.redirectUri,
+        response_type: "code",
+        scope: "openid profile",
+        state: transaction.state,
+        nonce,
+        code_challenge: createHash("sha256").update(codeVerifier, "ascii").digest("base64url"),
+        code_challenge_method: "S256",
+      }).toString();
+      payload = {
+        provider: "telegram",
+        flow: "oidc",
+        authUrl: authorizationUrl.href,
+        expiresAt: new Date(transaction.createdAt + 10 * 60 * 1_000).toISOString(),
+      };
+    } else {
+      payload = {
+        provider: "telegram",
+        flow: "legacy",
+        authUrl: `${getExternalAuthOrigin()}/api/auth/telegram/callback/${encodeURIComponent(transaction.state)}`,
+        botUsername: availability.botUsername,
+        expiresAt: new Date(transaction.createdAt + 10 * 60 * 1_000).toISOString(),
+      };
+    }
+    const response = NextResponse.json(payload);
     response.cookies.set(
       TELEGRAM_TRANSACTION_COOKIE,
       encodeExternalAuthTransaction(transaction),

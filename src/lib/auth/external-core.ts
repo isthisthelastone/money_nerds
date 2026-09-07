@@ -3,8 +3,11 @@ import {
   createDecipheriv,
   createHash,
   createHmac,
+  createPublicKey,
   randomBytes,
   timingSafeEqual,
+  type JsonWebKey as NodeJsonWebKey,
+  verify as verifySignature,
 } from "node:crypto";
 import bs58 from "bs58";
 
@@ -47,6 +50,20 @@ export interface TelegramLoginPayload {
 export type TelegramVerificationResult =
   | { ok: true; subject: string }
   | { ok: false; code: "invalid_payload" | "invalid_signature" | "expired" };
+
+export interface TelegramOidcIdentity {
+  /** Telegram's signed profile `id`, used to preserve legacy-widget accounts. */
+  telegramUserId: string;
+  /** Telegram's canonical OIDC `sub`, retained separately from the profile ID. */
+  oidcSubject: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+}
+
+export type TelegramOidcVerificationResult =
+  | { ok: true; identity: TelegramOidcIdentity }
+  | { ok: false; code: "invalid_token" | "unknown_key" | "invalid_signature" | "expired" };
 
 function requireStrongSecret(secret: string) {
   if (Buffer.byteLength(secret, "utf8") < 32) {
@@ -251,6 +268,186 @@ export function verifyTelegramLogin(
     return { ok: false, code: "expired" };
   }
   return { ok: true, subject: payload.id };
+}
+
+function decodeJwtJson(segment: string) {
+  if (!/^[A-Za-z0-9_-]+$/.test(segment) || segment.length > 16_384) return null;
+  try {
+    const value = JSON.parse(Buffer.from(segment, "base64url").toString("utf8")) as unknown;
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function oidcAudienceMatches(value: unknown, authorizedParty: unknown, clientId: string) {
+  if (typeof value === "string") {
+    return (
+      constantTimeStringEqual(value, clientId) &&
+      (authorizedParty === undefined ||
+        (typeof authorizedParty === "string" &&
+          constantTimeStringEqual(authorizedParty, clientId)))
+    );
+  }
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    value.length > 8 ||
+    !value.every((entry) => typeof entry === "string") ||
+    !value.some((entry) => constantTimeStringEqual(entry, clientId))
+  ) {
+    return false;
+  }
+  return value.length === 1
+    ? authorizedParty === undefined ||
+        (typeof authorizedParty === "string" && constantTimeStringEqual(authorizedParty, clientId))
+    : typeof authorizedParty === "string" && constantTimeStringEqual(authorizedParty, clientId);
+}
+
+function oidcTelegramId(value: unknown) {
+  const normalized = typeof value === "number" && Number.isSafeInteger(value) ? String(value) : value;
+  return typeof normalized === "string" && TELEGRAM_ID_PATTERN.test(normalized) ? normalized : null;
+}
+
+function oidcSubject(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.length <= 255 &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+    ? value
+    : null;
+}
+
+function oidcOptionalText(value: unknown, maximumLength: number) {
+  if (value === undefined) return undefined;
+  return typeof value === "string" && value.length <= maximumLength ? value : null;
+}
+
+export function verifyTelegramOidcIdToken(
+  value: unknown,
+  jwks: unknown,
+  expected: { clientId: string; nonce: string; nowSeconds?: number },
+): TelegramOidcVerificationResult {
+  if (
+    typeof value !== "string" ||
+    value.length < 32 ||
+    value.length > 16_384 ||
+    !/^[1-9][0-9]{0,19}$/.test(expected.clientId) ||
+    !STATE_PATTERN.test(expected.nonce)
+  ) {
+    return { ok: false, code: "invalid_token" };
+  }
+
+  const [encodedHeader, encodedPayload, encodedSignature, extra] = value.split(".");
+  if (!encodedHeader || !encodedPayload || !encodedSignature || extra) {
+    return { ok: false, code: "invalid_token" };
+  }
+  const header = decodeJwtJson(encodedHeader);
+  const payload = decodeJwtJson(encodedPayload);
+  if (
+    !header ||
+    !payload ||
+    header.alg !== "RS256" ||
+    typeof header.kid !== "string" ||
+    header.kid.length < 1 ||
+    header.kid.length > 128 ||
+    (header.typ !== undefined && header.typ !== "JWT") ||
+    header.crit !== undefined
+  ) {
+    return { ok: false, code: "invalid_token" };
+  }
+
+  const keySet =
+    jwks && typeof jwks === "object" && !Array.isArray(jwks)
+      ? (jwks as { keys?: unknown }).keys
+      : null;
+  if (!Array.isArray(keySet) || keySet.length < 1 || keySet.length > 16) {
+    return { ok: false, code: "invalid_token" };
+  }
+  const matchingKeys = keySet.filter(
+    (entry): entry is Record<string, unknown> =>
+      Boolean(
+        entry &&
+          typeof entry === "object" &&
+          !Array.isArray(entry) &&
+          (entry as Record<string, unknown>).kid === header.kid &&
+          (entry as Record<string, unknown>).kty === "RSA" &&
+          (entry as Record<string, unknown>).alg === "RS256" &&
+          typeof (entry as Record<string, unknown>).n === "string" &&
+          typeof (entry as Record<string, unknown>).e === "string",
+      ),
+  );
+  if (matchingKeys.length === 0) return { ok: false, code: "unknown_key" };
+  if (matchingKeys.length !== 1) return { ok: false, code: "invalid_token" };
+  const key = matchingKeys[0];
+  if (
+    (key.use !== undefined && key.use !== "sig") ||
+    (key.key_ops !== undefined &&
+      (!Array.isArray(key.key_ops) || !key.key_ops.includes("verify")))
+  ) {
+    return { ok: false, code: "invalid_token" };
+  }
+
+  let signature: Buffer;
+  try {
+    signature = Buffer.from(encodedSignature, "base64url");
+    const publicKey = createPublicKey({ key: key as NodeJsonWebKey, format: "jwk" });
+    if (
+      signature.length < 64 ||
+      !verifySignature(
+        "RSA-SHA256",
+        Buffer.from(`${encodedHeader}.${encodedPayload}`, "ascii"),
+        publicKey,
+        signature,
+      )
+    ) {
+      return { ok: false, code: "invalid_signature" };
+    }
+  } catch {
+    return { ok: false, code: "invalid_signature" };
+  }
+
+  const now = expected.nowSeconds ?? Math.floor(Date.now() / 1_000);
+  if (
+    payload.iss !== "https://oauth.telegram.org" ||
+    !oidcAudienceMatches(payload.aud, payload.azp, expected.clientId) ||
+    typeof payload.exp !== "number" ||
+    !Number.isSafeInteger(payload.exp) ||
+    typeof payload.iat !== "number" ||
+    !Number.isSafeInteger(payload.iat) ||
+    typeof payload.nonce !== "string" ||
+    !constantTimeStringEqual(payload.nonce, expected.nonce)
+  ) {
+    return { ok: false, code: "invalid_token" };
+  }
+  if (
+    payload.exp <= now - 30 ||
+    payload.iat > now + 30 ||
+    (payload.nbf !== undefined &&
+      (typeof payload.nbf !== "number" || !Number.isSafeInteger(payload.nbf) || payload.nbf > now + 30))
+  ) {
+    return { ok: false, code: "expired" };
+  }
+
+  const telegramUserId = oidcTelegramId(payload.id);
+  const canonicalSubject = oidcSubject(payload.sub);
+  if (!telegramUserId || !canonicalSubject) return { ok: false, code: "invalid_token" };
+  const firstName = oidcOptionalText(payload.given_name, 256);
+  const lastName = oidcOptionalText(payload.family_name, 256);
+  const username = oidcOptionalText(payload.preferred_username, 256);
+  if (firstName === null || lastName === null || username === null) {
+    return { ok: false, code: "invalid_token" };
+  }
+  return {
+    ok: true,
+    identity: {
+      telegramUserId,
+      oidcSubject: canonicalSubject,
+      ...(firstName ? { firstName } : {}),
+      ...(lastName ? { lastName } : {}),
+      ...(username ? { username } : {}),
+    },
+  };
 }
 
 export function isSha256Hex(value: unknown): value is string {

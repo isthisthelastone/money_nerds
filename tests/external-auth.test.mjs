@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, createHmac } from "node:crypto";
+import { createHash, createHmac, generateKeyPairSync, sign } from "node:crypto";
 import test from "node:test";
 import bs58 from "bs58";
 import {
@@ -9,6 +9,7 @@ import {
   openExternalAuthTransaction,
   sealExternalAuthTransaction,
   verifyTelegramLogin,
+  verifyTelegramOidcIdToken,
 } from "../src/lib/auth/external-core.ts";
 
 const SECRET = "test-only-external-auth-secret-with-more-than-thirty-two-bytes";
@@ -91,4 +92,157 @@ test("Telegram verification accepts only a fresh, correctly signed payload", () 
     ok: false,
     code: "expired",
   });
+});
+
+test("Telegram OIDC verification checks signature, claims, and legacy identity continuity", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2_048 });
+  const clientId = "987654321";
+  const nonce = "N".repeat(43);
+  const now = 1_787_330_000;
+  const jwk = publicKey.export({ format: "jwk" });
+  const jwks = { keys: [{ ...jwk, alg: "RS256", kid: "telegram-test-key", use: "sig" }] };
+  const createToken = (overrides = {}, headerOverrides = {}) => {
+    const header = Buffer.from(
+      JSON.stringify({
+        alg: "RS256",
+        kid: "telegram-test-key",
+        typ: "JWT",
+        ...headerOverrides,
+      }),
+    ).toString("base64url");
+    const payload = Buffer.from(
+      JSON.stringify({
+        iss: "https://oauth.telegram.org",
+        aud: clientId,
+        sub: "telegram-oidc-subject",
+        id: 987654321,
+        iat: now - 10,
+        exp: now + 300,
+        nonce,
+        given_name: "Money",
+        family_name: "Nerd",
+        preferred_username: "money_nerd",
+        ...overrides,
+      }),
+    ).toString("base64url");
+    const signingInput = `${header}.${payload}`;
+    return `${signingInput}.${sign("RSA-SHA256", Buffer.from(signingInput), privateKey).toString("base64url")}`;
+  };
+
+  const validToken = createToken();
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(validToken, jwks, { clientId, nonce, nowSeconds: now }),
+    {
+      ok: true,
+      identity: {
+        telegramUserId: "987654321",
+        oidcSubject: "telegram-oidc-subject",
+        firstName: "Money",
+        lastName: "Nerd",
+        username: "money_nerd",
+      },
+    },
+  );
+  const tokenParts = validToken.split(".");
+  tokenParts[2] = `${tokenParts[2][0] === "A" ? "B" : "A"}${tokenParts[2].slice(1)}`;
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(tokenParts.join("."), jwks, { clientId, nonce, nowSeconds: now }),
+    { ok: false, code: "invalid_signature" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ aud: "111111111" }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ iss: "https://attacker.example" }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ nonce: "X".repeat(43) }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ exp: now - 31 }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "expired" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ iat: now + 31 }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "expired" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ nbf: now + 31 }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "expired" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ sub: "" }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ id: "not-a-telegram-id" }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(createToken({ aud: [clientId, "another-audience"] }), jwks, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
+  assert.equal(
+    verifyTelegramOidcIdToken(
+      createToken({ aud: [clientId, "another-audience"], azp: clientId }),
+      jwks,
+      { clientId, nonce, nowSeconds: now },
+    ).ok,
+    true,
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(
+      createToken({}, { kid: "future-telegram-key" }),
+      jwks,
+      { clientId, nonce, nowSeconds: now },
+    ),
+    { ok: false, code: "unknown_key" },
+  );
+  assert.deepEqual(
+    verifyTelegramOidcIdToken(validToken, { keys: [jwks.keys[0], jwks.keys[0]] }, {
+      clientId,
+      nonce,
+      nowSeconds: now,
+    }),
+    { ok: false, code: "invalid_token" },
+  );
 });

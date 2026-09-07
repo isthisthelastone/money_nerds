@@ -3,7 +3,8 @@
 import { RefreshCw, Send, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-interface TelegramLoginConfig {
+interface LegacyTelegramLoginConfig {
+  flow: "legacy";
   authUrl: string;
   botUsername: string;
 }
@@ -17,7 +18,7 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
-  const [config, setConfig] = useState<TelegramLoginConfig | null>(null);
+  const [config, setConfig] = useState<LegacyTelegramLoginConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,7 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
       startUrl.searchParams.set("returnTo", normalizeReturnTo(returnTo));
       const response = await fetch(startUrl, { cache: "no-store", credentials: "same-origin" });
       const payload = (await response.json().catch(() => null)) as {
+        flow?: unknown;
         authUrl?: unknown;
         botUsername?: unknown;
         error?: unknown;
@@ -64,22 +66,38 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
       if (
         !response.ok ||
         typeof payload?.authUrl !== "string" ||
-        typeof payload.botUsername !== "string"
+        (payload.flow !== "oidc" && payload.flow !== "legacy")
       ) {
         throw new Error(
           typeof payload?.error === "string" ? payload.error : "Telegram sign-in is unavailable.",
         );
       }
       const authUrl = new URL(payload.authUrl);
+      if (payload.flow === "oidc") {
+        if (
+          authUrl.protocol !== "https:" ||
+          authUrl.hostname !== "oauth.telegram.org" ||
+          authUrl.pathname !== "/auth" ||
+          authUrl.username ||
+          authUrl.password
+        ) {
+          throw new Error("Telegram returned an invalid authorization address.");
+        }
+        window.location.assign(authUrl.href);
+        return;
+      }
+
       const localHttp = authUrl.protocol === "http:" &&
         (authUrl.hostname === "localhost" || authUrl.hostname === "127.0.0.1");
       if (
+        typeof payload.botUsername !== "string" ||
+        !/^[A-Za-z0-9_]{5,32}$/.test(payload.botUsername) ||
         (authUrl.protocol !== "https:" && !localHttp) ||
         !authUrl.pathname.startsWith("/api/auth/telegram/callback/")
       ) {
         throw new Error("Telegram returned an invalid callback address.");
       }
-      setConfig({ authUrl: authUrl.href, botUsername: payload.botUsername });
+      setConfig({ flow: "legacy", authUrl: authUrl.href, botUsername: payload.botUsername });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Telegram sign-in could not be started.");
     } finally {
@@ -102,6 +120,9 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
         )}
         Continue with Telegram
       </button>
+      <p className="mt-2 text-xs leading-relaxed text-nerd-muted">
+        Telegram may open its installed app; otherwise continue securely on the web.
+      </p>
       {error ? (
         <p className="mt-3 text-sm text-red-300" role="alert">
           {error}

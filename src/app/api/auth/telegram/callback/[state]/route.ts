@@ -1,11 +1,9 @@
-import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   checkExternalAuthRateLimit,
   clearExternalTransactionCookie,
   decodeExternalAuthTransaction,
   externalAuthRedirect,
-  getExternalAuthOrigin,
   getExternalProviderAvailability,
   getTelegramBotToken,
   TELEGRAM_TRANSACTION_COOKIE,
@@ -15,6 +13,7 @@ import {
   parseTelegramLoginPayload,
   verifyTelegramLogin,
 } from "@/lib/auth/external-core";
+import { createTelegramClerkSignIn } from "@/lib/auth/telegram-clerk";
 import { apiError, readBoundedJsonBody, RequestBodyError } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -32,18 +31,15 @@ function clearTransaction(response: NextResponse) {
   return response;
 }
 
-function telegramName(value: string | undefined) {
-  const normalized = value?.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
-  return normalized ? normalized.slice(0, 256) : undefined;
-}
-
 async function verifyCallback(
   request: NextRequest,
   state: string,
   payload: unknown,
 ): Promise<CallbackResult> {
   const availability = getExternalProviderAvailability("telegram");
-  if (!availability.available) return { ok: false, code: "provider_unavailable", returnTo: "/" };
+  if (!availability.available || availability.telegramFlow !== "legacy") {
+    return { ok: false, code: "provider_unavailable", returnTo: "/" };
+  }
 
   let transaction;
   try {
@@ -82,46 +78,17 @@ async function verifyCallback(
   try {
     const telegram = parseTelegramLoginPayload(payload);
     if (!telegram) return { ok: false, code: "invalid_callback", returnTo: transaction.returnTo };
-    const client = await clerkClient();
-    const externalId = `telegram:${verified.subject}`;
-    let users = await client.users.getUserList({ externalId: [externalId], limit: 2 });
-    if (users.totalCount > 1) {
-      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
-    }
-    let user = users.data.at(0);
-    if (!user) {
-      try {
-        user = await client.users.createUser({
-          externalId,
-          firstName: telegramName(telegram.first_name),
-          lastName: telegramName(telegram.last_name),
-          skipPasswordRequirement: true,
-        });
-      } catch {
-        // A concurrent callback may have created the same immutable Telegram
-        // identity. Re-read by unique externalId and continue only if it exists.
-        users = await client.users.getUserList({ externalId: [externalId], limit: 2 });
-        user = users.totalCount === 1 ? users.data.at(0) : undefined;
-      }
-    }
-    if (!user) {
-      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
-    }
-    const ticket = await client.signInTokens.createSignInToken({
-      userId: user.id,
-      expiresInSeconds: 60,
-    });
-    const signInUrl = new URL(ticket.url);
-    if (signInUrl.protocol !== "https:" || signInUrl.username || signInUrl.password) {
-      return { ok: false, code: "temporarily_unavailable", returnTo: transaction.returnTo };
-    }
-    signInUrl.searchParams.set(
-      "redirect_url",
-      new URL(transaction.returnTo, getExternalAuthOrigin()).href,
+    const signInUrl = await createTelegramClerkSignIn(
+      {
+        subject: verified.subject,
+        firstName: telegram.first_name,
+        lastName: telegram.last_name,
+      },
+      transaction.returnTo,
     );
     return {
       ok: true,
-      signInUrl: signInUrl.href,
+      signInUrl,
       returnTo: transaction.returnTo,
     };
   } catch {
