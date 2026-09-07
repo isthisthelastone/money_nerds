@@ -1,4 +1,3 @@
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import bs58 from "bs58";
 import {
   Connection,
@@ -23,6 +22,7 @@ import {
   unauthenticatedResponse,
 } from "@/lib/http";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { getAssociatedTokenAddressSync } from "@/lib/solana/token";
 
 interface DonationBody {
   transactionId?: unknown;

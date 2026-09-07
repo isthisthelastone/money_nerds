@@ -1,11 +1,6 @@
 "use client";
 
 import {
-  createAssociatedTokenAccountInstruction,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
-import {
   PublicKey,
   SystemProgram,
   Transaction,
@@ -40,6 +35,11 @@ import {
   type FundingOption,
   type PayoutAsset,
 } from "@/lib/funding/payouts";
+import {
+  createAssociatedTokenAccountInstruction,
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddressSync,
+} from "@/lib/solana/token";
 
 type TargetType = "post" | "comment" | "service";
 type DonationStatus =
