@@ -98,17 +98,21 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const controller = new AbortController();
     if (!isLoaded) {
-      setStatus("loading");
       return () => controller.abort();
     }
     if (!isSignedIn || !userId) {
-      requestVersion.current += 1;
-      setSession(null);
-      setError(null);
-      setStatus("disconnected");
+      const version = ++requestVersion.current;
+      queueMicrotask(() => {
+        if (controller.signal.aborted || version !== requestVersion.current) return;
+        setSession(null);
+        setError(null);
+        setStatus("disconnected");
+      });
       return () => controller.abort();
     }
-    void refreshSession(controller.signal);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) void refreshSession(controller.signal);
+    });
     return () => controller.abort();
   }, [isLoaded, isSignedIn, refreshSession, userId]);
 

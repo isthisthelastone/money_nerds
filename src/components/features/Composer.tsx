@@ -198,7 +198,9 @@ export function Composer({
     if (mode !== "post" || !authenticated || !session?.walletAddress) return;
     const controller = new AbortController();
     fundingOptionsEditedRef.current = false;
-    setFundingOptionsLoading(true);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setFundingOptionsLoading(true);
+    });
     void fetch(`/api/profiles/${encodeURIComponent(session.walletAddress)}/payouts`, {
       cache: "no-store",
       signal: controller.signal,
