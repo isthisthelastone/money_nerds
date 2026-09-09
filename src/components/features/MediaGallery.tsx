@@ -3,6 +3,8 @@
 import { Check, Download, Share2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { MediaAsset } from "@/lib/models";
+import { VoiceMessagePlayer } from "./media/VoiceMessagePlayer";
+import { CircleVideoPlayer } from "./media/CircleVideoPlayer";
 
 type ShareStatus = "idle" | "shared" | "copied" | "unavailable";
 
@@ -88,27 +90,17 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
         </div>
       ) : null}
       {messages.length ? (
-        <div className="flex flex-wrap gap-3">
+        <div className="message-players">
           {messages.map((asset) =>
             asset.kind === "audio" ? (
-              <figure key={asset.id} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 p-3">
-                <figcaption className="mb-2 text-xs uppercase tracking-[0.12em] text-white/45">Voice message</figcaption>
-                <audio controls preload="metadata" className="w-full" aria-label={asset.alt_text || "Voice message"}>
-                  <source src={asset.public_url} type={asset.mime_type} />
-                </audio>
-                {asset.alt_text ? <p className="mt-2 text-xs leading-5 text-white/55">{asset.alt_text}</p> : null}
+              <figure key={asset.id} className="message-players__voice">
+                <VoiceMessagePlayer src={asset.public_url} label={asset.alt_text || "Voice message"} />
+                {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ) : (
-              <figure key={asset.id} className="w-fit max-w-full rounded-[1.4rem] border border-white/10 bg-black/25 p-3">
-                <video
-                  src={asset.public_url}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="aspect-square w-48 max-w-full rounded-full bg-black object-cover sm:w-56"
-                  aria-label={asset.alt_text || "Circular video message"}
-                />
-                {asset.alt_text ? <figcaption className="mt-2 max-w-56 text-xs leading-5 text-white/55">{asset.alt_text}</figcaption> : null}
+              <figure key={asset.id} className="message-players__circle">
+                <CircleVideoPlayer src={asset.public_url} label={asset.alt_text || "Circle video"} />
+                {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ),
           )}

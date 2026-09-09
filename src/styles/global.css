@@ -2053,6 +2053,409 @@ body .wallet-adapter-modal-list-more svg {
   }
 }
 
+/* Shared voice notes and circle videos: native playback, custom controls. */
+.message-players {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.message-players__voice {
+  width: min(100%, 24rem);
+  min-width: 0;
+  margin: 0;
+}
+
+.message-players__circle {
+  width: min(100%, 15rem);
+  min-width: 0;
+  margin: 0;
+}
+
+.media-message-caption {
+  margin: 0.65rem 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.voice-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem 1rem 0.75rem 0.75rem;
+  border: 1px solid rgb(199 255 66 / 0.17);
+  border-radius: 1.4rem;
+  background: linear-gradient(125deg, rgb(199 255 66 / 0.065), transparent 65%), var(--panel);
+  box-shadow: 0 5px 22px rgb(0 0 0 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.025);
+}
+
+.media-play-button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3.1rem;
+  height: 3.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--ink);
+  box-shadow: 0 3px 14px rgb(199 255 66 / 0.12);
+  transition: background 150ms, transform 150ms;
+}
+
+.media-play-button:hover {
+  background: var(--lime-soft);
+  transform: scale(1.04);
+}
+
+.media-play-button:active {
+  transform: scale(0.96);
+}
+
+.voice-player__body {
+  min-width: 0;
+}
+
+.voice-player__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-height: 2rem;
+}
+
+.voice-player__label {
+  overflow: hidden;
+  color: var(--paper-soft);
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.voice-player__rate {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin-block: -0.35rem;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: var(--lime-soft);
+  font-family: var(--font-code);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.voice-player__rate:hover {
+  background: rgb(199 255 66 / 0.08);
+}
+
+.voice-player__timeline {
+  position: relative;
+  height: 2.75rem;
+  border-radius: 0.4rem;
+}
+
+.voice-player__timeline:focus-within {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+.voice-player__track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.voice-player__tick {
+  flex: 1;
+  min-width: 1px;
+  height: 1rem;
+  border-radius: 2px;
+  background: var(--line-bright);
+  transition: background 120ms;
+}
+
+.voice-player__tick[data-played="true"] {
+  background: var(--lime);
+}
+
+.voice-player__range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.voice-player__range:disabled {
+  cursor: default;
+}
+
+.voice-player__range::-webkit-slider-runnable-track {
+  height: 1rem;
+  background: transparent;
+}
+
+.voice-player__range::-moz-range-track {
+  height: 1rem;
+  background: transparent;
+}
+
+.voice-player__range::-webkit-slider-thumb {
+  width: 4px;
+  height: 1.5rem;
+  margin-top: -0.25rem;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 4px;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--panel);
+}
+
+.voice-player__range::-moz-range-thumb {
+  width: 4px;
+  height: 1.5rem;
+  border: 0;
+  border-radius: 4px;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--panel);
+}
+
+.voice-player__range:disabled::-webkit-slider-thumb {
+  visibility: hidden;
+}
+
+.voice-player__range:disabled::-moz-range-thumb {
+  visibility: hidden;
+}
+
+.voice-player__time {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-family: var(--font-code);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-player__time > :first-child {
+  color: var(--lime-soft);
+}
+
+.voice-player__error,
+.media-player__error {
+  grid-column: 1 / -1;
+  margin: 0.6rem 0 0;
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.media-player__spinner {
+  animation: spin 1s linear infinite;
+}
+
+.circle-message {
+  width: min(100%, 15rem);
+  min-width: 0;
+}
+
+.circle-message__player {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 20%, #33402b, #111811 65%);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.24);
+}
+
+.circle-message__video {
+  position: absolute;
+  inset: 4%;
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.circle-message__shade {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  background: linear-gradient(0deg, rgb(0 0 0 / 0.62), transparent 40%, rgb(0 0 0 / 0.08));
+  pointer-events: none;
+}
+
+.circle-message__toggle {
+  position: absolute;
+  inset: 20%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.circle-message__play-disc {
+  display: grid;
+  place-items: center;
+  width: 4.25rem;
+  max-width: 80%;
+  aspect-ratio: 1;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  background: rgb(9 11 9 / 0.48);
+  color: var(--paper);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 180ms, transform 180ms, background 180ms;
+}
+
+.circle-message__toggle:hover .circle-message__play-disc {
+  background: rgb(9 11 9 / 0.72);
+}
+
+.circle-message__player[data-playing="true"][data-loading="false"] .circle-message__play-disc {
+  opacity: 0;
+  transform: scale(0.88);
+}
+
+.circle-message__player:hover .circle-message__play-disc,
+.circle-message__toggle:focus-visible .circle-message__play-disc {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+.circle-message__mute {
+  position: absolute;
+  top: 15%;
+  right: 15%;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(9 11 9 / 0.48);
+  color: var(--paper);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.circle-message__time {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(9 11 9 / 0.65);
+  color: var(--paper);
+  font-family: var(--font-code);
+  font-size: clamp(0.56rem, 2vw, 0.66rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.circle-message__time-divider {
+  opacity: 0.5;
+}
+
+.circle-message__seek {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  border-radius: 50%;
+  pointer-events: none;
+  touch-action: none;
+}
+
+.circle-message__ring-track,
+.circle-message__ring-progress {
+  fill: none;
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.circle-message__ring-track {
+  stroke: rgb(199 255 66 / 0.2);
+}
+
+.circle-message__ring-progress {
+  stroke: var(--lime);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 180ms linear;
+}
+
+.circle-message__seek-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 30;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.circle-message__seek[aria-disabled="true"] .circle-message__seek-hit {
+  pointer-events: none;
+  cursor: default;
+}
+
+@media (max-width: 480px) {
+  .voice-player {
+    gap: 0.6rem;
+    padding: 0.7rem;
+  }
+
+  .voice-player__track {
+    gap: 2px;
+  }
+}
+
+@media (hover: none) {
+  .circle-message__player[data-playing="true"][data-loading="false"] .circle-message__play-disc {
+    opacity: 0.3;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

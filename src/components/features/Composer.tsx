@@ -24,6 +24,8 @@ import {
 } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
 import { FundingOptionsEditor } from "@/components/features/FundingOptionsEditor";
+import { VoiceMessagePlayer } from "@/components/features/media/VoiceMessagePlayer";
+import { CircleVideoPlayer } from "@/components/features/media/CircleVideoPlayer";
 import {
   normalizeFundingOptions,
   type FundingOptionInput,
@@ -1029,7 +1031,7 @@ export function Composer({
           {attachments.length ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <div key={attachment.id} className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
                   <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
                       {attachment.kind === "image" ? (
@@ -1042,21 +1044,14 @@ export function Composer({
                           />
                         </div>
                       ) : attachment.kind === "audio" ? (
-                        <audio
+                        <VoiceMessagePlayer
                           src={attachment.preview}
-                          controls
-                          preload="metadata"
-                          className="w-full min-w-0"
-                          aria-label={attachment.source === "recording" ? "Replay voice recording" : "Audio attachment preview"}
+                          label={attachment.source === "recording" ? "Voice recording preview" : "Audio attachment preview"}
                         />
                       ) : (
-                        <video
+                        <CircleVideoPlayer
                           src={attachment.preview}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          className="aspect-square w-32 max-w-full rounded-full bg-black object-cover"
-                          aria-label={attachment.source === "recording" ? "Replay circle video recording" : "Video attachment preview"}
+                          label={attachment.source === "recording" ? "Circle video preview" : "Video attachment preview"}
                         />
                       )}
                     </div>
