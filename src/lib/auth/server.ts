@@ -372,6 +372,22 @@ async function resolveCanonicalProfile(
   return syncNewClerkProfile(user);
 }
 
+/** Only call after server-side Telegram verification and a Clerk user lookup. */
+export async function syncVerifiedTelegramClerkProfile(
+  user: ClerkUserSnapshot,
+  telegramSubject: string,
+) {
+  if (
+    !/^[1-9][0-9]{0,19}$/.test(telegramSubject) ||
+    user.externalId !== `telegram:${telegramSubject}`
+  ) {
+    throw new Error("TELEGRAM_CLERK_IDENTITY_MISMATCH");
+  }
+  const profileWallet = await resolveCanonicalProfile(user);
+  if (!await loadProfile(profileWallet)) throw new Error("CANONICAL_PROFILE_MISSING");
+  return profileWallet;
+}
+
 export async function getWalletSession(): Promise<WalletSession | null> {
   const { userId, sessionClaims } = await auth();
   if (!userId) return null;

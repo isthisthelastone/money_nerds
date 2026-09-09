@@ -94,6 +94,15 @@ callback `https://www.moneynerds.online/api/auth/telegram/oidc/callback`. Set
 The callback preserves existing `telegram:<Bot API user id>` Clerk identities
 and therefore their existing Supabase profile links.
 
+Enable **optional usernames** in Clerk (`enabled: true`, `required: false`),
+without enabling passwords. Telegram-only accounts receive an opaque,
+server-generated username because Clerk cannot redeem sign-in tickets for a
+user with only an `externalId` and no identification. Users never need to enter
+this username. Existing identifier-less accounts are repaired in place on their
+next verified Telegram login. Account lookup always uses the immutable Telegram
+ID, never a mutable Telegram handle or a username match. The callback also
+establishes the canonical Supabase profile mapping before issuing the ticket.
+
 The supported website flow starts at `https://oauth.telegram.org/auth`.
 Telegram's first page offers **Continue with Telegram** for app approval and
 phone-number login as a browser fallback. The app-approval page may open Telegram

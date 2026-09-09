@@ -1,8 +1,10 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getExternalAuthOrigin } from "@/lib/auth/external";
 import { normalizeReturnTo } from "@/lib/auth/external-core";
+import { syncVerifiedTelegramClerkProfile } from "@/lib/auth/server";
 
 export interface VerifiedTelegramIdentity {
   subject: string;
@@ -13,6 +15,13 @@ export interface VerifiedTelegramIdentity {
 function telegramName(value: string | undefined) {
   const normalized = value?.replace(/[\u0000-\u001f\u007f]/g, " ").trim();
   return normalized ? normalized.slice(0, 256) : undefined;
+}
+
+function newTelegramUsername() {
+  // A Clerk ticket needs an identification, not just externalId. This opaque
+  // identifier is never a password or an account-linking key. Telegram handles
+  // can change or be reassigned, so do not use them for this purpose.
+  return `mn_tg_${randomBytes(18).toString("hex")}`;
 }
 
 export async function createTelegramClerkSignIn(
@@ -33,6 +42,7 @@ export async function createTelegramClerkSignIn(
     try {
       user = await client.users.createUser({
         externalId,
+        username: newTelegramUsername(),
         firstName: telegramName(identity.firstName),
         lastName: telegramName(identity.lastName),
         skipPasswordRequirement: true,
@@ -45,6 +55,25 @@ export async function createTelegramClerkSignIn(
     }
   }
   if (!user) throw new Error("Telegram identity could not be created.");
+  if (user.externalId !== externalId || user.banned || user.locked) {
+    throw new Error("Telegram account is unavailable.");
+  }
+
+  if (!user.username) {
+    // Repair accounts created by the previous identifier-less implementation
+    // in place. Never create a replacement or claim a matching username.
+    user = await client.users.updateUser(user.id, {
+      username: newTelegramUsername(),
+    });
+  }
+  if (!user.username || user.externalId !== externalId) {
+    throw new Error("Telegram sign-in identification could not be established.");
+  }
+
+  // Telegram has already authenticated this identity. Establish its durable
+  // profile before issuing the ticket, rather than relying on a later render
+  // or asynchronous webhook to create the first database mapping.
+  await syncVerifiedTelegramClerkProfile(user, identity.subject);
 
   const ticket = await client.signInTokens.createSignInToken({
     userId: user.id,
