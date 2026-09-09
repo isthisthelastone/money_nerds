@@ -121,7 +121,9 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
         Continue with Telegram
       </button>
       <p className="mt-2 text-xs leading-relaxed text-nerd-muted">
-        Telegram may open its installed app; otherwise continue securely on the web.
+        On Telegram’s secure authorization page, choose “Continue with Telegram”
+        to approve in the app. Tap “Open Telegram” if prompted. No app? Choose
+        phone-number login on that page.
       </p>
       {error ? (
         <p className="mt-3 text-sm text-red-300" role="alert">

@@ -32,6 +32,12 @@ Supabase Postgres/Storage, and Vercel. Production targets Node 24 and pnpm 10.
 
 ## Local development
 
+The permanent checkout on the development Mac is
+`/Users/happinesshater/Documents/Projects/Money Nerds`. Open that folder directly
+for ongoing work. Dated Codex task paths are compatibility symlinks; do not
+create additional working copies there. Previous local configuration and Git
+history are preserved in the ignored `.git/local-recovery/` directory.
+
 1. Install Node 24 and enable the pinned pnpm version with Corepack.
 2. Copy `.env.example` to `.env.local` and fill in the project values.
 3. Run `pnpm install --frozen-lockfile`.
@@ -72,11 +78,35 @@ create/update/delete events when `CLERK_WEBHOOK_SIGNING_SECRET` is configured.
 
 Keep `PROFILE_IDENTITY_SECRET` and `EXTERNAL_AUTH_SECRET` stable and backed up.
 They derive privacy-preserving profile IDs and must not be rotated without an
-identity migration. Configure Telegram with BotFather and expose only the bot
-username to browser code. Google requires a production OAuth client in Clerk;
+identity migration. Configure Telegram with BotFather; only the public client ID
+and bot username may reach browser code, never the bot token or OIDC client
+secret. Google requires a production OAuth client in Clerk;
 Apple additionally requires its Services ID, Team ID, key ID, and private key.
 Set `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED` or `NEXT_PUBLIC_AUTH_APPLE_ENABLED` only
 after the corresponding Clerk strategy is fully configured.
+
+### Telegram app approval and web fallback
+
+Production uses the documented Telegram OIDC authorization-code flow with PKCE.
+BotFather must allow the origin `https://www.moneynerds.online` and the exact
+callback `https://www.moneynerds.online/api/auth/telegram/oidc/callback`. Set
+`TELEGRAM_OIDC_CLIENT_ID` and `TELEGRAM_OIDC_CLIENT_SECRET` server-side in Vercel.
+The callback preserves existing `telegram:<Bot API user id>` Clerk identities
+and therefore their existing Supabase profile links.
+
+The supported website flow starts at `https://oauth.telegram.org/auth`.
+Telegram's first page offers **Continue with Telegram** for app approval and
+phone-number login as a browser fallback. The app-approval page may open Telegram
+automatically, or the user can tap **Open Telegram**. This is Telegram's secure
+authorization service, not a redirect to the Telegram Web messaging client.
+
+A website cannot reliably detect installed apps or guarantee that the browser
+will launch one. Telegram's native OAuth deep links require a Telegram-issued
+token, so do not replace the authorization endpoint with guessed `tg:` links or
+undocumented provider routes. Skipping the initial authorization webpage would
+require a separate bot-confirmation login design or a native application, not an
+OIDC configuration flag. See [Telegram Login](https://core.telegram.org/bots/telegram-login)
+and [OAuth deep links](https://core.telegram.org/api/links#oauth-links).
 
 The current profile and multi-currency schema is completed by:
 
