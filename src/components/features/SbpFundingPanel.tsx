@@ -5,6 +5,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
+import { SbpBankAppAction } from "./SbpBankAppAction";
 import { SBP_BANKS, isSbpBankId, sbpBankName, type SbpAvailability, type SbpBankId, type SbpTransferDetails } from "@/lib/sbp";
 import styles from "./SbpFundingPanel.module.css";
 
@@ -265,16 +266,19 @@ function PrivateSbpFundingPanel({ postId, initialBankId, standalone }: Props) {
                 {SBP_BANKS.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
                 <option value="other">Another SBP bank</option>
               </select>
-              <ol className={styles.steps}>
-                <li>Open {sendingBank && sendingBank !== "other" ? sbpBankName(sendingBank) : "your bank"} yourself. Choose a transfer by phone number via SBP.</li>
-                <li>Enter the phone number below and select <strong>{sbpBankName(details.bankId)}</strong> as the recipient’s bank.</li>
-                <li>Enter the amount. Check the recipient’s name, number, bank and any fee before confirming.</li>
-              </ol>
               <label className={styles.label} htmlFor={`${selectId}-phone`}>Recipient’s phone · provided by the recipient</label>
               <div className={styles.phoneRow}>
                 <input id={`${selectId}-phone`} className={styles.phone} type="text" inputMode="tel" value={details.phone} readOnly aria-label="Recipient’s phone number" />
                 <button className={styles.secondary} type="button" onClick={() => void copyPhone()}>{copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}{copied ? "Copied" : "Copy"}</button>
               </div>
+              {sendingBank && sendingBank !== "other" ? <SbpBankAppAction bankId={sendingBank} /> : (
+                <p className={styles.hint}>{sendingBank === "other" ? "Open your bank’s installed app and follow the steps below. We do not have a verified opening link for this bank." : "Choose your sending bank above to see its opening button and instructions."}</p>
+              )}
+              <ol className={styles.steps}>
+                <li>Copy the recipient’s phone number, then open {sendingBank && sendingBank !== "other" ? sbpBankName(sendingBank) : "your bank"} using its button above or your installed app.</li>
+                <li>Choose a transfer by phone number via SBP. Paste the number and select <strong>{sbpBankName(details.bankId)}</strong> as the recipient’s bank.</li>
+                <li>Enter the amount. Check the recipient’s name, number, bank and any fee before confirming.</li>
+              </ol>
             </div>
           ) : null}
         </>

@@ -168,7 +168,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 </p>
               </div>
             ) : null}
-            <Composer />
+            <Composer browsingCategory={params.category} />
             <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">

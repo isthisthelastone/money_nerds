@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CATEGORY_SCOPES, categoryHref } from "@/lib/categories";
 
 export function CategoryNav() {
@@ -7,20 +8,22 @@ export function CategoryNav() {
         <span className="site-category-nav__label" aria-hidden="true">
           Explore
         </span>
-        <a
+        <Link
           className="site-category-nav__item"
           href={categoryHref("anything")}
+          prefetch={false}
         >
           All
-        </a>
+        </Link>
         {CATEGORY_SCOPES.map((category) => (
-          <a
+          <Link
             className="site-category-nav__item"
             href={categoryHref(category.value)}
+            prefetch={false}
             key={category.value}
           >
             {category.label}
-          </a>
+          </Link>
         ))}
       </div>
     </nav>

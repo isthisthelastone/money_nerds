@@ -25,6 +25,7 @@ import {
 } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
 import { FundingOptionsEditor } from "@/components/features/FundingOptionsEditor";
+import { CategoryPicker } from "@/components/features/CategoryPicker";
 import { VoiceMessagePlayer } from "@/components/features/media/VoiceMessagePlayer";
 import { CircleVideoPlayer } from "@/components/features/media/CircleVideoPlayer";
 import {
@@ -32,9 +33,8 @@ import {
   type FundingOptionInput,
 } from "@/lib/funding/options";
 import {
-  CATEGORY_LABELS,
   isPostCategory,
-  POST_CATEGORIES,
+  type Category,
   type MediaKind,
   type PostCategory,
 } from "@/lib/models";
@@ -61,6 +61,7 @@ interface DraftAttachment {
 
 interface ComposerProps {
   mode?: "post" | "comment";
+  browsingCategory?: Category;
   postId?: number;
   parentId?: number | null;
   compact?: boolean;
@@ -153,6 +154,7 @@ function preparedStreamMatches(
 
 export function Composer({
   mode = "post",
+  browsingCategory = "anything",
   postId,
   parentId = null,
   compact = false,
@@ -169,7 +171,17 @@ export function Composer({
   } = useWalletSession();
   const [nickname, setNickname] = useState<string | null>(null);
   const [body, setBody] = useState("");
-  const [category, setCategory] = useState<PostCategory>("other");
+  const defaultCategory = isPostCategory(browsingCategory) ? browsingCategory : "other";
+  const [categoryDraft, setCategoryDraft] = useState<{ scope: Category; value: PostCategory }>({
+    scope: browsingCategory,
+    value: defaultCategory,
+  });
+  // Adjust only this field when the board changes. Remounting the whole composer
+  // would throw away the user's text, attachments, and recording state.
+  if (categoryDraft.scope !== browsingCategory) {
+    setCategoryDraft({ scope: browsingCategory, value: defaultCategory });
+  }
+  const category = categoryDraft.scope === browsingCategory ? categoryDraft.value : defaultCategory;
   const [fundingOptions, setFundingOptions] = useState<FundingOptionInput[]>([]);
   const [fundingOptionsLoading, setFundingOptionsLoading] = useState(false);
   const [sbpPreference, setSbpPreference] = useState<{ walletAddress: string; ready: boolean; error: boolean } | null>(null);
@@ -804,7 +816,7 @@ export function Composer({
       setAttachments([]);
       setBody("");
       if (mode === "post") {
-        setCategory("other");
+        setCategoryDraft({ scope: browsingCategory, value: defaultCategory });
         setIncludeSbpForWallet(null);
       }
       setSuccess(mode === "post" ? "Your ask is live." : "Comment posted.");
@@ -854,7 +866,7 @@ export function Composer({
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem]">
+          <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_13rem]">
             <label className="grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">
               Nickname for this {mode}
               <input
@@ -867,20 +879,12 @@ export function Composer({
               />
             </label>
             {mode === "post" ? (
-              <label className="grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">
-                Category
-                <select
-                  className="min-h-11 rounded-xl border border-white/12 bg-[#151815] px-3 text-sm normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
-                  value={category}
-                  onChange={(event) => {
-                    if (isPostCategory(event.target.value)) setCategory(event.target.value);
-                  }}
-                >
-                  {POST_CATEGORIES.map((value) => (
-                    <option value={value} key={value}>{CATEGORY_LABELS[value]}</option>
-                  ))}
-                </select>
-              </label>
+              <CategoryPicker
+                key={browsingCategory}
+                value={category}
+                disabled={submitting}
+                onChange={(value) => setCategoryDraft({ scope: browsingCategory, value })}
+              />
             ) : null}
           </div>
           <label className="mt-4 grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">

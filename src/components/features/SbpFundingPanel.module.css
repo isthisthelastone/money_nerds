@@ -30,6 +30,12 @@
 .transferCopy { min-width: 0; }
 .destination { margin: 0; font-size: .82rem; font-weight: 650; }
 .manual { margin-top: 1rem; padding-top: .1rem; border-top: 1px solid #ffffff14; }
+.bankAction { margin-top: 1rem; padding: 1rem; border: 1px solid #cbbaff2e; border-radius: .9rem; background: linear-gradient(135deg, #cbbaff0c, #11121780); min-width: 0; }
+.bankActionHeading { display: flex; align-items: center; gap: .65rem; }
+.bankActionIcon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex-shrink: 0; border-radius: .75rem; color: #cbbaff; background: #cbbaff14; }
+.bankActionTitle { margin: .2rem 0 0; font-size: .92rem; font-weight: 650; line-height: 1.5; }
+.bankPath { display: grid; gap: .25rem; margin: 1rem 0 .5rem; padding: .75rem; border-radius: .6rem; background: #00000024; color: #f2efe6; font-size: .78rem; line-height: 1.7; overflow-wrap: anywhere; }
+.bankPath span { color: #cbbaff; font-size: .65rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
 .steps { padding-left: 1.15rem; margin: 1rem 0; font-size: .8rem; line-height: 1.7; color: #ffffffa6; }
 .steps li + li { margin-top: .4rem; }
 .steps strong { color: #f2efe6; }
@@ -40,3 +46,4 @@
 .warning svg { flex: 0 0 auto; margin-top: .15rem; }
 .error { margin: .75rem 0 0; color: #ff9d89; font-size: .78rem; line-height: 1.6; }
 @media (min-width: 560px) { .transfer { grid-template-columns: 174px minmax(0, 1fr); align-items: start; } }
+@media (max-width: 420px) { .bankAction { padding: .8rem; } .bankAction .actions > a { width: 100%; } }
