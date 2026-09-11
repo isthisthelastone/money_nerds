@@ -1,82 +1,75 @@
-# Telegram app → browser return
+# Telegram login recovery and app → browser return
 
-The normal Telegram OIDC authorization page uses a browser polling flow. Approving
-its login prompt can leave the user in Telegram. Money Nerds cannot navigate a
-browser while another native application is in the foreground.
+## Current supported flow
 
-## Mobile flow
+Money Nerds starts every Telegram OIDC login at the documented
+`https://oauth.telegram.org/auth` endpoint. Telegram's authorization page owns
+any native-app launch and its phone-number fallback. The site does not request
+native SDK tokens or launch `tg://` links itself.
 
-1. Money Nerds creates the same OIDC transaction as before: random state and nonce,
-   S256 PKCE, and an authenticated/encrypted, HttpOnly, SameSite=Lax cookie. The
-   registered HTTPS callback stays `/api/auth/telegram/oidc/callback`.
-2. On mobile devices the start endpoint additionally requests a native URL from
-   `https://oauth.telegram.org/crossapp`, with the same authorization parameters.
-   This is the endpoint used by Telegram's first-party native SDK. Money Nerds
-   does **not** set `ios_sdk`, `android_sdk`, app IDs, or custom callback schemes.
-   An explicit **Use the Telegram app** action opts into the same flow on desktop
-   or when mobile detection misses a device. The primary desktop action retains
-   the documented browser flow. **Start again** in the native controls creates
-   another native attempt, preserving that explicit choice.
-3. Only a validated Telegram-issued OAuth deep link is opened, verbatim. Telegram
-   owns approval and the return to the registered browser callback. No native
-   token is invented from a client ID, redirect URI, or OAuth state.
-4. A visible **Continue in browser** link keeps the original documented `/auth`
-   URL, state, nonce and PKCE challenge. A provider error, timeout or unexpected
-   response also falls back to that documented flow.
-5. The page can restore its pending controls after reload using
-   `/api/auth/telegram?resume=1`. This decrypts the existing transaction cookie;
-   it does not issue a new transaction or extend its ten-minute expiry. Only an
-   expiry timestamp is stored in sessionStorage, never a native token, code,
-   verifier, ID token or Clerk ticket. Resume never automatically reopens the app.
+The start endpoint creates random state and nonce, S256 PKCE, and an
+authenticated/encrypted, HttpOnly, SameSite=Lax transaction cookie with a
+ten-minute lifetime. The registered HTTPS callback remains
+`/api/auth/telegram/oidc/callback`.
 
-The existing callback still requires the browser cookie and matching state,
-exchanges the one-use code server-side with PKCE, validates the ID-token signature,
-issuer, audience, expiry and nonce, and uses the stable Telegram identity and
-Clerk-to-Supabase profile mapping. There is no callback security bypass for an
-alternate browser. Users must finish in the browser that started sign-in.
+The callback requires that browser cookie and matching state, exchanges the
+one-use code server-side with PKCE, and validates the ID-token signature, issuer,
+audience, expiry and nonce. The stable Telegram identity, Clerk account creation,
+and Clerk-to-Supabase profile mapping are unchanged. There is no security bypass
+for a callback arriving in a different browser.
 
-## Provider contract and limitations
+If Telegram stays open after approval, return to the **same browser tab** that
+started sign-in. Automatic return is still a provider/browser limitation, not a
+completed feature. The website cannot force a background browser to foreground.
 
-`/crossapp` is present in first-party SDK source, but is **not** part of Telegram's
-documented web OIDC discovery contract. On 2026-09-11, unauthenticated probes using
-our registered HTTPS web callback and code-flow parameters returned HTTP 200 with
-`{ "url": "tg://resolve?domain=oauth&startapp=…" }`, without native SDK flags or
-native app registrations. No account approval or token exchange was performed.
-This validates issuance, not an end-to-end iPhone login.
+## Withdrawn native handoff experiment
 
-The same probe included both a random `state` and a nonce. Telegram accepted the
-request but returned only an opaque URL, so an unauthenticated probe cannot prove
-that it echoes state in the callback or includes nonce in the signed ID token.
-Those remain mandatory in our unchanged callback; a dropped/mismatched value
-fails closed. The first-party SDK documents direct return, but its native-app
-example does not establish that every web-client configuration behaves identically.
-Likewise, its response contains no match-code/emoji data; any unexpected Telegram
-match-code prompt must use the documented browser fallback, not guessed codes.
+Commit `97b1305` used Telegram's first-party native SDK `/crossapp` endpoint from
+a web client. The endpoint issued an opaque native link in an HTTP probe, but
+that did not establish a supported web-client contract or a working physical
+phone login. The user subsequently reported that Brave opened Telegram without
+an authorization prompt, breaking login that previously worked.
 
-The endpoint has no CORS allow-origin header, including when sent our registered
-Origin. It is therefore requested server-side. The actual browser User-Agent is
-forwarded so Telegram can identify the returning browser; the approval screen's
-IP/location may instead reflect our hosting server. We do not forge forwarded-IP
-headers. Provider unavailability cannot disable the normal browser login.
+The recovery removes that integration and restores the prior `/auth` startup.
+The native link helper is removed. `native=1` no longer changes the flow;
+`resume=1` returns HTTP 410 asking the user to start again. The client clears the
+old `mn_telegram_pending_v1` sessionStorage hint, so it cannot reopen a cached
+native attempt. Credentials, user identities, database data and the SBP feature
+are not changed by this recovery.
 
-Telegram's client documentation says to open an accepted URL in the external
-browser, preferably the originating browser, **when the accepted result includes
-a URL**. Without one, Telegram shows a success message. Our website cannot force
-OS app switching or guarantee the behavior of every Telegram/browser version.
-The fallback is explicit, preserves the transaction, and may require approval
-again in Telegram's browser flow. It does not claim to recover an authorization
-code that Telegram never delivered to our callback.
+The exact Brave/client rejection was not captured. A Telegram-issued OAuth deep
+link is not necessarily malformed; the unsupported web use of a native SDK
+endpoint was the integration mistake. A successful HTTP response alone must not
+be used as evidence of app approval or return behavior.
 
-Physical acceptance still needs a user with Telegram installed to approve:
-iPhone Safari, iPhone non-default browser, Android Chrome, Telegram absent,
-cancelled/expired prompt, page reload, and return to the original post. Never
-claim these were tested based only on a browser-width simulation or provider
-HTTP probes.
+## Safe diagnostic events
 
-## First-party evidence
+Server logs use `telegram_auth` with these stages:
 
-- [Telegram Login and manual OIDC flow](https://core.telegram.org/bots/telegram-login)
+- `start_issued`: browser authorization URL and transaction cookie issued.
+- `start_failed`: startup failed.
+- `callback_received`: callback reached the application; boolean flags report
+  only whether the transaction cookie, code and state are present.
+- `callback_rejected`: a fixed, non-sensitive rejection reason.
+- `identity_verified`: Telegram's signed identity passed validation.
+- `clerk_ticket_issued` or `clerk_ticket_failed`: account/session handoff result.
+
+Logs must never include URLs containing auth data, codes, state values, cookies,
+PKCE verifiers, native tokens, ID tokens, Clerk tickets or personal identifiers.
+An empty server-error report does not prove that the native app handoff worked.
+Telegram handles OAuth approval internally; a bot chat message is not required.
+
+## Verification scope
+
+Focused TypeScript, auth-file lint and diff checks cover the recovery. Production
+checks should confirm `/auth` URLs for desktop and mobile, retirement of cached
+resume requests, and rejection of invalid callbacks. Physical iPhone/Brave
+approval and same-tab completion require a real user's Telegram session; do not
+claim these passed based on HTTP probes or a narrow browser viewport.
+
+## First-party references
+
+- [Telegram web login and manual OIDC implementation](https://core.telegram.org/bots/telegram-login#manual-implementation)
+- [Native iOS SDK setup and registration contract](https://github.com/TelegramMessenger/telegram-login-ios#2-setup-in-botfather)
 - [Telegram client OAuth acceptance and external-browser return](https://core.telegram.org/api/url-authorization#oauth-authorization)
 - [Telegram OAuth deep-link formats](https://core.telegram.org/api/links#oauth-links)
-- [Official iOS SDK cross-app request](https://github.com/TelegramMessenger/telegram-login-ios/blob/main/Sources/TelegramLogin/TelegramLogin.swift#L203)
-- [Telegram iOS opens the accepted URL in the originating external browser](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/submodules/TelegramUI/Sources/OpenResolvedUrl.swift#L1924)

@@ -1,8 +1,6 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
 import { getTelegramOidcConfiguration } from "@/lib/auth/external";
-import { isTelegramNativeAuthorizationUrl } from "@/lib/auth/telegram-links";
 import {
   verifyTelegramOidcIdToken,
   type TelegramOidcIdentity,
@@ -10,7 +8,6 @@ import {
 
 const TELEGRAM_TOKEN_ENDPOINT = "https://oauth.telegram.org/token";
 const TELEGRAM_JWKS_ENDPOINT = "https://oauth.telegram.org/.well-known/jwks.json";
-const TELEGRAM_CROSS_APP_ENDPOINT = "https://oauth.telegram.org/crossapp";
 const MAXIMUM_TELEGRAM_RESPONSE_BYTES = 64 * 1_024;
 
 let cachedJwks: { value: unknown; loadedAt: number; expiresAt: number } | null = null;
@@ -57,57 +54,6 @@ async function readJsonResponse(response: Response) {
     return JSON.parse(text) as unknown;
   } catch {
     throw new Error("Telegram returned invalid JSON.");
-  }
-}
-
-export function createTelegramOidcAuthorizationUrl(state: string, codeVerifier: string, nonce: string) {
-  const configuration = getTelegramOidcConfiguration();
-  const url = new URL("https://oauth.telegram.org/auth");
-  url.search = new URLSearchParams({
-    client_id: configuration.clientId,
-    redirect_uri: configuration.redirectUri,
-    response_type: "code",
-    scope: "openid profile",
-    state,
-    nonce,
-    code_challenge: createHash("sha256").update(codeVerifier, "ascii").digest("base64url"),
-    code_challenge_method: "S256",
-  }).toString();
-  return url;
-}
-
-export async function requestTelegramNativeAuthorizationUrl(
-  authorizationUrl: URL,
-  userAgent: string | null,
-): Promise<string | null> {
-  // Telegram's first-party native SDK uses /crossapp to issue a token whose
-  // approval returns to redirect_uri. It also currently accepts registered web
-  // callbacks, without pretending this website has an iOS/Android app ID.
-  // This endpoint is not part of the web OIDC discovery contract: any failure
-  // must fall back to the documented /auth flow, never block sign-in.
-  const url = new URL(TELEGRAM_CROSS_APP_ENDPOINT);
-  url.search = authorizationUrl.search;
-  try {
-    const response = await fetch(url, {
-      cache: "no-store",
-      redirect: "error",
-      headers: {
-        Accept: "application/json",
-        ...(userAgent && userAgent.length <= 1_024 && !/[\r\n]/.test(userAgent)
-          ? { "User-Agent": userAgent }
-          : {}),
-      },
-      signal: AbortSignal.timeout(4_000),
-    });
-    if (!response.ok) return null;
-    const body = await readJsonResponse(response);
-    if (!body || typeof body !== "object" || Array.isArray(body)) return null;
-    const nativeUrl = (body as Record<string, unknown>).url;
-    // Preserve the provider-issued URL verbatim, including any future return
-    // parameters. Constructing tg:// URLs from authorization params is invalid.
-    return isTelegramNativeAuthorizationUrl(nativeUrl) ? nativeUrl : null;
-  } catch {
-    return null;
   }
 }
 

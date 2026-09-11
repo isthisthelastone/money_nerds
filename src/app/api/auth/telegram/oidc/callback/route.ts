@@ -23,12 +23,20 @@ function clearTransaction(response: NextResponse) {
 }
 
 function errorRedirect(returnTo: string, code: string) {
+  // Log only outcome codes, never callback URLs, cookies, codes, tokens or IDs.
+  console.warn("telegram_auth", { event: "callback_rejected", reason: code });
   return clearTransaction(
     NextResponse.redirect(externalAuthRedirect(returnTo, "error", code), 303),
   );
 }
 
 export async function GET(request: NextRequest) {
+  console.info("telegram_auth", {
+    event: "callback_received",
+    hasTransactionCookie: Boolean(request.cookies.get(TELEGRAM_TRANSACTION_COOKIE)?.value),
+    hasCode: request.nextUrl.searchParams.has("code"),
+    hasState: request.nextUrl.searchParams.has("state"),
+  });
   if (request.url.length > 4_096) return errorRedirect("/", "invalid_callback");
 
   const availability = getExternalProviderAvailability("telegram");
@@ -77,6 +85,7 @@ export async function GET(request: NextRequest) {
 
   const exchanged = await exchangeTelegramOidcCode(code, codeVerifier, nonce);
   if (!exchanged.ok) return errorRedirect(returnTo, exchanged.code);
+  console.info("telegram_auth", { event: "identity_verified" });
 
   try {
     const signInUrl = await createTelegramClerkSignIn(
@@ -89,8 +98,10 @@ export async function GET(request: NextRequest) {
       },
       returnTo,
     );
+    console.info("telegram_auth", { event: "clerk_ticket_issued" });
     return clearTransaction(NextResponse.redirect(signInUrl, 303));
   } catch {
+    console.error("telegram_auth", { event: "clerk_ticket_failed" });
     return errorRedirect(returnTo, "temporarily_unavailable");
   }
 }
