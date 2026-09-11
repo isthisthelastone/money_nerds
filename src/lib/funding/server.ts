@@ -167,14 +167,10 @@ export async function resolveTargetFundingOptions(
         .filter((option): option is ResolvedFundingOption => option !== null) ?? [];
     }
 
-    // Before the snapshot table exists, preserve the original profile-level SOL route.
-    const { data: post, error } = await supabase
-      .from("posts")
-      .select("author_wallet")
-      .eq("id", targetId as number)
-      .maybeSingle();
-    if (error || !post?.author_wallet) return [];
-    return loadProfileOptions(String(post.author_wallet));
+    // The snapshot table is deployed. A database error must not substitute a
+    // profile route for a post's explicit selection (including SBP-only posts).
+    console.error("Unable to resolve post funding routes", { code: result.error.code });
+    return [];
   }
 
   const { data: comment, error } = await supabase
@@ -194,4 +190,3 @@ export async function resolveFundingOption(
   const options = await resolveTargetFundingOptions(targetType, targetId);
   return options.find((option) => option.asset === asset) ?? null;
 }
-

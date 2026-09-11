@@ -1,0 +1,68 @@
+.page { max-width: 56rem; padding-block: 3.5rem 5rem; }
+.pageHeader { max-width: 42rem; margin-bottom: 2rem; }
+.pageHeader h1 { margin: 0.5rem 0 0.75rem; font-size: clamp(2.25rem, 6vw, 3.75rem); line-height: 1.05; letter-spacing: -0.06em; }
+.pageHeader > p:last-child { color: var(--muted); max-width: 35rem; }
+.panel { border: 1px solid var(--line); border-radius: 1.5rem; background: linear-gradient(145deg, rgb(199 255 66 / 0.035), transparent 55%), var(--panel); padding: clamp(1.15rem, 4vw, 2rem); }
+.panel h2 { margin: 0.55rem 0; font-size: 1.65rem; font-weight: 650; letter-spacing: -0.04em; }
+.panel h3 { margin: 0; font-size: 0.95rem; font-weight: 650; }
+.panel p { margin-block: 0.5rem; }
+.heading { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+.icon { display: grid; place-items: center; align-self: flex-start; flex-shrink: 0; width: 3.25rem; height: 3.25rem; border: 1px solid rgb(199 255 66 / 0.18); border-radius: 1rem; background: rgb(199 255 66 / 0.07); color: var(--lime); }
+.badge { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgb(199 255 66 / 0.25); padding: 0.22rem 0.55rem; border-radius: 999px; color: var(--lime-soft); font-size: 0.68rem; letter-spacing: 0.04em; }
+.muted { color: var(--muted); font-size: 0.86rem; line-height: 1.65; }
+.inline { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); }
+.accent { color: var(--lime); }
+.switchRow { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; background: rgb(0 0 0 / 0.2); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; cursor: pointer; }
+.switchRow strong { display: block; font-size: 0.95rem; }
+.switchRow small { display: block; margin-top: 0.3rem; color: var(--muted); font-size: 0.76rem; line-height: 1.5; }
+.switchRow input { appearance: none; flex: 0 0 auto; width: 3rem; height: 1.75rem; margin: 0; padding: 3px; border: 1px solid var(--line-bright); border-radius: 999px; background: #2b3229; cursor: pointer; transition: background 150ms; }
+.switchRow input::before { display: block; width: 1.25rem; height: 1.25rem; content: ""; border-radius: 50%; background: var(--paper); transition: transform 150ms; }
+.switchRow input:checked { background: var(--lime); border-color: var(--lime); }
+.switchRow input:checked::before { transform: translateX(1.2rem); background: var(--ink); }
+.switchRow input:disabled { cursor: wait; opacity: 0.6; }
+.privacy { display: flex; align-items: flex-start; gap: 0.65rem; margin-block: 1rem 1.75rem; color: var(--muted); }
+.privacy > svg { flex-shrink: 0; margin-top: 0.55rem; }
+.privacy p { font-size: 0.76rem; line-height: 1.7; }
+.receiving { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 1rem 0 0; min-width: 0; }
+.receiving legend { padding-right: 0.75rem; font-weight: 650; font-size: 0.95rem; }
+.receiving legend span, .links h3 span { color: var(--muted); font-size: 0.72rem; font-weight: 400; margin-left: 0.5rem; }
+.phoneField { display: grid; gap: 0.5rem; margin-block: 1.4rem 1.75rem; }
+.phoneField > label, .linkField > span { font-size: 0.8rem; color: var(--paper-soft); font-weight: 550; }
+.phoneInput { display: flex; align-items: center; max-width: 23rem; border: 1px solid var(--line-bright); border-radius: 0.85rem; background: rgb(0 0 0 / 0.2); overflow: hidden; }
+.phoneInput:focus-within { border-color: var(--lime); box-shadow: 0 0 0 2px rgb(199 255 66 / 0.13); }
+.phoneInput > span { padding: 0.75rem 0.85rem; color: var(--muted-strong); border-right: 1px solid var(--line); font-family: var(--font-code); }
+.phoneInput > input { min-width: 0; width: 100%; border: 0; border-radius: 0; outline: 0; background: none; padding: 0.75rem 0.9rem; font-size: 1rem; font-family: var(--font-code); letter-spacing: 0.06em; }
+.phoneField small { color: var(--muted); font-size: 0.72rem; }
+.bankHeading { margin-bottom: 0.8rem; }
+.bankGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; }
+.bankChoice { display: flex; gap: 0.5rem; align-items: center; min-height: 2.9rem; padding: 0.65rem 0.75rem; border: 1px solid var(--line); border-radius: 0.75rem; background: rgb(0 0 0 / 0.12); cursor: pointer; font-size: 0.78rem; }
+.bankChoice input, .composerChoice input { accent-color: var(--lime); width: 1rem; height: 1rem; flex-shrink: 0; }
+.bankSelected { border-color: rgb(199 255 66 / 0.4); background: rgb(199 255 66 / 0.045); }
+.links { margin-block: 1.8rem 1.2rem; }
+.linkField { display: grid; gap: 0.6rem; margin-top: 1.1rem; }
+.linkField input { width: 100%; min-width: 0; min-height: 2.9rem; border: 1px solid var(--line-bright); border-radius: 0.75rem; background: rgb(0 0 0 / 0.2); padding: 0.65rem 0.85rem; font-size: 0.95rem; }
+.linkField a { display: inline-flex; align-items: center; gap: 0.25rem; justify-self: start; font-size: 0.73rem; color: var(--lime-soft); }
+.ready { display: flex; align-items: flex-start; gap: 0.45rem; color: var(--lime-soft); font-size: 0.8rem; line-height: 1.65; padding-top: 0.5rem; }
+.ready svg { flex-shrink: 0; margin-top: 0.2rem; }
+.warning, .error { border: 1px solid rgb(255 115 102 / 0.25); border-radius: 0.8rem; background: rgb(255 115 102 / 0.05); padding: 0.85rem 1rem; color: #ffc0b9; font-size: 0.8rem; line-height: 1.6; }
+.finePrint { padding-top: 1.1rem; color: var(--muted); font-size: 0.72rem; line-height: 1.75; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem 1.5rem; padding-top: 1.35rem; }
+.backLink { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted-strong); }
+.composer { border: 1px solid var(--line); border-radius: 1rem; background: rgb(0 0 0 / 0.13); padding: 1rem; margin-top: 0.8rem; }
+.composerChoice { display: flex; align-items: flex-start; gap: 0.65rem; font-size: 0.85rem; font-weight: 550; cursor: pointer; }
+.composerChoice input { margin-top: 0.2rem; }
+.composerChoice small { display: block; margin-top: 0.3rem; font-size: 0.73rem; font-weight: 400; color: var(--muted); line-height: 1.6; }
+.composerHint { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; color: var(--muted); font-size: 0.73rem; line-height: 1.6; }
+.composerHint a { color: var(--lime-soft); }
+@media (max-width: 580px) {
+  .page { padding-block: 2rem 3rem; }
+  .heading { gap: 0.7rem; }
+  .icon { width: 2.65rem; height: 2.65rem; border-radius: 0.8rem; }
+  .panel h2 { font-size: 1.4rem; }
+  .bankGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phoneInput { max-width: none; }
+  .actions > button { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .switchRow input, .switchRow input::before { transition: none; }
+}

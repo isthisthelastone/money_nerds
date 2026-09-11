@@ -71,10 +71,12 @@ export function FundingOptionsEditor({
   value,
   onChange,
   disabled = false,
+  allowEmpty = false,
 }: {
   value: FundingOptionInput[];
   onChange: (value: FundingOptionInput[]) => void;
   disabled?: boolean;
+  allowEmpty?: boolean;
 }) {
   const selected = new Map(value.map((option) => [option.asset, option.address]));
 
@@ -108,8 +110,7 @@ export function FundingOptionsEditor({
         </p>
         <p className="mt-1.5 max-w-3xl text-xs leading-5 text-white/50">
           Select every asset you accept, then add the matching mainnet destination. The Fund
-          button will show only these choices. At least one is required; Money Nerds never
-          redirects or takes a cut.
+          button will show only these choices. {allowEmpty ? "Crypto is optional while SBP is included for this post." : "Choose at least one, or include a configured SBP option below."} Money Nerds never redirects or takes a cut.
         </p>
       </div>
       <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">

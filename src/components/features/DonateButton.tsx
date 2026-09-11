@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
+import { SbpFundingPanel } from "@/components/features/SbpFundingPanel";
 import { formatWallet } from "@/lib/format";
 import {
   atomicAmountToDecimal,
@@ -154,6 +155,7 @@ export function DonateButton({
   const [manualIntent, setManualIntent] = useState<DonationIntent | null>(null);
   const [manualWalletFallback, setManualWalletFallback] = useState(false);
   const [pending, setPending] = useState<PendingDonation | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.asset === selectedAsset) ?? null,
@@ -180,7 +182,8 @@ export function DonateButton({
 
   const loadOptions = useCallback(async (savedPending: PendingDonation | null) => {
     setStatus("loading");
-    setMessage("Loading this request's direct payment routes…");
+    setOptions([]);
+    setMessage("Loading this request's cryptocurrency routes…");
     try {
       const query = new URLSearchParams({ targetType });
       if (targetId) query.set("targetId", String(targetId));
@@ -224,7 +227,14 @@ export function DonateButton({
           verificationStatus: "self_declared",
         });
       }
-      if (!resolved.length) throw new Error("This request has no active funding routes yet.");
+      // A successful empty response is deliberate (for example an SBP-only
+      // post). Never invent a legacy SOL destination for that response.
+      if (!resolved.length) {
+        setOptions([]);
+        setStatus("idle");
+        setMessage("This request has no active cryptocurrency routes.");
+        return;
+      }
       setOptions(resolved);
       const nextAsset = savedPending
         ? savedPending.asset
@@ -293,6 +303,7 @@ export function DonateButton({
     setManualIntent(null);
     setTransactionId(recovered?.transactionId ?? "");
     dialogRef.current?.showModal();
+    setDialogOpen(true);
     void loadOptions(recovered);
   };
 
@@ -607,6 +618,8 @@ export function DonateButton({
       <dialog
         ref={dialogRef}
         className="donation-dialog"
+        onClose={() => setDialogOpen(false)}
+        onCancel={() => setDialogOpen(false)}
         onClick={(event) => {
           if (event.target === dialogRef.current) dialogRef.current?.close();
         }}
@@ -627,13 +640,17 @@ export function DonateButton({
             Choose how to fund this request
           </h2>
           <p className="mt-2 text-sm leading-6 text-white/55">
-            Money moves from your wallet to the recipient. Money Nerds never holds funds and takes 0%; only network fees apply.
+            Money moves directly to the recipient. Money Nerds never holds funds and takes 0%; network or bank fees may apply.
           </p>
+
+          {dialogOpen && authenticated && targetType === "post" && targetId ? (
+            <SbpFundingPanel postId={targetId} />
+          ) : null}
 
           {options.length ? (
             <fieldset className="mt-5">
               <legend className="text-xs font-medium uppercase tracking-[0.13em] text-white/50">
-                Asset and network
+                Cryptocurrency · asset and network
               </legend>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {options.map((option) => (
@@ -748,7 +765,7 @@ export function DonateButton({
                 </button>
               </div>
             </div>
-          ) : (
+          ) : selectedOption || busy ? (
             <button
               className="button button-accent mt-5 w-full justify-center"
               type="button"
@@ -776,14 +793,14 @@ export function DonateButton({
                       ? "Retry verification"
                       : `Continue with ${config.symbol}`}
             </button>
-          )}
+          ) : null}
 
           <div
             className={`mt-3 min-h-10 text-sm leading-5 ${status === "error" ? "text-[#ff8066]" : "text-white/55"}`}
             role="status"
             aria-live="polite"
           >
-            {message}
+            {status === "error" && !selectedOption ? "Cryptocurrency: " : ""}{message}
             {activeExplorerUrl ? (
               <a
                 className="mt-1 flex items-center gap-1 text-[#9ccaff] hover:underline"

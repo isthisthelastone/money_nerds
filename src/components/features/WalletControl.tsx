@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Landmark,
   LogOut,
   RefreshCw,
   Settings,
@@ -127,6 +128,14 @@ export function WalletControl() {
           >
             <UserRound aria-hidden="true" size={16} />
             Public profile
+          </Link>
+          <Link
+            role="menuitem"
+            href="/settings"
+            onClick={() => setOpen(false)}
+          >
+            <Landmark aria-hidden="true" size={16} />
+            Funding settings
           </Link>
           <button
             role="menuitem"

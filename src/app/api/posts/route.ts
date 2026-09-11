@@ -13,6 +13,7 @@ import {
 } from "@/lib/media/server";
 import { isPostCategory } from "@/lib/models";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { isSameOriginSbpRequest, sbpResponse } from "@/lib/sbp-server";
 
 const MAX_COMPOSER_REQUEST_BYTES = 32 * 1024;
 const POST_RATE_LIMIT = 10;
@@ -69,7 +70,7 @@ async function readComposerFormData(request: NextRequest) {
     throw new Error("INVALID_REQUEST_BODY");
   }
 
-  const expectedFields = ["nickname", "body", "category", "mediaIds", "fundingOptions"];
+  const expectedFields = ["nickname", "body", "category", "mediaIds", "fundingOptions", "includeSbp"];
   if (expectedFields.some((field) => formData.getAll(field).length > 1)) {
     throw new Error("INVALID_REQUEST_BODY");
   }
@@ -89,6 +90,9 @@ async function readComposerFormData(request: NextRequest) {
   }
   if (String(formData.get("mediaIds") ?? "[]").length > 256) {
     throw new Error("INVALID_MEDIA_METADATA");
+  }
+  if (!["true", "false"].includes(String(formData.get("includeSbp") ?? "false"))) {
+    throw new Error("INVALID_REQUEST_BODY");
   }
   if (
     String(formData.get("fundingOptions") ?? "[]").length >
@@ -117,6 +121,7 @@ async function consumePostRateLimit(
 }
 
 function classifyPublishError(message: string) {
+  if (message.includes("SBP recipient settings are not ready")) return "SBP_NOT_READY";
   if (message.includes("Media is missing, expired, or already published")) {
     return "MEDIA_UPLOAD_EXPIRED";
   }
@@ -150,6 +155,7 @@ function postErrorResponse(code: string) {
     MEDIA_UPLOAD_INCOMPLETE: { message: "One attachment did not finish uploading.", status: 409 },
     INVALID_MEDIA_CONTENT: { message: "One attachment's contents do not match its file type.", status: 415 },
     INVALID_FUNDING_OPTIONS: { message: "Funding options could not be read.", status: 400 },
+    SBP_NOT_READY: { message: "Enable SBP and save your phone and receiving banks in Funding settings, then try again.", status: 409 },
     INVALID_FUNDING_ADDRESS: { message: "Check every selected mainnet funding address.", status: 400 },
     TOO_MANY_FUNDING_OPTIONS: { message: "Choose each supported funding asset only once.", status: 400 },
     RATE_LIMITED: { message: "You are posting too quickly. Try again later.", status: 429 },
@@ -180,6 +186,10 @@ export async function POST(request: NextRequest) {
     const fundingOptions = parseFundingOptions(
       String(formData.get("fundingOptions") ?? "[]"),
     );
+    const includeSbp = formData.get("includeSbp") === "true";
+    if (includeSbp && !isSameOriginSbpRequest(request)) {
+      return sbpResponse({ error: "Open the composer on Money Nerds to include SBP." }, 403);
+    }
     if (!isPostCategory(payload.category)) {
       return apiError("Choose a valid post category.");
     }
@@ -191,7 +201,7 @@ export async function POST(request: NextRequest) {
       mediaIds: payload.mediaIds,
     });
 
-    const { data, error: publishError } = await supabase.rpc("publish_post_with_media", {
+    const { data, error: publishError } = await supabase.rpc(includeSbp ? "publish_post_with_sbp" : "publish_post_with_media", {
       p_wallet_address: walletAddress,
       p_nickname: payload.nickname,
       p_body: payload.body,

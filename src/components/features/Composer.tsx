@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -46,6 +47,8 @@ import {
   type RecordingKind,
 } from "@/lib/media/recording";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { canReceiveSbp, type SbpSettings } from "@/lib/sbp";
+import sbpStyles from "./SbpSettings.module.css";
 
 interface DraftAttachment {
   id: string;
@@ -169,6 +172,10 @@ export function Composer({
   const [category, setCategory] = useState<PostCategory>("other");
   const [fundingOptions, setFundingOptions] = useState<FundingOptionInput[]>([]);
   const [fundingOptionsLoading, setFundingOptionsLoading] = useState(false);
+  const [sbpPreference, setSbpPreference] = useState<{ walletAddress: string; ready: boolean; error: boolean } | null>(null);
+  const [sbpLoading, setSbpLoading] = useState(false);
+  const [sbpReload, setSbpReload] = useState(0);
+  const [includeSbpForWallet, setIncludeSbpForWallet] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<DraftAttachment[]>([]);
   const [recording, setRecording] = useState<RecordingKind | null>(null);
   const [recordingSetup, setRecordingSetup] = useState<RecordingKind | null>(null);
@@ -195,6 +202,33 @@ export function Composer({
   const preparedRecordingRef = useRef<PreparedRecording | null>(null);
   const grantedMediaRef = useRef({ audio: false, video: false });
   const fundingOptionsEditedRef = useRef(false);
+  const sbpReady = Boolean(authenticated && session?.walletAddress && sbpPreference?.walletAddress === session.walletAddress && sbpPreference.ready);
+  const includeSbp = Boolean(sbpReady && !sbpLoading && includeSbpForWallet === session?.walletAddress);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setIncludeSbpForWallet(null);
+    });
+    if (mode !== "post" || !authenticated || !session?.walletAddress) return () => controller.abort();
+    const walletAddress = session.walletAddress;
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setSbpLoading(true);
+    });
+    void fetch("/api/settings/sbp", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("SBP_SETTINGS_UNAVAILABLE");
+        const settings = await response.json() as SbpSettings;
+        if (!controller.signal.aborted) setSbpPreference({ walletAddress, ready: canReceiveSbp(settings), error: false });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSbpPreference({ walletAddress, ready: false, error: true });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSbpLoading(false);
+      });
+    return () => controller.abort();
+  }, [authenticated, mode, session?.walletAddress, sbpReload]);
 
   useEffect(() => {
     if (mode !== "post" || !authenticated || !session?.walletAddress) return;
@@ -686,8 +720,8 @@ export function Composer({
 
     let normalizedFundingOptions: FundingOptionInput[] = [];
     if (mode === "post") {
-      if (fundingOptions.length === 0) {
-        setError("Choose at least one asset and funding destination for this ask.");
+      if (fundingOptions.length === 0 && !includeSbp) {
+        setError("Choose at least one crypto funding destination or include your configured experimental SBP option.");
         return;
       }
       try {
@@ -752,6 +786,7 @@ export function Composer({
       formData.set("mediaIds", JSON.stringify(mediaIds));
       if (mode === "post") {
         formData.set("fundingOptions", JSON.stringify(normalizedFundingOptions));
+        formData.set("includeSbp", includeSbp ? "true" : "false");
       }
       if (postId) formData.set("postId", String(postId));
       if (parentId) formData.set("parentId", String(parentId));
@@ -768,7 +803,10 @@ export function Composer({
       attachments.forEach((attachment) => URL.revokeObjectURL(attachment.preview));
       setAttachments([]);
       setBody("");
-      if (mode === "post") setCategory("other");
+      if (mode === "post") {
+        setCategory("other");
+        setIncludeSbpForWallet(null);
+      }
       setSuccess(mode === "post" ? "Your ask is live." : "Comment posted.");
       onPublished?.(payload.id);
       router.refresh();
@@ -870,12 +908,42 @@ export function Composer({
               <FundingOptionsEditor
                 value={fundingOptions}
                 disabled={submitting}
+                allowEmpty={includeSbp}
                 onChange={(next) => {
                   fundingOptionsEditedRef.current = true;
                   setFundingOptions(next);
                 }}
               />
             )
+          ) : null}
+
+          {mode === "post" ? (
+            <section className={sbpStyles.composer} aria-label="Optional experimental SBP funding">
+              <label className={sbpStyles.composerChoice}>
+                <input
+                  type="checkbox"
+                  checked={includeSbp}
+                  disabled={submitting || sbpLoading || !sbpReady}
+                  onChange={(event) => setIncludeSbpForWallet(event.target.checked ? session?.walletAddress ?? null : null)}
+                />
+                <span>Include experimental SBP for this post
+                  <small>Optional, never added automatically. Your saved number and banks can be revealed only by signed-in people who also enable SBP. They can copy or share those details.</small>
+                </span>
+              </label>
+              {sbpLoading ? (
+                <p className={sbpStyles.composerHint} role="status"><LoaderCircle className="spin" size={14} aria-hidden="true" /> Checking your SBP preferences…</p>
+              ) : (
+                <div className={sbpStyles.composerHint}>
+                  <span>{sbpPreference?.walletAddress === session?.walletAddress && sbpPreference?.error
+                    ? "SBP preferences could not be loaded."
+                    : sbpReady
+                      ? "Bank fees may apply. SBP is not counted in verified donation totals."
+                      : "To receive via SBP, enable it and save a phone number and receiving bank."}</span>
+                  <Link href="/settings" target="_blank" rel="noopener noreferrer" aria-label="Open funding settings in a new tab">Funding settings ↗</Link>
+                  <button type="button" className="underline underline-offset-2" disabled={submitting} onClick={() => setSbpReload((value) => value + 1)}>Refresh</button>
+                </div>
+              )}
+            </section>
           ) : null}
 
           {recordingSetup ? (

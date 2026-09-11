@@ -20,10 +20,6 @@ export async function GET(request: NextRequest) {
   }
 
   const options = await resolveTargetFundingOptions(targetType, targetId);
-  if (!options.length) {
-    return apiError("This request has no active funding routes yet.", 404);
-  }
-
   return NextResponse.json(
     {
       targetType,
@@ -48,4 +44,3 @@ export async function GET(request: NextRequest) {
     },
   );
 }
-
