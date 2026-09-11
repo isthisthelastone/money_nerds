@@ -50,7 +50,7 @@ export function SiteFooter() {
                     <span>© 2026 Money Nerds. Public profiles link activity.</span>
                     <span className="site-footer__direct">
                         <Radio aria-hidden="true" size={13} />
-                        Zero platform commission · Network fees apply
+                        Zero platform commission · Network or bank fees may apply
                     </span>
                 </div>
             </div>

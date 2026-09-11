@@ -53,6 +53,11 @@ them in verified cryptocurrency totals.
 - Database grants verified: RLS true; anon and authenticated SELECT false;
   service_role SELECT true on both private tables.
 - Focused ESLint and TypeScript checks passed. No broad test suite was run.
+- Production release `e862556` reached READY and serves `www.moneynerds.online`.
+  Signed-out settings and transfer pages render without contacts. Settings were
+  checked at desktop and 390px width; no page overflow or browser errors appeared.
+  Live API checks return settings 401, anonymous availability false, same-origin
+  unauthenticated mutations 401 and cross-origin mutations 403, all no-store.
 - Supabase advisors report no new table-access issues. Pre-existing warnings:
   [Postgres security updates](https://supabase.com/docs/guides/platform/upgrading)
   and [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
