@@ -2,14 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
+import { GuideLanguages } from "@/components/site/GuideLanguages";
+import { GUIDE_LANGUAGES, HOW_IT_WORKS_ALTERNATES } from "@/lib/guide-languages";
 
 const description = "Learn how to create a Money Nerds post, choose receiving addresses, and support someone directly on the right crypto network.";
 
 export const metadata: Metadata = {
   title: "How it works",
   description,
-  alternates: { canonical: "/how-it-works" },
-  openGraph: { title: "How Money Nerds works", description, url: "/how-it-works" },
+  alternates: { canonical: "/how-it-works", languages: HOW_IT_WORKS_ALTERNATES },
+  openGraph: {
+    title: "How Money Nerds works",
+    description,
+    url: "/how-it-works",
+    locale: "en_US",
+    alternateLocale: GUIDE_LANGUAGES.filter(({ locale }) => locale !== "en").map(({ openGraphLocale }) => openGraphLocale),
+  },
+  twitter: { card: "summary_large_image", title: "How Money Nerds works", description, images: ["/og.png"] },
 };
 
 const networks = [
@@ -28,6 +37,7 @@ export default function HowItWorksPage() {
       title="Your first ask. Your first act of support."
       introduction="Money Nerds is a public board for ideas, memes, creative work, and real needs. A post starts the conversation; support goes directly to a receiving destination its author supplies."
     >
+      <GuideLanguages locale="en" />
       <GuideSection id="create-an-ask" title="Create an ask people can understand.">
         <ol className="site-steps">
           <li><div><h3>Sign in, then choose a category</h3><p>Use an option shown on the sign-in screen. Open the <Link className="text-[#c9ff55] underline underline-offset-4" href="/#feed">board composer</Link>, or start in a category such as <Link className="text-[#c9ff55] underline underline-offset-4" href="/?category=build#feed">Build</Link> or <Link className="text-[#c9ff55] underline underline-offset-4" href="/?category=mutual-aid#feed">Mutual Aid</Link>. Its category is preselected; you can change it before publishing.</p></div></li>

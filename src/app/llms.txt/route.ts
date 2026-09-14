@@ -25,6 +25,9 @@ Canonical site: ${SITE_URL}
 
 - [Home and public board](${SITE_URL}/): Browse public requests and discussions.
 - [How it works](${SITE_URL}/how-it-works): Create a request or support someone directly.
+- [Как это работает](${SITE_URL}/ru/how-it-works): Russian translation of the practical guide.
+- [Cómo funciona](${SITE_URL}/es/how-it-works): Spanish translation of the practical guide.
+- [使用指南](${SITE_URL}/zh/how-it-works): Simplified Chinese translation of the practical guide.
 - [Safety](${SITE_URL}/safety): Check stories, addresses, networks, and transfer risks.
 - [Frequently asked questions](${SITE_URL}/faq): Funding, accounts, fees, and limitations.
 - [Community](${SITE_URL}/community): Participation and sharing guidance.

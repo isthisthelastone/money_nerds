@@ -2,6 +2,8 @@
 
 Research snapshot: 2026-09-12. This is a launch checklist, not a claim that submissions, account verification, or outreach have happened. No paid ads, paid directories, bought links, or automated community posting are needed. Organic discovery still requires useful content, working onboarding, and sustained human participation; neither indexing nor users are guaranteed.
 
+Operational update, 2026-09-14: Google Domain ownership is verified; Google successfully fetched the submitted sitemap and reports 70 discovered URLs (not 70 indexed URLs). Search generative AI inclusion is enabled. Bing's existing verified property accepted the canonical sitemap and shows Processing, with zero reported sitemap errors. The original audit/checklist below is retained as history. See [the expanded research](zero-budget-growth-research.md) for the multilingual evidence review and measurement plan.
+
 ## What the audit established
 
 - The public [homepage](https://www.moneynerds.online/), [robots.txt](https://www.moneynerds.online/robots.txt), [sitemap](https://www.moneynerds.online/sitemap.xml), and [llms.txt](https://www.moneynerds.online/llms.txt) returned HTTP 200. The homepage had a canonical URL and no `X-Robots-Tag` blocking indexing. The sitemap contained 70 URLs at the time of inspection, without settings, API, or private SBP URLs.

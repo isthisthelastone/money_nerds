@@ -1,6 +1,7 @@
 import type {MetadataRoute} from "next";
 import {CATEGORY_SCOPES} from "@/lib/categories";
 import {SITE_URL} from "@/lib/config";
+import {GUIDE_LANGUAGES, HOW_IT_WORKS_ALTERNATES} from "@/lib/guide-languages";
 import {createPublicSupabase} from "@/lib/supabase/public";
 
 const PAGE_SIZE = 1000;
@@ -62,8 +63,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         {
             url: `${SITE_URL}/transparency`,
         },
-        ...["how-it-works", "safety", "faq", "community"].map((path) => ({
+        ...["safety", "faq", "community"].map((path) => ({
             url: `${SITE_URL}/${path}`,
+        })),
+        ...GUIDE_LANGUAGES.map(({path}) => ({
+            url: `${SITE_URL}${path}`,
+            alternates: {languages: HOW_IT_WORKS_ALTERNATES},
         })),
         ...CATEGORY_SCOPES.map((category) => ({
             url: `${SITE_URL}/?category=${category.value}`,

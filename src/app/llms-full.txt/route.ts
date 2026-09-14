@@ -63,6 +63,9 @@ Money Nerds does not provide investment advice, act as an exchange or custodian,
 
 - [Public board](${SITE_URL}/)
 - [How it works](${SITE_URL}/how-it-works)
+- [Как это работает — Russian guide](${SITE_URL}/ru/how-it-works)
+- [Cómo funciona — Spanish guide](${SITE_URL}/es/how-it-works)
+- [使用指南 — Simplified Chinese guide](${SITE_URL}/zh/how-it-works)
 - [Safety and transfer risks](${SITE_URL}/safety)
 - [Frequently asked questions](${SITE_URL}/faq)
 - [Community participation](${SITE_URL}/community)
