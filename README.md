@@ -4,6 +4,19 @@ Money Nerds is a public board for asks, ideas, memes, and mutual aid. People sig
 in once, publish a request, and receive direct support through the crypto routes
 they choose. The platform takes no commission and never custodies user funds.
 
+**[Explore the live board](https://www.moneynerds.online)** ·
+[How it works](https://www.moneynerds.online/how-it-works) ·
+[Safety](https://www.moneynerds.online/safety) ·
+[FAQ](https://www.moneynerds.online/faq)
+
+Post a meme, describe a project, or explain a real need. Choose the asset and
+network you accept; supporters decide whether to send directly to your published
+address. Network fees may apply. Funding and the truth of a request are not
+guaranteed. You can browse without an account.
+
+Contributions and specific bug reports are welcome through this repository.
+Never put credentials, identity documents, or private payment details in an issue.
+
 ## Product surface
 
 - Clerk provides one application session across email verification codes,

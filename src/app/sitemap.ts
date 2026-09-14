@@ -30,13 +30,13 @@ async function getAllPosts(supabase: PublicSupabase) {
 }
 
 async function getAllProfiles(supabase: PublicSupabase) {
-    const rows: Array<{wallet_address: string; updated_at: string}> = [];
+    const rows: Array<{wallet_address: string}> = [];
     let lastWallet = "";
 
     for (;;) {
         let query = supabase
             .from("profiles")
-            .select("wallet_address, updated_at")
+            .select("wallet_address")
             .order("wallet_address", {ascending: true})
             .limit(PAGE_SIZE);
         if (lastWallet) query = query.gt("wallet_address", lastWallet);
@@ -44,7 +44,7 @@ async function getAllProfiles(supabase: PublicSupabase) {
         const {data, error} = await query;
         if (error) throw error;
 
-        const page = (data ?? []) as Array<{wallet_address: string; updated_at: string}>;
+        const page = (data ?? []) as Array<{wallet_address: string}>;
         rows.push(...page);
         if (page.length < PAGE_SIZE) return rows;
         lastWallet = page[page.length - 1].wallet_address;
@@ -55,23 +55,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticPages: MetadataRoute.Sitemap = [
         {
             url: SITE_URL,
-            changeFrequency: "daily",
-            priority: 1,
         },
         {
             url: `${SITE_URL}/about`,
-            changeFrequency: "monthly",
-            priority: 0.7,
         },
         {
             url: `${SITE_URL}/transparency`,
-            changeFrequency: "weekly",
-            priority: 0.8,
         },
+        ...["how-it-works", "safety", "faq", "community"].map((path) => ({
+            url: `${SITE_URL}/${path}`,
+        })),
         ...CATEGORY_SCOPES.map((category) => ({
             url: `${SITE_URL}/?category=${category.value}`,
-            changeFrequency: "daily" as const,
-            priority: 0.75,
         })),
     ];
 
@@ -86,17 +81,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             ...posts.map((post) => ({
                 url: `${SITE_URL}/p/${post.id}`,
                 lastModified: new Date(post.updated_at),
-                changeFrequency: "weekly" as const,
-                priority: 0.7,
             })),
             ...profiles.map((profile) => ({
-                url: `${SITE_URL}/u/${profile.wallet_address}`,
-                lastModified: new Date(profile.updated_at),
-                changeFrequency: "weekly" as const,
-                priority: 0.5,
+                url: `${SITE_URL}/u/${encodeURIComponent(profile.wallet_address)}`,
+                // Profile updated_at also changes during identity sync and does
+                // not track its public activity feed. Do not claim false freshness.
             })),
         ];
     } catch {
-        return staticPages;
+        // A transient data failure must not replace the cached complete sitemap
+        // with a successful response that silently drops every post and profile.
+        console.error("sitemap_generation_failed", {source: "public_content"});
+        throw new Error("Unable to generate the public sitemap.");
     }
 }

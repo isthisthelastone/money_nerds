@@ -111,11 +111,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     alternateName: "MoneyNerds",
     url: "https://www.moneynerds.online",
     description: "A public board for direct, zero-commission support across multiple crypto networks.",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: "https://www.moneynerds.online/?category={category}",
-      "query-input": "required name=category",
-    },
   };
   const jsonLd = scope
     ? {
@@ -264,6 +259,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             <div className="rounded-[1.4rem] border border-white/10 bg-[#111311] p-5 text-sm leading-6 text-white/50">
               <strong className="block text-[#f2efe6]">Safety note</strong>
               Money Nerds links activity to authenticated profiles and verifies supported transfer records—not the truth of every request. Fund thoughtfully.
+              <Link className="mt-3 block text-[#9ccaff] hover:underline" href="/safety">Read the safety guide</Link>
+              <Link className="mt-2 block text-[#9ccaff] hover:underline" href="/how-it-works">New here? How Money Nerds works</Link>
             </div>
           </aside>
         </div>

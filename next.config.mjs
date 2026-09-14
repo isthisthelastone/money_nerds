@@ -108,6 +108,10 @@ const nextConfig = {
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },
+      ...["/sign-in/:path*", "/sign-up/:path*", "/settings/:path*", "/p/:id/sbp"].map((source) => ({
+        source,
+        headers: [{ key: "X-Robots-Tag", value: "noindex, noarchive" }],
+      })),
     ];
   },
   turbopack: {

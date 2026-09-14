@@ -13,14 +13,15 @@ export function Hero() {
                 </h1>
                 <p className="site-hero__lede">
                     Post a meme, fund a real need, or back an idea. Money Nerds is a
-                    public funding board where support moves directly between people.
+                    crypto imageboard and crowdfunding community where support moves
+                    directly between people.
                 </p>
 
                 <div className="site-actions">
                     <a className="site-button site-button--primary" href="#feed">
                         Explore requests <ArrowDown aria-hidden="true" size={17} />
                     </a>
-                    <Link className="site-button site-button--secondary" href="/about">
+                    <Link className="site-button site-button--secondary" href="/how-it-works">
                         How it works <ArrowRight aria-hidden="true" size={17} />
                     </Link>
                 </div>

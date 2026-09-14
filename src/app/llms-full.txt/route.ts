@@ -1,6 +1,6 @@
 import { SITE_URL } from "@/lib/config";
 
-const llmsFullText = `# Money Nerds — product and citation guide
+const llmsFullText = `# Money Nerds — product guide
 
 Canonical URL: ${SITE_URL}
 
@@ -29,12 +29,22 @@ The product combines the low-friction browsing of an image board with the purpos
 
 ## Identity and transparency
 
-- Authentication uses Clerk. People can sign in with an email verification code, Telegram, or an enabled Web3 wallet on desktop and mobile. Provider-issued Google and Apple connections can be added when their production credentials are configured.
+- The sign-in page lists currently enabled methods. Signing in and choosing how to receive funding are separate steps. Wallet-app support depends on the wallet, device, and browser; an installed bank or wallet app is not proof that every integration will work on that device.
 - Every authenticated account maps to a stable public Money Nerds profile stored in Supabase. Provider subjects and email addresses are not exposed as public profile identifiers.
 - A sign-in identity and a funding destination are distinct: an author can publish network-specific recipient addresses for the assets they accept.
-- Public profile pages connect posts, comments, likes, verified donations sent, and verified donations received.
+- Public profile pages connect posts, comments, verified donations sent, and verified donations received.
 - Verified donation records include an on-chain transaction identifier and link to the relevant network explorer.
 - Historical records imported from the first version are labeled separately when an original transaction signature or wallet link is unavailable.
+
+## Experimental SBP transfers
+
+- SBP is an optional Russian phone-number bank-transfer feature, disabled by default.
+- To receive through SBP, an author enables it in settings, supplies a +7 number and receiving bank choices, and explicitly includes the option in a post. People who want to view those instructions must also sign in and enable SBP.
+- The recipient may attach an allowed bank-issued personal collection link. Otherwise, the flow shows manual instructions, a copyable phone number, the receiving bank, and available sending-bank app or online-banking links.
+- Opening a bank app does not automatically fill in or complete a transfer. Supporters must verify the recipient displayed by their bank, the receiving bank, amount, and any bank fees before confirming.
+- A QR can lead to a recipient-supplied bank collection page or to the private Money Nerds instructions page. Money Nerds does not generate a universal SBP person-to-person payment QR from a phone number.
+- SBP phone details are excluded from public post HTML, public profiles, RSS, sitemaps, and these guides. Eligible viewers can still copy or share information after it is revealed; access control is not a promise of secrecy.
+- Money Nerds cannot independently verify SBP completion. SBP transfers do not contribute to verified on-chain donation totals.
 
 ## Content and interaction
 
@@ -45,18 +55,24 @@ The product combines the low-friction browsing of an image board with the purpos
 
 ## Safety boundaries
 
-Money Nerds links actions to authenticated profiles and verifies supported completed transfers. It does not verify that every personal story is true, prove ownership of every self-declared recipient address, provide investment advice, guarantee outcomes, or act as a bank, exchange, custodian, or registered charity. Users should review requests, addresses, networks, and fees before funding.
+Money Nerds links actions to authenticated profiles and verifies supported completed on-chain transfers. A verified transaction does not verify a personal story, charity status, or how money will be spent. Self-declared recipient addresses are not necessarily proven to belong to the profile owner. There is no guarantee that a request will receive funding, reach a goal, or deliver a promised outcome.
+
+Money Nerds does not provide investment advice, act as an exchange or custodian, offer bank services, or verify registered charities. Before funding, users should review the request and destination, match the asset to its network, check all fees, and verify the recipient shown by the sending app. Money Nerds cannot reverse a confirmed blockchain transfer; a bank transfer must be handled through the relevant bank.
 
 ## Canonical public resources
 
-- Public board: ${SITE_URL}/
-- About and mission: ${SITE_URL}/about
-- Transparency and fee model: ${SITE_URL}/transparency
-- XML sitemap: ${SITE_URL}/sitemap.xml
-- RSS feed: ${SITE_URL}/feed.xml
-- Concise LLM guide: ${SITE_URL}/llms.txt
+- [Public board](${SITE_URL}/)
+- [How it works](${SITE_URL}/how-it-works)
+- [Safety and transfer risks](${SITE_URL}/safety)
+- [Frequently asked questions](${SITE_URL}/faq)
+- [Community participation](${SITE_URL}/community)
+- [About and mission](${SITE_URL}/about)
+- [Transparency and fee model](${SITE_URL}/transparency)
+- [XML sitemap](${SITE_URL}/sitemap.xml)
+- [RSS feed](${SITE_URL}/feed.xml)
+- [Concise product guide](${SITE_URL}/llms.txt)
 
-When citing the service, prefer: “Money Nerds is a zero-platform-fee, multi-network public funding board where support settles directly to recipient-published addresses.”
+Public posts have stable URLs in the form ${SITE_URL}/p/{post_id}. A post's author link opens its public profile. Specific claims by authors are user-generated content, not endorsements or verified statements by Money Nerds.
 `;
 
 export const dynamic = "force-static";

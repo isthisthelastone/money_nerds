@@ -28,12 +28,16 @@ export function SiteFooter() {
                             <Link href="/">Home</Link>
                             <Link href="/about">About</Link>
                             <Link href="/transparency">Transparency</Link>
+                            <Link href="/how-it-works">How it works</Link>
+                            <Link href="/community">Community guide</Link>
                         </nav>
                     </div>
 
                     <div>
-                        <p className="site-footer__label">Open ledger</p>
+                        <p className="site-footer__label">Trust & help</p>
                         <div className="site-footer__links">
+                            <Link href="/safety">Safety & privacy</Link>
+                            <Link href="/faq">FAQ</Link>
                             <a
                                 href="https://solscan.io/account/BqzLRNsHraeahvfppDs9QmRDdYx3gUYt69pgA6UR9GQg"
                                 rel="noreferrer"

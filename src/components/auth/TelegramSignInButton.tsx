@@ -2,6 +2,7 @@
 
 import { RefreshCw, Send, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { TelegramBotSignIn } from "@/components/auth/TelegramBotSignIn";
 
 interface LegacyTelegramLoginConfig {
   flow: "legacy";
@@ -137,6 +138,7 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
           {error}
         </p>
       ) : null}
+      <TelegramBotSignIn returnTo={returnTo} />
       <dialog
         ref={dialogRef}
         className="donation-dialog telegram-login-dialog"
