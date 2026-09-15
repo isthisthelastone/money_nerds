@@ -1,5 +1,6 @@
 import type {Metadata} from "next";
 import Link from "next/link";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 import {
     ArrowRight,
     Blocks,
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
         url: "/transparency",
         title: "Money Nerds Transparency",
         description: "Direct settlement, zero platform commission, and a public service wallet.",
+        images: [SOCIAL_PREVIEW_IMAGE],
     },
 };
 

@@ -11,6 +11,7 @@ import {
   isTranslatedGuideLocale,
 } from "@/lib/guide-languages";
 import { HOW_IT_WORKS_TRANSLATIONS } from "@/lib/how-it-works-translations";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -39,9 +40,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: language.path,
       locale: language.openGraphLocale,
       alternateLocale: GUIDE_LANGUAGES.filter((item) => item.locale !== locale).map((item) => item.openGraphLocale),
-      images: [{ url: "/og.png", width: 1733, height: 907, alt: "Money Nerds" }],
+      images: [SOCIAL_PREVIEW_IMAGE],
     },
-    twitter: { card: "summary_large_image", title, description: copy.description, images: ["/og.png"] },
+    twitter: { card: "summary_large_image", title, description: copy.description, images: [SOCIAL_PREVIEW_IMAGE] },
   };
 }
 

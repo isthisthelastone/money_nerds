@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
 import { CATEGORY_SCOPES, categoryHref } from "@/lib/categories";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 const description = "Make a clear Money Nerds ask, choose a useful category, share your post respectfully, and help the community without misleading people.";
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   title: "Community guide",
   description,
   alternates: { canonical: "/community" },
-  openGraph: { title: "Money Nerds community guide", description, url: "/community" },
+  openGraph: { title: "Money Nerds community guide", description, url: "/community", images: [SOCIAL_PREVIEW_IMAGE] },
 };
 
 export default function CommunityPage() {

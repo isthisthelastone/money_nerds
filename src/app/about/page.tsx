@@ -1,5 +1,6 @@
 import type {Metadata} from "next";
 import Link from "next/link";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 import {
     ArrowRight,
     ArrowRightLeft,
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
         url: "/about",
         title: "About Money Nerds",
         description: "Internet-native expression meets direct, transparent generosity.",
+        images: [SOCIAL_PREVIEW_IMAGE],
     },
 };
 

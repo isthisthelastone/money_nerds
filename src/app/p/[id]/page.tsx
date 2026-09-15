@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/config";
 import { getComments, getPost } from "@/lib/data";
 import { type CommentCardData, type MediaAsset } from "@/lib/models";
 import { metadataExcerpt, serializeJsonLd } from "@/lib/seo";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 // Clerk reads the request session in the shared layout. Rendering an on-demand
 // dynamic post as ISR makes Next.js attempt a static pass and fail with
@@ -79,7 +80,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
   const image = post.media.find((asset) => asset.kind === "image");
   const images = image
     ? [{url: image.public_url, alt: image.alt_text || `Image attached to ${post.nickname}'s post`}]
-    : [{url: "/og.png", width: 1733, height: 907, alt: "Money Nerds — Ask. Share. Fund."}];
+    : [SOCIAL_PREVIEW_IMAGE];
   return {
     title,
     description: excerpt,

@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
 import { GuideLanguages } from "@/components/site/GuideLanguages";
 import { GUIDE_LANGUAGES, HOW_IT_WORKS_ALTERNATES } from "@/lib/guide-languages";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 const description = "Learn how to create a Money Nerds post, choose receiving addresses, and support someone directly on the right crypto network.";
 
@@ -17,8 +18,9 @@ export const metadata: Metadata = {
     url: "/how-it-works",
     locale: "en_US",
     alternateLocale: GUIDE_LANGUAGES.filter(({ locale }) => locale !== "en").map(({ openGraphLocale }) => openGraphLocale),
+    images: [SOCIAL_PREVIEW_IMAGE],
   },
-  twitter: { card: "summary_large_image", title: "How Money Nerds works", description, images: ["/og.png"] },
+  twitter: { card: "summary_large_image", title: "How Money Nerds works", description, images: [SOCIAL_PREVIEW_IMAGE] },
 };
 
 const networks = [

@@ -36,6 +36,7 @@ import {
   type ProfilePageSize,
 } from "@/lib/models";
 import { serializeJsonLd } from "@/lib/seo";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 import { normalizeWallet } from "@/lib/wallet";
 
 export const dynamic = "force-dynamic";
@@ -140,7 +141,7 @@ export async function generateMetadata({
       type: "profile",
       url: `${SITE_URL}/u/${wallet}`,
       title: `${name} on Money Nerds`,
-      images: [{ url: "/og.png", width: 1733, height: 907 }],
+      images: [SOCIAL_PREVIEW_IMAGE],
     },
   };
 }

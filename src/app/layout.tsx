@@ -5,6 +5,7 @@ import { WalletControl } from "@/components/features/WalletControl";
 import { SiteFooter, SiteHeader } from "@/components/site";
 import { SITE_URL } from "@/lib/config";
 import { serializeJsonLd } from "@/lib/seo";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 import { ClientProvider } from "./ClientProvider";
 import "../styles/global.css";
 
@@ -41,21 +42,14 @@ export const metadata: Metadata = {
         title: "Money Nerds — Crypto Crowdfunding & Direct Support",
         description:
             "Post a meme, fund a need, or back an idea. Support moves directly between people across leading crypto networks.",
-        images: [
-            {
-                url: "/og.png",
-                width: 1733,
-                height: 907,
-                alt: "Money Nerds — Ask. Share. Fund. Zero platform fees and direct multi-currency support.",
-            },
-        ],
+        images: [SOCIAL_PREVIEW_IMAGE],
     },
     twitter: {
         card: "summary_large_image",
         title: "Money Nerds — Crypto Crowdfunding & Direct Support",
         description:
             "A public board for direct multi-currency support, with zero platform commission.",
-        images: ["/og.png"],
+        images: [SOCIAL_PREVIEW_IMAGE],
     },
     robots: {
         index: true,

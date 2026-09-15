@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 const description = "Answers about Money Nerds sign-in, supported currencies, direct funding, public profiles, media recording, and experimental SBP transfers.";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
   title: "Frequently asked questions",
   description,
   alternates: { canonical: "/faq" },
-  openGraph: { title: "Money Nerds FAQ", description, url: "/faq" },
+  openGraph: { title: "Money Nerds FAQ", description, url: "/faq", images: [SOCIAL_PREVIEW_IMAGE] },
 };
 
 const questions = [

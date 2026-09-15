@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 const description = "Protect your wallet and privacy on Money Nerds: check recipients, understand public profiles, use SBP carefully, and report suspicious posts.";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
   title: "Safety and privacy",
   description,
   alternates: { canonical: "/safety" },
-  openGraph: { title: "Money Nerds safety and privacy", description, url: "/safety" },
+  openGraph: { title: "Money Nerds safety and privacy", description, url: "/safety", images: [SOCIAL_PREVIEW_IMAGE] },
 };
 
 export default function SafetyPage() {

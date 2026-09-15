@@ -12,6 +12,7 @@ import { getFeed, getSiteStats } from "@/lib/data";
 import { formatSol } from "@/lib/format";
 import { isCategory, type FeedParams } from "@/lib/models";
 import { serializeJsonLd } from "@/lib/seo";
+import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 export const revalidate = 60;
 
@@ -39,6 +40,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
             title: `${scope.label} posts on Money Nerds`,
             description: scope.shortDescription,
             url: `${SITE_URL}/?category=${scope.value}`,
+            images: [SOCIAL_PREVIEW_IMAGE],
           },
         }
       : {}),
