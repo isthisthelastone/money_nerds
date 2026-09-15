@@ -1,5 +1,7 @@
 # Money Nerds: zero-budget growth research
 
+Operational follow-up: [15 September release and verification record](release-2026-09-15.md), including deployed multilingual guides, Google/Bing results, IndexNow acceptance, and the first disclosed community submission. Dated checkpoints below describe the research state at that time.
+
 ## Executive decision
 
 Money Nerds should pursue **a useful public product, a small real community, and measurable discovery**, not a campaign promising free money or guaranteed AI recommendations. Its defensible proposition is a public board where people share creative work, ideas, memes, or personal needs and others can offer direct support. Zero platform commission is meaningful, but network fees remain possible; a visible transaction does not verify the truth of a fundraising story.

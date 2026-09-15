@@ -4,6 +4,8 @@ Implemented 2026-09-13 as a separate opt-in fallback. The existing OIDC default,
 PKCE, encrypted transaction cookie and `/auth` provider flow remain unchanged.
 This is not a guarantee that Telegram or iOS will return to the same browser tab.
 
+Production activation and focused verification are recorded in the [15 September release](release-2026-09-15.md). Physical iPhone approval/return remains explicitly unverified until exercised on the owner's device.
+
 ## Runtime configuration and prerequisites
 
 - `AUTH_TELEGRAM_BOT_ENABLED=true` and `AUTH_TELEGRAM_ENABLED=true`.
