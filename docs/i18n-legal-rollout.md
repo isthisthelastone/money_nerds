@@ -1,24 +1,24 @@
 # I18n and jurisdiction rollout — resumable work log
 
-Started: 2026-09-15. Resumed: 2026-10-07. Status: **technical implementation complete; release verification in progress. Legal operational requirements remain documented, not fabricated.**
+Started: 2026-09-15. Resumed: 2026-10-07. Status: **technical release deployed and runtime-verified. Legal operational requirements remain documented, not fabricated.**
 
 ## Scope (do not drop any item)
 
-- [ ] Detect interface language from explicit choice, saved account preference/user metadata, browser language and coarse IP-country fallback; English is fallback.
-- [ ] Five interface languages: English, Spanish, Simplified Chinese, Russian, Vietnamese. Translate site-owned visible text, accessibility text, errors, metadata, dates/numbers, legal UI and auth UI. Never translate user posts/comments/nicknames or the Money Nerds brand.
-- [ ] Persistent accessible global switcher with flags **and native language names**, in desktop header, mobile navigation, footer, site settings, account menu (five entry points). Language is not nationality or jurisdiction.
-- [ ] Optional author-declared post language; existing posts remain untagged. Independent customer feed language filter, retained across category/sort/page changes.
-- [ ] Replace 6/12/24 page sizes with conventional, researched, consistently supported options; keep SSR pagination, bounded requests and useful empty/out-of-range handling.
-- [ ] Separate jurisdiction selection/detection from language: EU (all 27 member countries individually), USA, Russia, Singapore, Malaysia; neutral global fallback and manual correction. IP location is an estimate, not proof of legal residence.
+- [x] Detect interface language from explicit choice, saved account preference/user metadata, browser language and coarse IP-country fallback; English is fallback.
+- [x] Five interface languages: English, Spanish, Simplified Chinese, Russian, Vietnamese. Translate site-owned visible text, accessibility text, errors, metadata, dates/numbers, legal UI and auth UI. Never translate user posts/comments/nicknames or the Money Nerds brand.
+- [x] Persistent accessible global switcher with flags **and native language names**, in desktop header, mobile navigation, footer, site settings, account menu (five entry points). Language is not nationality or jurisdiction.
+- [x] Optional author-declared post language; existing posts remain untagged. Independent customer feed language filter, retained across category/sort/page changes.
+- [x] Replace 6/12/24 page sizes with conventional, researched, consistently supported options; keep SSR pagination, bounded requests and useful empty/out-of-range handling.
+- [x] Separate jurisdiction selection/detection from language: EU (all 27 member countries individually), USA, Russia, Singapore, Malaysia; neutral global fallback and manual correction. IP location is an estimate, not proof of legal residence.
 - [ ] Research primary current legal sources separately for each block/country. Document applicable vs conditional requirements and unresolved operational dependencies.
 - [ ] Implement factual terms, privacy, cookies/storage, country notices, consent/preferences UI, footer access, rights/reporting contact workflow and necessary controls. No invented operator identity, address, company number, DPO, retention promises or claim of immunity from lawsuits.
-- [ ] Store signed-in preferences in Supabase with ownership enforced; keep auth/Telegram and existing user data safe. Additive post-language migration and verified production migration only after review.
-- [ ] Complete translation-key/coverage audit and focused desktop/mobile-width runtime QA including auth UI, posting, funding, media, profiles, settings, legal UI, metadata and filters. Do not claim real phone/bank/wallet testing without doing it.
-- [ ] Review diff, commit, push main/develop/master without rewriting history, deploy Vercel, verify production. Report any genuine legal/operational blockers plainly.
+- [x] Store signed-in preferences in Supabase with ownership enforced; keep auth/Telegram and existing user data safe. Additive post-language migration and verified production migration only after review.
+- [x] Complete translation-key/coverage audit and focused desktop/mobile-width runtime QA including auth UI, posting, funding, media, profiles, settings, legal UI, metadata and filters. Do not claim real phone/bank/wallet testing without doing it.
+- [x] Review diff, commit, push main/develop/master without rewriting history, deploy Vercel, verify production. Report any genuine legal/operational blockers plainly.
 
 ## Current progress and exact resume point — updated 7 October 2026
 
-Implemented: five-language server/client catalogs (957 entries per non-English language, 674 explicit usage keys audited), metadata and Clerk localization, automatic browser/account/IP fallback, five global switcher placements plus direct flag buttons, independent legal country/settings, post-language selection/filtering, 10/25/50 sizes in feed/profile, consent/refusal/revocation/GPC controls, translated wallet chooser, terms/privacy/cookie/regional/report pages and Malaysia BM/EN supplement.
+Implemented: five-language server/client catalogs (962 entries per non-English language, 679 explicit usage keys audited), metadata and Clerk localization, automatic browser/account/IP fallback, five global switcher placements plus direct flag buttons, independent legal country/settings, post-language selection/filtering, 10/25/50 sizes in feed/profile, consent/refusal/revocation/GPC controls, translated wallet chooser, terms/privacy/cookie/regional/report pages and Malaysia BM/EN supplement.
 
 Production Supabase migrations applied and verified:
 
@@ -27,9 +27,11 @@ Production Supabase migrations applied and verified:
 
 Verified: 49 existing posts retained; all remain untagged; post_cards invoker security retained; preference table RLS enabled with no anon/authenticated access; publication wrapper callable by service_role only. Security advisors showed only the pre-existing managed Postgres patch warning and unused Supabase-password protection warning, no new schema findings.
 
-Local checks: TypeScript, ESLint and production build passed; runtime script passed five language HTML/metadata/filter checks, legal pages, settings/profile/guide routes, locale cookie persistence, invalid input/origin rejection, privacy opt-in/refusal/revocation, GPC and view endpoint refusal without consent. Browser switching Vietnamese→Spanish and Spanish navigation persistence passed; mobile-width settings/country save passed. Wallet-list SSR mismatch was found and fixed by rendering only on opening. Final production verification is still required after commit/deploy.
+Local checks: TypeScript, ESLint and production build passed; runtime script passed five language HTML/metadata/filter checks, legal pages, settings/profile/guide routes, locale cookie persistence, invalid input/origin rejection, privacy opt-in/refusal/revocation, GPC and view endpoint refusal without consent. Browser switching Vietnamese→Spanish and Spanish navigation persistence passed; mobile-width settings/country save passed. Wallet-list SSR mismatch was found and fixed by rendering only on opening. Production runtime script passed the same five-language, route, filtering, guest-cookie, origin, GPC and consent checks. Fresh production browser confirmed Russian switching, language persistence, mobile settings/header fit and privacy-control reopening, with no captured console errors.
 
-Exact next steps: stop the task's temporary dev processes; run final build/lint/audit; do not commit generated `next-env.d.ts` dev imports; review and commit task files; push main/develop/master atomically without force; inspect Vercel production readiness; run `scripts/runtime-i18n.cjs https://www.moneynerds.online`; browser-check fresh production settings/consent/locale and responsive layout; record commit/deployment here. Do not repeat already-applied migrations.
+Release commits: `2e13830` (main feature) and `a02f9da` (translated error/404 pages), pushed atomically to main/develop/master. Production deployment `dpl_Bxd1M78iyGQsRFzxL218ftpPPRey` was READY on the canonical domain. No pending application implementation work is recorded for this release. Do not repeat already-applied migrations.
+
+Remaining verification limits: account-backed preferences/publication were inspected and schema privileges verified, but a real newly signed-in account was not used in this run; no physical-phone camera, real wallet transfer or bank payment is claimed. Supplemental legal translations are drafts requiring qualified review. Follow `docs/legal-launch-blockers.md` for operator facts, infrastructure, country-specific scope and staffed moderation rather than calling the service universally compliant.
 
 Current legal evidence: `docs/legal-jurisdiction-research.md`; remaining real operator/infrastructure/staffing requirements: `docs/legal-launch-blockers.md`. They are not permission to claim universal compliance.
 
@@ -68,4 +70,4 @@ Before resuming: read this file, `git status --short`, the three research/implem
 - Native legal-translation/counsel review and national scope/operational assessment remain.
 - Actual operator identity and some legally required operational details are unverified.
 - Russia localization/cross-border and country-specific financial regulation applicability require source-backed review before any compliance claim.
-- Final commit/deployment/production QA is pending as described above.
+- Deployment and focused production QA are complete. Operational/legal clearance remains separate.
