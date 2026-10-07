@@ -1,4 +1,6 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { isLocale, LOCALE_COOKIE, PREFERENCE_MAX_AGE } from "@/lib/i18n/config";
 
 const DEFAULT_AUTHORIZED_PARTIES = [
   "https://moneynerds.online",
@@ -36,7 +38,19 @@ function configuredAuthorizedParties() {
   return [...new Set([...DEFAULT_AUTHORIZED_PARTIES, ...configured])];
 }
 
-export default clerkMiddleware({
+export default clerkMiddleware((_auth, request) => {
+  const requestHeaders = new Headers(request.headers);
+  // Only URL choices may set this internal rendering hint; ignore caller-supplied headers.
+  requestHeaders.delete("x-mn-ui-locale");
+  const guideLocale = request.nextUrl.pathname.match(/^\/(en|es|zh|ru|vi)\/how-it-works\/?$/)?.[1];
+  const selected = guideLocale ?? request.nextUrl.searchParams.get("ui");
+  if (isLocale(selected)) requestHeaders.set("x-mn-ui-locale", selected);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  if (isLocale(selected) && request.cookies.get(LOCALE_COOKIE)?.value !== selected && !request.nextUrl.pathname.startsWith("/api/")) {
+    response.cookies.set(LOCALE_COOKIE, selected, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: PREFERENCE_MAX_AGE });
+  }
+  return response;
+}, {
   authorizedParties: configuredAuthorizedParties(),
 });
 

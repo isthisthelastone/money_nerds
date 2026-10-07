@@ -1,9 +1,12 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { Check, Share2 } from "lucide-react";
 import { useState } from "react";
 
 export function ShareButton({ path, title }: { path: string; title: string }) {
+  const { t } = useI18n();
   const [shared, setShared] = useState(false);
   const share = async () => {
     const url = new URL(path, window.location.origin).toString();
@@ -17,10 +20,9 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
     }
   };
   return (
-    <button className="post-action" type="button" onClick={() => void share()} aria-label="Share this post">
+    <button className="post-action" type="button" onClick={() => void share()} aria-label={t("Share this post")}>
       {shared ? <Check aria-hidden="true" size={18} /> : <Share2 aria-hidden="true" size={18} />}
-      <span>{shared ? "Copied" : "Share"}</span>
+      <span>{shared ? t("Copied") : t("Share")}</span>
     </button>
   );
 }
-

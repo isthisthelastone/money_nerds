@@ -1,10 +1,13 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 
 /** Optional route: the documented OIDC button above remains the default. */
 export function TelegramBotSignIn({ returnTo }: { returnTo: string }) {
+  const { t } = useI18n();
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [link, setLink] = useState<string | null>(null);
@@ -55,27 +58,24 @@ export function TelegramBotSignIn({ returnTo }: { returnTo: string }) {
   if (!available) return null;
   return (
     <details className="mt-4 rounded-xl border border-sky-400/20 bg-sky-400/5 p-3 text-sm">
-      <summary className="cursor-pointer font-semibold text-sky-100">Need a return button from the Telegram app?</summary>
+      <summary className="cursor-pointer font-semibold text-sky-100">{t("Need a return button from the Telegram app?")}</summary>
       <p className="mt-3 text-xs leading-relaxed text-nerd-muted">
-        Try bot-assisted sign-in. Start here, open Telegram, tap Start if asked, then
-        “Approve & return”. The return page has an Open Brave button for iPhone.
-        Finish in the same browser and browsing mode where you started.
-      </p>
+        {t("Try bot-assisted sign-in. Start here, open Telegram, tap Start if asked, then “Approve & return”. The return page has an Open Brave button for iPhone. Finish in the same browser and browsing mode where you started.")}</p>
       {link ? (
         <>
           <a className="button button-secondary mt-3 w-full" href={link} rel="noreferrer external nofollow">
-            Open Telegram bot <ExternalLink size={15} aria-hidden="true" />
+            {t("Open Telegram bot")}{" "}<ExternalLink size={15} aria-hidden="true" />
           </a>
-          <p className="mt-2 text-xs text-nerd-muted">This private login attempt expires in 10 minutes. Never forward the bot link or return link.</p>
-          <button className="mt-3 text-xs text-sky-200 underline" type="button" onClick={() => void prepare()} disabled={busy}>Start a new attempt</button>
+          <p className="mt-2 text-xs text-nerd-muted">{t("This private login attempt expires in 10 minutes. Never forward the bot link or return link.")}</p>
+          <button className="mt-3 text-xs text-sky-200 underline" type="button" onClick={() => void prepare()} disabled={busy}>{t("Start a new attempt")}</button>
         </>
       ) : (
         <button className="button button-secondary mt-3 w-full" type="button" onClick={() => void prepare()} disabled={busy}>
           {busy ? <RefreshCw size={15} className="spin" aria-hidden="true" /> : null}
-          {busy ? "Preparing…" : "Prepare bot-assisted sign-in"}
+          {busy ? t("Preparing…") : t("Prepare bot-assisted sign-in")}
         </button>
       )}
-      {error ? <p role="alert" className="mt-3 text-xs text-red-300">{error}</p> : null}
+      {error ? <p role="alert" className="mt-3 text-xs text-red-300">{t(error)}</p> : null}
     </details>
   );
 }

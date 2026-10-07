@@ -35,6 +35,25 @@ export function isPostCategory(value: string | undefined): value is PostCategory
   return POST_CATEGORIES.includes(value as PostCategory);
 }
 
+export const POST_LANGUAGES = ["en", "es", "zh", "ru", "vi"] as const;
+export type PostLanguage = (typeof POST_LANGUAGES)[number];
+export type PostLanguageFilter = PostLanguage | "all" | "untagged";
+
+export const POST_LANGUAGE_LABELS: Record<PostLanguage, string> = {
+  en: "English",
+  es: "Español",
+  zh: "中文",
+  ru: "Русский",
+  vi: "Tiếng Việt",
+};
+
+export function isPostLanguage(value: unknown): value is PostLanguage {
+  return typeof value === "string" && POST_LANGUAGES.includes(value as PostLanguage);
+}
+
+export const FEED_PAGE_SIZES = [10, 25, 50] as const;
+export const DEFAULT_FEED_PAGE_SIZE = 10;
+
 export type MediaKind = "image" | "audio" | "video_circle";
 export type ExternalIdentityProvider = "google" | "apple" | "telegram" | "clerk";
 export type ProfileIdentityKind = "wallet" | "external";
@@ -73,6 +92,7 @@ export interface PostCardData {
   nickname: string;
   body: string;
   category: Category | string;
+  language: PostLanguage | null;
   created_at: string;
   updated_at: string;
   legacy_image_url: string | null;
@@ -170,7 +190,8 @@ export interface ProfileFundingRoute {
   verified_at: string | null;
 }
 
-export const PROFILE_PAGE_SIZES = [12, 25, 50] as const;
+export const PROFILE_PAGE_SIZES = FEED_PAGE_SIZES;
+export const DEFAULT_PROFILE_PAGE_SIZE = DEFAULT_FEED_PAGE_SIZE;
 export type ProfilePageSize = (typeof PROFILE_PAGE_SIZES)[number];
 export type ProfileActivitySection = "posts" | "comments" | "sent" | "received";
 
@@ -227,4 +248,5 @@ export interface FeedParams {
   pageSize: number;
   sort: "latest" | "loved" | "funded";
   category: Category;
+  language: PostLanguageFilter;
 }

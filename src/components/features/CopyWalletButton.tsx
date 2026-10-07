@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
@@ -10,6 +12,7 @@ export function CopyWalletButton({
   walletAddress: string;
   label?: string;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -23,7 +26,7 @@ export function CopyWalletButton({
       }}
     >
       {copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-      {copied ? "Copied" : label}
+      {copied ? t("Copied") : t(label)}
     </button>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { RefreshCw, Send, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { TelegramBotSignIn } from "@/components/auth/TelegramBotSignIn";
@@ -16,6 +18,7 @@ function normalizeReturnTo(value: string) {
 }
 
 export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) {
+  const { t } = useI18n();
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -125,17 +128,12 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
         ) : (
           <Send aria-hidden="true" size={19} />
         )}
-        Continue with Telegram
-      </button>
+        {t("Continue with Telegram")}</button>
       <p className="mt-2 text-xs leading-relaxed text-nerd-muted">
-        On Telegram’s secure authorization page, choose “Continue with Telegram”
-        to approve in the app. Tap “Open Telegram” if prompted. No app? Choose
-        phone-number login on that page. If Telegram stays open after approval,
-        switch back to the same browser tab to finish signing in.
-      </p>
+        {t("On Telegram’s secure authorization page, choose “Continue with Telegram” to approve in the app. Tap “Open Telegram” if prompted. No app? Choose phone-number login on that page. If Telegram stays open after approval, switch back to the same browser tab to finish signing in.")}</p>
       {error ? (
         <p className="mt-3 text-sm text-red-300" role="alert">
-          {error}
+          {t(error)}
         </p>
       ) : null}
       <TelegramBotSignIn returnTo={returnTo} />
@@ -150,14 +148,14 @@ export function TelegramSignInButton({ returnTo = "/" }: { returnTo?: string }) 
           <button
             className="donation-close"
             type="button"
-            aria-label="Close Telegram sign-in"
+            aria-label={t("Close Telegram sign-in")}
             onClick={() => dialogRef.current?.close()}
           >
             <X aria-hidden="true" size={18} />
           </button>
-          <span className="eyebrow">Secure sign-in</span>
-          <h2 id={titleId}>Continue with Telegram</h2>
-          <p>Telegram verifies your account, then Clerk creates your Money Nerds session.</p>
+          <span className="eyebrow">{t("Secure sign-in")}</span>
+          <h2 id={titleId}>{t("Continue with Telegram")}</h2>
+          <p>{t("Telegram verifies your account, then Clerk creates your Money Nerds session.")}</p>
           <div ref={widgetRef} className="telegram-login-dialog__widget" />
         </div>
       </dialog>

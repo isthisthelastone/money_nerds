@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { enGB, esES, ruRU, viVN, zhCN } from "@clerk/localizations";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { WalletControl } from "@/components/features/WalletControl";
@@ -7,9 +8,17 @@ import { SITE_URL } from "@/lib/config";
 import { serializeJsonLd } from "@/lib/seo";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 import { ClientProvider } from "./ClientProvider";
+import { I18nProvider } from "@/components/providers/I18nProvider";
+import { PrivacyConsentProvider } from "@/components/legal/PrivacyConsent";
+import { getRequestPreferences } from "@/lib/i18n/server";
+import { getMessages } from "@/lib/i18n/messages";
+import { makeTranslator } from "@/lib/i18n/config";
+import { readPrivacyChoice } from "@/lib/privacy";
+import { cookies, headers } from "next/headers";
+import { translateMetadata } from "@/lib/i18n/metadata";
 import "../styles/global.css";
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
     metadataBase: new URL(SITE_URL),
     applicationName: "Money Nerds",
     title: {
@@ -64,6 +73,11 @@ export const metadata: Metadata = {
     },
 };
 
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getRequestPreferences();
+  return translateMetadata(baseMetadata, makeTranslator(getMessages(locale)), locale);
+}
+
 export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
@@ -82,13 +96,18 @@ const publisherJsonLd = {
     description: "A public funding board for direct support between people, with zero platform commission.",
 };
 
-export default function RootLayout({children}: Readonly<{children: ReactNode}>) {
+export default async function RootLayout({children}: Readonly<{children: ReactNode}>) {
+    const { locale, country } = await getRequestPreferences();
+    const messages = getMessages(locale);
+    const t = makeTranslator(messages);
+    const privacyChoice = (await headers()).get("sec-gpc") === "1" ? "necessary" : readPrivacyChoice((await cookies()).get("mn_privacy")?.value);
     return (
-        <html lang="en">
+        <html lang={locale === "zh" ? "zh-Hans" : locale}>
             <body>
                 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(publisherJsonLd) }} />
                 <ClerkProvider
                     dynamic
+                    localization={{ en: enGB, es: esES, zh: zhCN, ru: ruRU, vi: viVN }[locale]}
                     signInUrl="/sign-in"
                     signUpUrl="/sign-up"
                     signInFallbackRedirectUrl="/"
@@ -103,9 +122,11 @@ export default function RootLayout({children}: Readonly<{children: ReactNode}>) 
                         },
                     }}
                 >
-                    <a className="skip-link" href="#main-content">
-                        Skip to content
+                    <a key="skip-content" className="skip-link" href="#main-content">
+                        {t("Skip to content")}
                     </a>
+                    <I18nProvider key="language-app" locale={locale} country={country} messages={messages}>
+                    <PrivacyConsentProvider initialChoice={privacyChoice}>
                     <ClientProvider>
                         <div className="site-app">
                             <SiteHeader walletControl={<WalletControl />} />
@@ -115,6 +136,8 @@ export default function RootLayout({children}: Readonly<{children: ReactNode}>) 
                             <SiteFooter />
                         </div>
                     </ClientProvider>
+                    </PrivacyConsentProvider>
+                    </I18nProvider>
                 </ClerkProvider>
             </body>
         </html>

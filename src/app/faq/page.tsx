@@ -1,3 +1,4 @@
+import { getTranslator } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
@@ -5,12 +6,15 @@ import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 const description = "Answers about Money Nerds sign-in, supported currencies, direct funding, public profiles, media recording, and experimental SBP transfers.";
 
-export const metadata: Metadata = {
-  title: "Frequently asked questions",
-  description,
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslator();
+  return {
+  title: t("Frequently asked questions"),
+  description: t(description),
   alternates: { canonical: "/faq" },
-  openGraph: { title: "Money Nerds FAQ", description, url: "/faq", images: [SOCIAL_PREVIEW_IMAGE] },
+  openGraph: { title: t("Money Nerds FAQ"), description: t(description), url: "/faq", images: [SOCIAL_PREVIEW_IMAGE] },
 };
+}
 
 const questions = [
   {
@@ -63,26 +67,27 @@ const questions = [
   },
 ] as const;
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const t = await getTranslator();
   return (
     <GuidePage
       path="/faq"
-      title="A few things worth knowing."
-      introduction="Plain answers before you post, connect a wallet, or send support. If a funding route is unclear, stop and check it first."
+      title={t("A few things worth knowing.")}
+      introduction={t("Plain answers before you post, connect a wallet, or send support. If a funding route is unclear, stop and check it first.")}
     >
-      <GuideSection id="common-questions" title="Start here.">
+      <GuideSection id="common-questions" title={t("Start here.")}>
         <div className="mt-8 grid gap-4">
           {questions.map(({ question, answer }) => (
             <article className="site-card" key={question}>
-              <h3>{question}</h3>
-              <p className="max-w-4xl">{answer}</p>
+              <h3>{t(question)}</h3>
+              <p className="max-w-4xl">{t(answer)}</p>
             </article>
           ))}
         </div>
       </GuideSection>
-      <GuideSection id="more-help" title="Need the step-by-step version?">
-        <p className="site-section__intro">Follow <Link className="text-[#c9ff55] underline underline-offset-4" href="/how-it-works">how it works</Link> to create or fund a post. Read <Link className="text-[#c9ff55] underline underline-offset-4" href="/safety">safety and privacy</Link> before sharing personal details, or use the <Link className="text-[#c9ff55] underline underline-offset-4" href="/community">community guide</Link> to make a clearer ask.</p>
-        <p className="site-section__intro">Still stuck? Email <a className="break-all text-[#c9ff55] underline underline-offset-4" href="mailto:unluckypleasure@yandex.ru">unluckypleasure@yandex.ru</a> with the relevant public URL and what happened. Never include sign-in codes or wallet secrets.</p>
+      <GuideSection id="more-help" title={t("Need the step-by-step version?")}>
+        <p className="site-section__intro">{t("Follow")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/how-it-works">{t("how it works")}</Link> {t("to create or fund a post. Read")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/safety">{t("safety and privacy")}</Link> {t("before sharing personal details, or use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/community">{t("community guide")}</Link> {t("to make a clearer ask.")}</p>
+        <p className="site-section__intro">{t("Still stuck? Email")} <a className="break-all text-[#c9ff55] underline underline-offset-4" href="mailto:unluckypleasure@yandex.ru">unluckypleasure@yandex.ru</a> {t("with the relevant public URL and what happened. Never include sign-in codes or wallet secrets.")}</p>
       </GuideSection>
     </GuidePage>
   );

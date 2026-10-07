@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import {
   PublicKey,
   SystemProgram,
@@ -139,6 +141,7 @@ export function DonateButton({
   targetId?: number;
   label?: string;
 }) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const { connection } = useConnection();
   const solanaWallet = useWallet();
@@ -312,7 +315,7 @@ export function DonateButton({
     if (!selectedOption) throw new Error("Choose an available funding route.");
     const atomicAmount = decimalAmountToAtomic(selectedAsset, amount);
     if (!atomicAmount) {
-      throw new Error(`Enter a valid ${config.symbol} amount with at most ${config.decimals} decimals.`);
+      throw new Error(t("Enter a valid {asset} amount with at most {decimals} decimals.", { asset: config.symbol, decimals: config.decimals }));
     }
 
     const response = await fetch("/api/donations/intent", {
@@ -363,7 +366,7 @@ export function DonateButton({
 
   const verify = async (value: PendingDonation) => {
     setStatus("verifying");
-    setMessage(`Checking the ${PAYOUT_ASSET_CONFIG[value.asset].networkName} transaction…`);
+    setMessage(t("Checking the {network} transaction…", { network: PAYOUT_ASSET_CONFIG[value.asset].networkName }));
     try {
       const response = await fetch("/api/donations", {
         method: "POST",
@@ -386,13 +389,13 @@ export function DonateButton({
       setManualIntent(null);
       setStatus("success");
       setMessage(
-        `${atomicAmountToDecimal(value.asset, value.atomicAmount)} ${PAYOUT_ASSET_CONFIG[value.asset].symbol} went directly to the recipient. Money Nerds took 0%.`,
+        t("{amount} {asset} went directly to the recipient. Money Nerds took 0%.", { amount: atomicAmountToDecimal(value.asset, value.atomicAmount), asset: PAYOUT_ASSET_CONFIG[value.asset].symbol }),
       );
       router.refresh();
     } catch (error) {
       setStatus("error");
       setMessage(
-        `${error instanceof Error ? error.message : "Verification is temporarily unavailable."} Do not send another payment; retry verification.`,
+        t("{error} Do not send another payment; retry verification.", { error: t(error instanceof Error ? error.message : "Verification is temporarily unavailable.") }),
       );
     }
   };
@@ -547,13 +550,13 @@ export function DonateButton({
   const beginManual = async () => {
     const sender = normalizePayoutAddress(selectedAsset, manualSenderAddress);
     if (!sender) {
-      throw new Error(`Enter the ${config.networkName} address that will send this payment.`);
+      throw new Error(t("Enter the {network} address that will send this payment.", { network: config.networkName }));
     }
     const intent = await prepareIntent(sender);
     setManualIntent(intent);
     setStatus("pending");
     setMessage(
-      `Scan or open the payment request, then paste the ${config.networkName} transaction ID. It will remain pending until independently verified.`,
+      t("Scan or open the payment request, then paste the {network} transaction ID. It will remain pending until independently verified.", { network: config.networkName }),
     );
   };
 
@@ -613,7 +616,7 @@ export function DonateButton({
     <>
       <button className="post-action fund" type="button" onClick={open}>
         <ArrowUpRight aria-hidden="true" size={18} />
-        {pending ? "Verify payment" : label}
+        {pending ? t("Verify payment") : t(label)}
       </button>
       <dialog
         ref={dialogRef}
@@ -628,20 +631,17 @@ export function DonateButton({
           <button
             className="donation-close"
             type="button"
-            aria-label="Close donation dialog"
+            aria-label={t("Close donation dialog")}
             onClick={() => dialogRef.current?.close()}
           >
             <X aria-hidden="true" size={19} />
           </button>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
-            Direct · zero platform fee
-          </p>
+            {t("Direct · zero platform fee")}</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#f2efe6]">
-            Choose how to fund this request
-          </h2>
+            {t("Choose how to fund this request")}</h2>
           <p className="mt-2 text-sm leading-6 text-white/55">
-            Money moves directly to the recipient. Money Nerds never holds funds and takes 0%; network or bank fees may apply.
-          </p>
+            {t("Money moves directly to the recipient. Money Nerds never holds funds and takes 0%; network or bank fees may apply.")}</p>
 
           {dialogOpen && authenticated && targetType === "post" && targetId ? (
             <SbpFundingPanel postId={targetId} />
@@ -650,8 +650,7 @@ export function DonateButton({
           {options.length ? (
             <fieldset className="mt-5">
               <legend className="text-xs font-medium uppercase tracking-[0.13em] text-white/50">
-                Cryptocurrency · asset and network
-              </legend>
+                {t("Cryptocurrency · asset and network")}</legend>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {options.map((option) => (
                   <button
@@ -683,7 +682,7 @@ export function DonateButton({
           {selectedOption ? (
             <>
               <label className="mt-4 grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/50">
-                Amount in {config.symbol}
+                {t("Amount in {asset}", { asset: config.symbol })}
                 <input
                   className="min-h-12 rounded-xl border border-white/12 bg-black/25 px-4 text-lg normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
                   type="text"
@@ -696,16 +695,16 @@ export function DonateButton({
                 />
               </label>
               <div className="mt-3 rounded-xl border border-white/8 bg-black/20 p-3 text-xs leading-5 text-white/45">
-                To <span className="font-mono text-white/70">{formatWallet(selectedOption.address, 8, 8)}</span>
+                {t("To")}{" "}<span className="font-mono text-white/70">{formatWallet(selectedOption.address, 8, 8)}</span>
                 {selectedOption.verificationStatus === "self_declared" ? (
-                  <span className="mt-1 block text-[#ffd36a]">Recipient-declared route; check the address before approving.</span>
+                  <span className="mt-1 block text-[#ffd36a]">{t("Recipient-declared route; check the address before approving.")}</span>
                 ) : (
-                  <span className="mt-1 block text-[#c9ff55]/75">Route ownership verified.</span>
+                  <span className="mt-1 block text-[#c9ff55]/75">{t("Route ownership verified.")}</span>
                 )}
               </div>
               {(config.walletMode === "manual" || manualWalletFallback) && !manualIntent ? (
                 <label className="mt-3 grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/50">
-                  Your sending address on {config.networkName}
+                  {t("Your sending address on {network}", { network: config.networkName })}
                   <input
                     className="min-h-11 rounded-xl border border-white/12 bg-black/25 px-3 font-mono text-xs normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
                     type="text"
@@ -714,7 +713,7 @@ export function DonateButton({
                     maxLength={128}
                     value={manualSenderAddress}
                     onChange={(event) => setManualSenderAddress(event.target.value.trim())}
-                    placeholder="Used to match the on-chain transfer"
+                    placeholder={t("Used to match the on-chain transfer")}
                   />
                 </label>
               ) : null}
@@ -728,7 +727,7 @@ export function DonateButton({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-white/80">
-                  {atomicAmountToDecimal(manualIntent.asset, manualIntent.atomicAmount)} {config.symbol} on {config.networkName}
+                  {t("{amount} {asset} on {network}", { amount: atomicAmountToDecimal(manualIntent.asset, manualIntent.atomicAmount), asset: config.symbol, network: config.networkName })}
                 </p>
                 <p className="mt-2 break-all font-mono text-xs leading-5 text-white/55">
                   {manualIntent.recipientAddress}
@@ -739,20 +738,17 @@ export function DonateButton({
                     type="button"
                     onClick={() => void navigator.clipboard.writeText(manualIntent.recipientAddress)}
                   >
-                    <Copy aria-hidden="true" size={14} /> Copy address
-                  </button>
+                    <Copy aria-hidden="true" size={14} /> {t("Copy address")}</button>
                   <a className="button button-secondary min-h-10 px-3 text-xs" href={manualIntent.paymentUri}>
-                    <WalletCards aria-hidden="true" size={14} /> Open wallet
-                  </a>
+                    <WalletCards aria-hidden="true" size={14} /> {t("Open wallet")}</a>
                 </div>
                 <label className="mt-3 grid gap-1.5 text-xs text-white/50">
-                  Transaction ID after sending
-                  <input
+                  {t("Transaction ID after sending")}<input
                     className="min-h-10 rounded-lg border border-white/12 bg-black/25 px-3 font-mono text-xs text-white outline-none focus:border-[#c9ff55]/60"
                     value={transactionId}
                     maxLength={128}
                     onChange={(event) => setTransactionId(event.target.value)}
-                    placeholder="Paste transaction ID"
+                    placeholder={t("Paste transaction ID")}
                   />
                 </label>
                 <button
@@ -761,8 +757,7 @@ export function DonateButton({
                   onClick={() => void submitManualTransaction()}
                   disabled={status === "verifying"}
                 >
-                  Submit for verification
-                </button>
+                  {t("Submit for verification")}</button>
               </div>
             </div>
           ) : selectedOption || busy ? (
@@ -781,17 +776,7 @@ export function DonateButton({
               ) : (
                 <ArrowUpRight aria-hidden="true" size={18} />
               )}
-              {status === "loading"
-                ? "Loading routes"
-                : status === "sending"
-                  ? "Open wallet"
-                  : status === "verifying"
-                    ? "Checking network"
-                    : status === "success"
-                      ? "Payment verified"
-                    : pending
-                      ? "Retry verification"
-                      : `Continue with ${config.symbol}`}
+              {status === "loading" ? t("Loading routes") : status === "sending" ? t("Open wallet") : status === "verifying" ? t("Checking network") : status === "success" ? t("Payment verified") : pending ? t("Retry verification") : t("Continue with {value0}", { value0: config.symbol })}
             </button>
           ) : null}
 
@@ -800,7 +785,7 @@ export function DonateButton({
             role="status"
             aria-live="polite"
           >
-            {status === "error" && !selectedOption ? "Cryptocurrency: " : ""}{message}
+            {status === "error" && !selectedOption ? t("Cryptocurrency: ") : ""}{t(message)}
             {activeExplorerUrl ? (
               <a
                 className="mt-1 flex items-center gap-1 text-[#9ccaff] hover:underline"
@@ -808,7 +793,7 @@ export function DonateButton({
                 target="_blank"
                 rel="noreferrer"
               >
-                View transaction <ExternalLink aria-hidden="true" size={13} />
+                {t("View transaction")}{" "}<ExternalLink aria-hidden="true" size={13} />
               </a>
             ) : null}
           </div>

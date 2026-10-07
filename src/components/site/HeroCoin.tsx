@@ -1,4 +1,5 @@
 "use client";
+import { useI18n } from "@/components/providers/I18nProvider";
 
 import type { CSSProperties, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -36,6 +37,7 @@ function CoinFace({ side }: { side: "front" | "back" }) {
 }
 
 export function HeroCoin() {
+  const { t } = useI18n();
   const [rotation, setRotation] = useState(INITIAL_ROTATION);
   const [dragging, setDragging] = useState(false);
   const coinRef = useRef<HTMLElement>(null);
@@ -173,7 +175,7 @@ export function HeroCoin() {
       ref={coinRef}
       className="hero-coin"
       data-dragging={dragging || undefined}
-      aria-label="Interactive 3D coin representing direct multi-network funding"
+      aria-label={t("Interactive 3D coin representing direct multi-network funding")}
       aria-describedby="hero-coin-instructions"
       aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown Home"
       tabIndex={0}
@@ -196,18 +198,13 @@ export function HeroCoin() {
         </div>
       </div>
       <span className="hero-coin__label hero-coin__label--top">
-        <Radio aria-hidden="true" size={12} /> Direct settlement
-      </span>
+        <Radio aria-hidden="true" size={12} /> {t("Direct settlement")} </span>
       <span className="hero-coin__label hero-coin__label--bottom">
-        <CircleDollarSign aria-hidden="true" size={12} /> No platform cut
-      </span>
+        <CircleDollarSign aria-hidden="true" size={12} /> {t("No platform cut")} </span>
       <figcaption className="hero-coin__hint" id="hero-coin-instructions">
         <Move3d aria-hidden="true" size={13} />
-        <span aria-hidden="true">Drag or swipe to rotate · tap to turn</span>
-        <span className="sr-only">
-          Drag or swipe to rotate the coin, or tap to turn it. Use the arrow keys to rotate it and press Home to
-          reset it.
-        </span>
+        <span aria-hidden="true">{t("Drag or swipe to rotate · tap to turn")}</span>
+        <span className="sr-only"> {t("Drag or swipe to rotate the coin, or tap to turn it. Use the arrow keys to rotate it and press Home to reset it.")} </span>
       </figcaption>
     </figure>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
+
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
   Check,
@@ -24,6 +27,7 @@ function signInUrl() {
 }
 
 export function WalletControl() {
+  const { t } = useI18n();
   const { isLoaded, isSignedIn, user } = useUser();
   const clerk = useClerk();
   const { session, status, authenticated, error, retrySignIn, disconnect } = useWalletSession();
@@ -58,7 +62,7 @@ export function WalletControl() {
     return (
       <button className="button button-secondary wallet-status" type="button" disabled>
         <RefreshCw className="spin" aria-hidden="true" size={17} />
-        {isSignedIn ? "Preparing profile" : "Checking session"}
+        {isSignedIn ? t("Preparing profile") : t("Checking session")}
       </button>
     );
   }
@@ -71,8 +75,7 @@ export function WalletControl() {
         onClick={() => window.location.assign(signInUrl())}
       >
         <UserRound aria-hidden="true" size={17} />
-        Sign in
-      </button>
+        {t("Sign in")}</button>
     );
   }
 
@@ -81,11 +84,10 @@ export function WalletControl() {
       <div className="wallet-error-wrap">
         <button className="button button-accent" type="button" onClick={() => void retrySignIn()}>
           <RefreshCw aria-hidden="true" size={17} />
-          Retry profile
-        </button>
+          {t("Retry profile")}</button>
         {error ? (
           <span className="wallet-error-message" role="status" aria-live="polite">
-            {error}
+            {t(error)}
           </span>
         ) : null}
       </div>
@@ -107,7 +109,7 @@ export function WalletControl() {
         className="wallet-trigger external-identity-trigger"
         type="button"
         aria-expanded={open}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
       >
         <UserRound aria-hidden="true" size={17} />
@@ -115,30 +117,25 @@ export function WalletControl() {
         <ChevronDown aria-hidden="true" size={15} />
       </button>
       {open ? (
-        <div className="wallet-popover" role="menu">
+        <div className="wallet-popover" role="dialog" aria-label={t("Account menu")}>
           <div className="wallet-popover-head">
-            <span>Signed in with {providerLabel}</span>
+            <span>{t("Signed in with {provider}", { provider: t(providerLabel) })}</span>
             <strong>{profileLabel}</strong>
-            <small>Profile {formatWallet(session.walletAddress, 5, 5)}</small>
+            <small>{t("Profile {id}", { id: formatWallet(session.walletAddress, 5, 5) })}</small>
           </div>
           <Link
-            role="menuitem"
             href={`/u/${session.walletAddress}`}
             onClick={() => setOpen(false)}
           >
             <UserRound aria-hidden="true" size={16} />
-            Public profile
-          </Link>
+            {t("Public profile")}</Link>
           <Link
-            role="menuitem"
             href="/settings"
             onClick={() => setOpen(false)}
           >
             <Landmark aria-hidden="true" size={16} />
-            Funding settings
-          </Link>
+            {t("Funding settings")}</Link>
           <button
-            role="menuitem"
             type="button"
             onClick={() => {
               setOpen(false);
@@ -146,14 +143,13 @@ export function WalletControl() {
             }}
           >
             <Settings aria-hidden="true" size={16} />
-            Account settings
-          </button>
-          <button role="menuitem" type="button" onClick={() => void copy()}>
+            {t("Account settings")}</button>
+          <div className="px-3 py-2"><LanguageSwitcher /></div>
+          <button type="button" onClick={() => void copy()}>
             {copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-            {copied ? "Copied" : "Copy profile ID"}
+            {copied ? t("Copied") : t("Copy profile ID")}
           </button>
           <button
-            role="menuitem"
             type="button"
             onClick={() => {
               setOpen(false);
@@ -161,12 +157,11 @@ export function WalletControl() {
             }}
           >
             <LogOut aria-hidden="true" size={16} />
-            Sign out
-          </button>
+            {t("Sign out")}</button>
         </div>
       ) : null}
       <span className="sr-only" role="status" aria-live="polite">
-        {copied ? "Profile ID copied" : ""}
+        {copied ? t("Profile ID copied") : ""}
       </span>
     </div>
   );

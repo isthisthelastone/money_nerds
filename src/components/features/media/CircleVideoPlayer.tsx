@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { LoaderCircle, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { formatMediaTime, useMediaPlayback } from "./useMediaPlayback";
@@ -13,7 +15,9 @@ export function CircleVideoPlayer(props: CircleVideoPlayerProps) {
   return <CircleVideo key={props.src} {...props} />;
 }
 
-function CircleVideo({ src, label = "Circle video" }: CircleVideoPlayerProps) {
+function CircleVideo({ src, label: providedLabel }: CircleVideoPlayerProps) {
+  const { t } = useI18n();
+  const label = providedLabel ?? t("Circle video");
   const {
     mediaRef, playing, loading, currentTime, duration, progress, error,
     togglePlayback, seek, mediaEvents,
@@ -77,19 +81,16 @@ function CircleVideo({ src, label = "Circle video" }: CircleVideoPlayerProps) {
           type="button"
           className="circle-message__toggle"
           onClick={() => void togglePlayback()}
-          aria-label={`${error ? "Retry" : playing ? "Pause" : "Play"} ${label}`}
+          aria-label={t(error ? "Retry {label}" : playing ? "Pause {label}" : "Play {label}", { label })}
         >
           <span className="circle-message__play-disc">
-            {loading ? <LoaderCircle className="media-player__spinner" size={28} aria-hidden="true" />
-              : error ? <RotateCcw size={28} aria-hidden="true" />
-                : playing ? <Pause size={28} fill="currentColor" aria-hidden="true" />
-                  : <Play size={30} fill="currentColor" aria-hidden="true" />}
+            {loading ? <LoaderCircle className="media-player__spinner" size={28} aria-hidden="true" /> : error ? <RotateCcw size={28} aria-hidden="true" /> : playing ? <Pause size={28} fill="currentColor" aria-hidden="true" /> : <Play size={30} fill="currentColor" aria-hidden="true" />}
           </span>
         </button>
         <button
           className="circle-message__mute"
           type="button"
-          aria-label={muted ? "Unmute video" : "Mute video"}
+          aria-label={muted ? t("Unmute video") : t("Mute video")}
           aria-pressed={muted}
           onClick={() => {
             const video = mediaRef.current;
@@ -107,11 +108,11 @@ function CircleVideo({ src, label = "Circle video" }: CircleVideoPlayerProps) {
           className="circle-message__seek"
           role="slider"
           tabIndex={0}
-          aria-label={`Seek ${label}`}
+          aria-label={t("Seek {value0}", { value0: label })}
           aria-valuemin={0}
           aria-valuemax={duration || 1}
           aria-valuenow={Math.min(currentTime, duration || 1)}
-          aria-valuetext={duration ? `${time} of ${total}; ${remaining} remaining` : "Duration not yet available"}
+          aria-valuetext={duration ? t("{value0} of {value1}; {value2} remaining", { value0: time, value1: total, value2: remaining }) : t("Duration not yet available")}
           aria-disabled={!duration}
           aria-describedby={descriptionId}
           onKeyDown={seekWithKeyboard}
@@ -143,11 +144,11 @@ function CircleVideo({ src, label = "Circle video" }: CircleVideoPlayerProps) {
           <circle className="circle-message__seek-hit" cx="120" cy="120" r="105" />
         </svg>
       </div>
-      <span id={descriptionId} className="sr-only">Drag around the edge, or use arrow keys to seek five seconds.</span>
-      {loading ? <span className="sr-only" role="status">Loading video…</span> : null}
+      <span id={descriptionId} className="sr-only">{t("Drag around the edge, or use arrow keys to seek five seconds.")}</span>
+      {loading ? <span className="sr-only" role="status">{t("Loading video…")}</span> : null}
       {error ? (
         <p className="media-player__error" role="alert">
-          {error} <a href={src} target="_blank" rel="noopener noreferrer">Open recording</a>
+          {t(error)} <a href={src} target="_blank" rel="noopener noreferrer">{t("Open recording")}</a>
         </p>
       ) : null}
     </div>

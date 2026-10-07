@@ -4,9 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getWalletSession } from "@/lib/auth/server";
 import { apiError } from "@/lib/http";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { readPrivacyChoice } from "@/lib/privacy";
+import { CONSENT_COOKIE, PREFERENCE_MAX_AGE } from "@/lib/i18n/config";
+import { isSameOriginSbpRequest } from "@/lib/sbp-server";
 
 const VIEWER_COOKIE = "mn_viewer";
-const VIEWER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+const VIEWER_COOKIE_MAX_AGE = PREFERENCE_MAX_AGE;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -26,6 +29,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   const postId = Number((await params).id);
   if (!Number.isSafeInteger(postId) || postId <= 0) {
     return apiError("Post not found.", 404);
+  }
+  if (!isSameOriginSbpRequest(request)) return apiError("Invalid origin.", 403);
+  if (readPrivacyChoice(request.cookies.get(CONSENT_COOKIE)?.value) !== "all" || request.headers.get("sec-gpc") === "1") {
+    return new NextResponse(null, { status: 204, headers: { "Cache-Control": "private, no-store" } });
   }
 
   const existingViewerId = request.cookies.get(VIEWER_COOKIE)?.value ?? "";
@@ -64,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     return apiError("The view could not be recorded.", 503);
   }
 
-  const response = NextResponse.json({ viewCount: Number(data ?? 0) });
+  const response = NextResponse.json({ viewCount: Number(data ?? 0) }, { headers: { "Cache-Control": "private, no-store" } });
   if (!UUID_PATTERN.test(existingViewerId)) {
     response.cookies.set(VIEWER_COOKIE, viewerId, {
       httpOnly: true,

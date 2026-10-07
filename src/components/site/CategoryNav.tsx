@@ -1,20 +1,18 @@
+import { getTranslator } from "@/lib/i18n/server";
 import Link from "next/link";
 import { CATEGORY_SCOPES, categoryHref } from "@/lib/categories";
 
-export function CategoryNav() {
+export async function CategoryNav() {
+  const t = await getTranslator();
   return (
-    <nav className="site-category-nav" aria-label="Explore post categories">
+    <nav className="site-category-nav" aria-label={t("Explore post categories")}>
       <div className="site-category-nav__inner site-shell">
-        <span className="site-category-nav__label" aria-hidden="true">
-          Explore
-        </span>
+        <span className="site-category-nav__label" aria-hidden="true"> {t("Explore")} </span>
         <Link
           className="site-category-nav__item"
           href={categoryHref("anything")}
           prefetch={false}
-        >
-          All
-        </Link>
+        > {t("All")} </Link>
         {CATEGORY_SCOPES.map((category) => (
           <Link
             className="site-category-nav__item"
@@ -22,7 +20,7 @@ export function CategoryNav() {
             prefetch={false}
             key={category.value}
           >
-            {category.label}
+            {t(category.label)}
           </Link>
         ))}
       </div>

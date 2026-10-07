@@ -8,7 +8,7 @@ import {
 } from "@solana-mobile/wallet-adapter-mobile";
 import { WalletAdapterNetwork, type WalletError } from "@solana/wallet-adapter-base";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import { LocalizedWalletModalProvider } from "./LocalizedWalletModalProvider";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
@@ -90,9 +90,9 @@ export function SolanaWalletProvider({ children }: { children: ReactNode }) {
   return (
     <ConnectionProvider endpoint={getSolanaRpcUrl()}>
       <WalletProvider wallets={wallets} onError={onError} autoConnect={false}>
-        <WalletModalProvider>
+        <LocalizedWalletModalProvider>
           {children}
-        </WalletModalProvider>
+        </LocalizedWalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );

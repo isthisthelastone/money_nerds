@@ -11,7 +11,7 @@ import {
   parseComposerPayload,
   validateUploadedMedia,
 } from "@/lib/media/server";
-import { isPostCategory } from "@/lib/models";
+import { isPostCategory, isPostLanguage } from "@/lib/models";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { isSameOriginSbpRequest, sbpResponse } from "@/lib/sbp-server";
 
@@ -70,7 +70,7 @@ async function readComposerFormData(request: NextRequest) {
     throw new Error("INVALID_REQUEST_BODY");
   }
 
-  const expectedFields = ["nickname", "body", "category", "mediaIds", "fundingOptions", "includeSbp"];
+  const expectedFields = ["nickname", "body", "category", "language", "mediaIds", "fundingOptions", "includeSbp"];
   if (expectedFields.some((field) => formData.getAll(field).length > 1)) {
     throw new Error("INVALID_REQUEST_BODY");
   }
@@ -87,6 +87,10 @@ async function readComposerFormData(request: NextRequest) {
   if (body.length > 5_000) throw new Error("MESSAGE_TOO_LONG");
   if (String(formData.get("category") ?? "").length > 32) {
     throw new Error("INVALID_CATEGORY");
+  }
+  const language = formData.get("language");
+  if (language !== null && language !== "" && !isPostLanguage(language)) {
+    throw new Error("INVALID_POST_LANGUAGE");
   }
   if (String(formData.get("mediaIds") ?? "[]").length > 256) {
     throw new Error("INVALID_MEDIA_METADATA");
@@ -126,6 +130,7 @@ function classifyPublishError(message: string) {
     return "MEDIA_UPLOAD_EXPIRED";
   }
   if (message.includes("Invalid category")) return "INVALID_CATEGORY";
+  if (message.includes("Invalid post language")) return "INVALID_POST_LANGUAGE";
   if (message.includes("Invalid nickname")) return "NICKNAME_REQUIRED";
   if (message.includes("Invalid post body")) return "MESSAGE_REQUIRED";
   if (message.includes("Invalid media list")) return "INVALID_MEDIA_METADATA";
@@ -145,6 +150,7 @@ function postErrorResponse(code: string) {
     MESSAGE_REQUIRED: { message: "Write something or attach media.", status: 400 },
     MESSAGE_TOO_LONG: { message: "Keep your post to 5,000 characters.", status: 400 },
     INVALID_CATEGORY: { message: "Choose a valid post category.", status: 400 },
+    INVALID_POST_LANGUAGE: { message: "Choose a supported post language or leave it unspecified.", status: 400 },
     TOO_MANY_FILES: { message: "Attach no more than four files.", status: 400 },
     INVALID_MEDIA: { message: "Use an image, audio file, or video up to 15 MB.", status: 400 },
     INVALID_MEDIA_KIND: { message: "One attachment type did not match its file.", status: 400 },
@@ -183,6 +189,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await readComposerFormData(request);
     const payload = parseComposerPayload(formData);
+    const language = formData.get("language") || null;
     const fundingOptions = parseFundingOptions(
       String(formData.get("fundingOptions") ?? "[]"),
     );
@@ -201,13 +208,15 @@ export async function POST(request: NextRequest) {
       mediaIds: payload.mediaIds,
     });
 
-    const { data, error: publishError } = await supabase.rpc(includeSbp ? "publish_post_with_sbp" : "publish_post_with_media", {
+    const { data, error: publishError } = await supabase.rpc("publish_post_with_language", {
       p_wallet_address: walletAddress,
       p_nickname: payload.nickname,
       p_body: payload.body,
       p_category: payload.category,
       p_media_ids: payload.mediaIds,
       p_funding_options: fundingOptions,
+      p_language: language,
+      p_include_sbp: includeSbp,
     });
     if (publishError) {
       throw new Error(classifyPublishError(publishError.message), { cause: publishError });

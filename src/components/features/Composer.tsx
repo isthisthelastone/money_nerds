@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import {
   Camera,
   CircleStop,
@@ -34,9 +36,13 @@ import {
 } from "@/lib/funding/options";
 import {
   isPostCategory,
+  isPostLanguage,
+  POST_LANGUAGES,
+  POST_LANGUAGE_LABELS,
   type Category,
   type MediaKind,
   type PostCategory,
+  type PostLanguage,
 } from "@/lib/models";
 import {
   createCompatibleMediaRecorder,
@@ -161,6 +167,7 @@ export function Composer({
   onPublished,
   onCancel,
 }: ComposerProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const recordingSetupTitleId = useId();
   const {
@@ -171,6 +178,7 @@ export function Composer({
   } = useWalletSession();
   const [nickname, setNickname] = useState<string | null>(null);
   const [body, setBody] = useState("");
+  const [language, setLanguage] = useState<PostLanguage | "">("");
   const defaultCategory = isPostCategory(browsingCategory) ? browsingCategory : "other";
   const [categoryDraft, setCategoryDraft] = useState<{ scope: Category; value: PostCategory }>({
     scope: browsingCategory,
@@ -797,6 +805,7 @@ export function Composer({
       formData.set("category", category);
       formData.set("mediaIds", JSON.stringify(mediaIds));
       if (mode === "post") {
+        formData.set("language", language);
         formData.set("fundingOptions", JSON.stringify(normalizedFundingOptions));
         formData.set("includeSbp", includeSbp ? "true" : "false");
       }
@@ -816,6 +825,7 @@ export function Composer({
       setAttachments([]);
       setBody("");
       if (mode === "post") {
+        setLanguage("");
         setCategoryDraft({ scope: browsingCategory, value: defaultCategory });
         setIncludeSbpForWallet(null);
       }
@@ -842,39 +852,37 @@ export function Composer({
     <form
       className={`rounded-[1.4rem] border border-white/12 bg-[#121412] ${compact ? "p-4" : "p-5 sm:p-7"}`}
       onSubmit={submit}
-      aria-label={mode === "post" ? "Create a post" : parentId ? "Reply to comment" : "Write a comment"}
+      aria-label={mode === "post" ? t("Create a post") : parentId ? t("Reply to comment") : t("Write a comment")}
     >
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#c9ff55]">
-            {mode === "post" ? "Make an ask" : parentId ? "Reply" : "Join the thread"}
+            {mode === "post" ? t("Make an ask") : parentId ? t("Reply") : t("Join the thread")}
           </p>
           <h2 className={`${compact ? "mt-1 text-lg" : "mt-2 text-2xl sm:text-3xl"} font-semibold tracking-tight text-[#f2efe6]`}>
-            {mode === "post" ? "What could the internet help with?" : "Say something useful—or funny."}
+            {mode === "post" ? t("What could the internet help with?") : t("Say something useful—or funny.")}
           </h2>
         </div>
         {mode === "post" ? (
-          <span className="rounded-full border border-white/12 px-3 py-1 text-xs text-white/55">0% platform fee</span>
+          <span className="rounded-full border border-white/12 px-3 py-1 text-xs text-white/55">{t("0% platform fee")}</span>
         ) : null}
       </div>
 
       {locked ? (
         <div className="rounded-xl border border-dashed border-[#c9ff55]/35 bg-[#c9ff55]/5 p-4 text-sm text-white/70">
-          {sessionStatus === "signing"
-            ? "Finish signing in to continue."
-            : "Sign in above to post, react, reply, and fund people across supported networks."}
+          {sessionStatus === "signing" ? t("Finish signing in to continue.") : t("Sign in above to post, react, reply, and fund people across supported networks.")}
         </div>
       ) : (
         <>
           <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_13rem]">
             <label className="grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">
-              Nickname for this {mode}
+              {mode === "post" ? t("Nickname for this post") : t("Nickname for this comment")}
               <input
                 className="min-h-11 rounded-xl border border-white/12 bg-black/25 px-3 text-sm normal-case tracking-normal text-[#f2efe6] outline-none transition focus:border-[#c9ff55]/70 focus:ring-2 focus:ring-[#c9ff55]/15"
                 value={effectiveNickname}
                 maxLength={50}
                 onChange={(event) => setNickname(event.target.value)}
-                placeholder="Anonymous nerd"
+                placeholder={t("Anonymous nerd")}
                 required
               />
             </label>
@@ -887,8 +895,25 @@ export function Composer({
               />
             ) : null}
           </div>
+          {mode === "post" ? (
+            <label className="mt-4 grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">
+              {t("Post language (optional)")}<select
+                className="feed-select w-full sm:max-w-xs"
+                value={language}
+                disabled={submitting}
+                onChange={(event) => setLanguage(isPostLanguage(event.target.value) ? event.target.value : "")}
+              >
+                <option value="">{t("Not specified")}</option>
+                {POST_LANGUAGES.map((value) => (
+                  <option key={value} value={value}>{POST_LANGUAGE_LABELS[value]}</option>
+                ))}
+              </select>
+              <span className="text-xs font-normal normal-case tracking-normal text-white/40">
+                {t("Helps readers filter posts. It does not translate your post or change the interface language.")}</span>
+            </label>
+          ) : null}
           <label className="mt-4 grid gap-2 text-xs font-medium uppercase tracking-[0.13em] text-white/55">
-            {mode === "post" ? "Your ask" : "Comment"}
+            {mode === "post" ? t("Your ask") : t("Comment")}
             <textarea
               className={`${compact ? "min-h-24" : "min-h-32"} resize-y rounded-xl border border-white/12 bg-black/25 p-4 text-[0.98rem] leading-7 normal-case tracking-normal text-[#f2efe6] outline-none transition placeholder:text-white/25 focus:border-[#c9ff55]/70 focus:ring-2 focus:ring-[#c9ff55]/15`}
               value={body}
@@ -899,15 +924,14 @@ export function Composer({
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              placeholder={mode === "post" ? "Tell people what you need, why it matters, or make them laugh…" : "Write a thoughtful reply…"}
+              placeholder={mode === "post" ? t("Tell people what you need, why it matters, or make them laugh…") : t("Write a thoughtful reply…")}
             />
           </label>
 
           {mode === "post" ? (
             fundingOptionsLoading ? (
               <p className="mt-4 flex items-center gap-2 rounded-xl border border-white/8 bg-black/15 px-4 py-3 text-xs text-white/45">
-                <LoaderCircle className="spin" aria-hidden="true" size={15} /> Loading your saved funding destinations…
-              </p>
+                <LoaderCircle className="spin" aria-hidden="true" size={15} /> {t("Loading your saved funding destinations…")}</p>
             ) : (
               <FundingOptionsEditor
                 value={fundingOptions}
@@ -922,7 +946,7 @@ export function Composer({
           ) : null}
 
           {mode === "post" ? (
-            <section className={sbpStyles.composer} aria-label="Optional experimental SBP funding">
+            <section className={sbpStyles.composer} aria-label={t("Optional experimental SBP funding")}>
               <label className={sbpStyles.composerChoice}>
                 <input
                   type="checkbox"
@@ -930,21 +954,16 @@ export function Composer({
                   disabled={submitting || sbpLoading || !sbpReady}
                   onChange={(event) => setIncludeSbpForWallet(event.target.checked ? session?.walletAddress ?? null : null)}
                 />
-                <span>Include experimental SBP for this post
-                  <small>Optional, never added automatically. Your saved number and banks can be revealed only by signed-in people who also enable SBP. They can copy or share those details.</small>
+                <span>{t("Include experimental SBP for this post")}<small>{t("Optional, never added automatically. Your saved number and banks can be revealed only by signed-in people who also enable SBP. They can copy or share those details.")}</small>
                 </span>
               </label>
               {sbpLoading ? (
-                <p className={sbpStyles.composerHint} role="status"><LoaderCircle className="spin" size={14} aria-hidden="true" /> Checking your SBP preferences…</p>
+                <p className={sbpStyles.composerHint} role="status"><LoaderCircle className="spin" size={14} aria-hidden="true" /> {t("Checking your SBP preferences…")}</p>
               ) : (
                 <div className={sbpStyles.composerHint}>
-                  <span>{sbpPreference?.walletAddress === session?.walletAddress && sbpPreference?.error
-                    ? "SBP preferences could not be loaded."
-                    : sbpReady
-                      ? "Bank fees may apply. SBP is not counted in verified donation totals."
-                      : "To receive via SBP, enable it and save a phone number and receiving bank."}</span>
-                  <Link href="/settings" target="_blank" rel="noopener noreferrer" aria-label="Open funding settings in a new tab">Funding settings ↗</Link>
-                  <button type="button" className="underline underline-offset-2" disabled={submitting} onClick={() => setSbpReload((value) => value + 1)}>Refresh</button>
+                  <span>{sbpPreference?.walletAddress === session?.walletAddress && sbpPreference?.error ? t("SBP preferences could not be loaded.") : sbpReady ? t("Bank fees may apply. SBP is not counted in verified donation totals.") : t("To receive via SBP, enable it and save a phone number and receiving bank.")}</span>
+                  <Link href="/settings" target="_blank" rel="noopener noreferrer" aria-label={t("Open funding settings in a new tab")}>{t("Funding settings ↗")}</Link>
+                  <button type="button" className="underline underline-offset-2" disabled={submitting} onClick={() => setSbpReload((value) => value + 1)}>{t("Refresh")}</button>
                 </div>
               )}
             </section>
@@ -958,11 +977,12 @@ export function Composer({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p id={recordingSetupTitleId} className="font-medium text-[#f2efe6]">
-                    {retakeAttachmentId ? "Retake" : "Set up"} {recordingSetup === "audio" ? "voice message" : "circle video"}
+                    {retakeAttachmentId
+                      ? recordingSetup === "audio" ? t("Retake voice message") : t("Retake circle video")
+                      : recordingSetup === "audio" ? t("Set up voice message") : t("Set up circle video")}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-white/55">
-                    Your recording device stays active only while setup is open. Preview and replay the result before publishing; nothing uploads until you publish.
-                  </p>
+                    {t("Your recording device stays active only while setup is open. Preview and replay the result before publishing; nothing uploads until you publish.")}</p>
                 </div>
                 <button
                   className="rounded-lg p-2 text-white/45 transition hover:bg-white/8 hover:text-white"
@@ -974,7 +994,7 @@ export function Composer({
                     setRetakeAttachmentId(null);
                     setError(null);
                   }}
-                  aria-label="Cancel recording setup"
+                  aria-label={t("Cancel recording setup")}
                 >
                   <X aria-hidden="true" size={17} />
                 </button>
@@ -982,45 +1002,42 @@ export function Composer({
 
               {deviceSetupBusy ? (
                 <p className="mt-4 flex items-center gap-2 text-sm text-white/65" role="status">
-                  <LoaderCircle className="spin" aria-hidden="true" size={17} /> Detecting available devices…
-                </p>
+                  <LoaderCircle className="spin" aria-hidden="true" size={17} /> {t("Detecting available devices…")}</p>
               ) : (
                 <>
                   <div className={`mt-4 grid gap-3 ${recordingSetup === "video_circle" ? "sm:grid-cols-2" : ""}`}>
                     {recordingSetup === "video_circle" ? (
                       <label className="grid gap-2 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
-                        Camera
-                        <select
+                        {t("Camera")}<select
                           className="min-h-11 rounded-xl border border-white/12 bg-[#151815] px-3 text-sm normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
                           value={selectedVideoDevice}
                           onChange={(event) => setSelectedVideoDevice(event.target.value)}
                         >
-                          <option value="">System default camera (front preferred)</option>
+                          <option value="">{t("System default camera (front preferred)")}</option>
                           {videoDevices.map((device, index) => (
                             <option
                               key={`${device.deviceId || "default"}-${device.groupId || index}-${index}`}
                               value={device.deviceId}
                             >
-                              {device.label || `Camera ${index + 1}`}
+                              {device.label || t("Camera {value0}", { value0: index + 1 })}
                             </option>
                           ))}
                         </select>
                       </label>
                     ) : null}
                     <label className="grid gap-2 text-xs font-medium uppercase tracking-[0.12em] text-white/55">
-                      Microphone
-                      <select
+                      {t("Microphone")}<select
                         className="min-h-11 rounded-xl border border-white/12 bg-[#151815] px-3 text-sm normal-case tracking-normal text-[#f2efe6] outline-none focus:border-[#c9ff55]/70"
                         value={selectedAudioDevice}
                         onChange={(event) => setSelectedAudioDevice(event.target.value)}
                       >
-                        <option value="">System default microphone</option>
+                        <option value="">{t("System default microphone")}</option>
                         {audioDevices.map((device, index) => (
                           <option
                             key={`${device.deviceId || "default"}-${device.groupId || index}-${index}`}
                             value={device.deviceId}
                           >
-                            {device.label || `Microphone ${index + 1}`}
+                            {device.label || t("Microphone {value0}", { value0: index + 1 })}
                           </option>
                         ))}
                       </select>
@@ -1029,8 +1046,7 @@ export function Composer({
                   {recordingSetup === "video_circle" ? (
                     <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-white/50">
                       <Camera className="mt-0.5 shrink-0" aria-hidden="true" size={14} />
-                      The granted camera is reused by default. Choose another camera here when you want to switch front, back, or external devices.
-                    </p>
+                      {t("The granted camera is reused by default. Choose another camera here when you want to switch front, back, or external devices.")}</p>
                   ) : null}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
@@ -1050,7 +1066,7 @@ export function Composer({
                       ) : (
                         <Video aria-hidden="true" size={17} />
                       )}
-                      {recordingStartBusy ? "Starting…" : "Start recording"}
+                      {recordingStartBusy ? t("Starting…") : t("Start recording")}
                     </button>
                     <button
                       className="button button-secondary"
@@ -1058,8 +1074,7 @@ export function Composer({
                       disabled={deviceSetupBusy || recordingStartBusy}
                       onClick={() => void refreshRecordingDevices()}
                     >
-                      <RotateCcw aria-hidden="true" size={16} /> Refresh devices
-                    </button>
+                      <RotateCcw aria-hidden="true" size={16} /> {t("Refresh devices")}</button>
                     <button
                       className="button button-secondary"
                       type="button"
@@ -1071,8 +1086,7 @@ export function Composer({
                         setError(null);
                       }}
                     >
-                      Cancel
-                    </button>
+                      {t("Cancel")}</button>
                   </div>
                 </>
               )}
@@ -1080,23 +1094,21 @@ export function Composer({
           ) : null}
 
           {recording ? (
-            <section className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-[#ff8066]/35 bg-[#ff8066]/5 p-3" aria-label={`${recording === "audio" ? "Voice" : "Circle video"} recording in progress`}>
+            <section className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-[#ff8066]/35 bg-[#ff8066]/5 p-3" aria-label={recording === "audio" ? t("Voice recording in progress") : t("Circle video recording in progress")}>
               {recording === "video_circle" ? (
-                <video ref={liveVideoRef} muted playsInline className="size-24 shrink-0 rounded-full bg-black object-cover" aria-label="Live camera preview" />
+                <video ref={liveVideoRef} muted playsInline className="size-24 shrink-0 rounded-full bg-black object-cover" aria-label={t("Live camera preview")} />
               ) : (
                 <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#ff8066]/12 text-[#ff8066]">
                   <Mic aria-hidden="true" size={22} />
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-[#f2efe6]">Recording {recording === "audio" ? "voice message" : "a circle"}</p>
+                <p className="font-medium text-[#f2efe6]">{recording === "audio" ? t("Recording voice message") : t("Recording circle video")}</p>
                 <p className="mt-1 text-xs text-white/50">
-                  {formatDuration(recordingSeconds)} / {formatDuration(recording === "audio" ? AUDIO_RECORDING_LIMIT_SECONDS : VIDEO_RECORDING_LIMIT_SECONDS)} · Nothing uploads until you publish.
-                </p>
+                  {formatDuration(recordingSeconds)} / {formatDuration(recording === "audio" ? AUDIO_RECORDING_LIMIT_SECONDS : VIDEO_RECORDING_LIMIT_SECONDS)} {t("· Nothing uploads until you publish.")}</p>
               </div>
               <button className="composer-tool recording" type="button" onClick={stopRecording}>
-                <CircleStop aria-hidden="true" size={17} /> Stop & preview
-              </button>
+                <CircleStop aria-hidden="true" size={17} /> {t("Stop & preview")}</button>
             </section>
           ) : null}
 
@@ -1111,19 +1123,19 @@ export function Composer({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={attachment.preview}
-                            alt="Attachment preview"
+                            alt={t("Attachment preview")}
                             className="h-auto w-auto object-contain"
                           />
                         </div>
                       ) : attachment.kind === "audio" ? (
                         <VoiceMessagePlayer
                           src={attachment.preview}
-                          label={attachment.source === "recording" ? "Voice recording preview" : "Audio attachment preview"}
+                          label={attachment.source === "recording" ? t("Voice recording preview") : t("Audio attachment preview")}
                         />
                       ) : (
                         <CircleVideoPlayer
                           src={attachment.preview}
-                          label={attachment.source === "recording" ? "Circle video preview" : "Video attachment preview"}
+                          label={attachment.source === "recording" ? t("Circle video preview") : t("Video attachment preview")}
                         />
                       )}
                     </div>
@@ -1131,7 +1143,7 @@ export function Composer({
                       className="ml-auto rounded-lg p-2 text-white/45 transition hover:bg-white/8 hover:text-[#ff8066]"
                       type="button"
                       onClick={() => removeAttachment(attachment.id)}
-                      aria-label="Remove attachment"
+                      aria-label={t("Remove attachment")}
                     >
                       <Trash2 aria-hidden="true" size={16} />
                     </button>
@@ -1139,8 +1151,7 @@ export function Composer({
                   {attachment.source === "recording" ? (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#c9ff55]/18 bg-[#c9ff55]/5 p-2.5">
                       <p className="text-xs leading-5 text-white/60">
-                        {attachment.kind === "audio" ? "Voice recording" : "Circle video"} ready · replay it above before publishing.
-                      </p>
+                        {attachment.kind === "audio" ? t("Voice recording ready · replay it above before publishing.") : t("Circle video ready · replay it above before publishing.")}</p>
                       <button
                         className="composer-tool"
                         type="button"
@@ -1154,12 +1165,11 @@ export function Composer({
                           attachment.id,
                         )}
                       >
-                        <RotateCcw aria-hidden="true" size={15} /> Retake
-                      </button>
+                        <RotateCcw aria-hidden="true" size={15} /> {t("Retake")}</button>
                     </div>
                   ) : null}
                   <label className="mt-3 grid gap-1 text-[0.68rem] uppercase tracking-[0.12em] text-white/45">
-                    {attachment.kind === "image" ? "Image description" : "Transcript or description"}
+                    {attachment.kind === "image" ? t("Image description") : t("Transcript or description")}
                     <input
                       className="rounded-lg border border-white/10 bg-black/25 px-2.5 py-2 text-xs normal-case tracking-normal text-white outline-none focus:border-[#c9ff55]/60"
                       value={attachment.alt}
@@ -1171,7 +1181,7 @@ export function Composer({
                           ),
                         )
                       }
-                      placeholder="Optional, helps everyone understand it"
+                      placeholder={t("Optional, helps everyone understand it")}
                     />
                   </label>
                 </div>
@@ -1200,12 +1210,11 @@ export function Composer({
               onClick={() => inputRef.current?.click()}
             >
               <ImagePlus aria-hidden="true" size={17} />
-              Attach
-            </button>
+              {t("Attach")}</button>
             {recording ? (
               <button className="composer-tool recording" type="button" onClick={stopRecording}>
                 <CircleStop aria-hidden="true" size={17} />
-                Stop · {formatDuration(recordingSeconds)} / {formatDuration(
+                {t("Stop ·")}{" "}{formatDuration(recordingSeconds)} / {formatDuration(
                   recording === "audio" ? AUDIO_RECORDING_LIMIT_SECONDS : VIDEO_RECORDING_LIMIT_SECONDS,
                 )}
               </button>
@@ -1223,8 +1232,7 @@ export function Composer({
                   onClick={() => void prepareRecording("audio")}
                 >
                   <Mic aria-hidden="true" size={17} />
-                  Voice
-                </button>
+                  {t("Voice")}</button>
                 <button
                   className="composer-tool"
                   type="button"
@@ -1237,15 +1245,13 @@ export function Composer({
                   onClick={() => void prepareRecording("video_circle")}
                 >
                   <Video aria-hidden="true" size={17} />
-                  Circle
-                </button>
+                  {t("Circle")}</button>
               </>
             )}
             <span className="ml-auto text-xs text-white/35">{body.length}/5000</span>
             {onCancel ? (
               <button className="button button-secondary" type="button" onClick={onCancel}>
-                Cancel
-              </button>
+                {t("Cancel")}</button>
             ) : null}
             <button
               className="button button-accent"
@@ -1258,14 +1264,14 @@ export function Composer({
               }
             >
               {submitting ? <LoaderCircle className="spin" aria-hidden="true" size={17} /> : <Send aria-hidden="true" size={17} />}
-              {submitting ? "Publishing" : mode === "post" ? "Publish ask" : "Post comment"}
+              {submitting ? t("Publishing") : mode === "post" ? t("Publish ask") : t("Post comment")}
             </button>
           </div>
         </>
       )}
       <div className="mt-3 min-h-5 text-sm" role="status" aria-live="polite">
-        {error ? <p className="text-[#ff8066]">{error}</p> : null}
-        {success ? <p className="text-[#c9ff55]">{success}</p> : null}
+        {error ? <p className="text-[#ff8066]">{t(error)}</p> : null}
+        {success ? <p className="text-[#c9ff55]">{t(success)}</p> : null}
       </div>
     </form>
   );

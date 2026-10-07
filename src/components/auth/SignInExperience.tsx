@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import {
   AuthenticateWithRedirectCallback,
   SignIn,
@@ -42,6 +44,7 @@ function clerkErrorHasCode(value: unknown, code: string): boolean {
 }
 
 function EmailCodeAccess({ returnTo }: { returnTo: string }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { signIn, fetchStatus: signInStatus } = useSignIn();
   const { signUp, fetchStatus: signUpStatus } = useSignUp();
@@ -143,18 +146,16 @@ function EmailCodeAccess({ returnTo }: { returnTo: string }) {
   };
 
   return (
-    <section className="mt-7 rounded-2xl border border-nerd-lime/20 bg-nerd-lime/[0.045] p-4 sm:p-5" aria-label="Email verification access">
+    <section className="mt-7 rounded-2xl border border-nerd-lime/20 bg-nerd-lime/[0.045] p-4 sm:p-5" aria-label={t("Email verification access")}>
       <strong className="text-sm text-nerd-paper">
-        {verifying ? "Check your email" : "Join with email—no password"}
+        {verifying ? t("Check your email") : t("Join with email—no password")}
       </strong>
       <p className="mt-1 text-sm leading-relaxed text-nerd-muted">
-        {verifying
-          ? `Enter the six-digit code sent to ${emailAddress.trim()}.`
-          : "Clerk will sign you in or create your account after one private verification code."}
+        {verifying ? t("Enter the six-digit code sent to {value0}.", { value0: emailAddress.trim() }) : t("Clerk will sign you in or create your account after one private verification code.")}
       </p>
       {verifying ? (
         <form className="mt-4 grid gap-3" onSubmit={verifyCode}>
-          <label className="sr-only" htmlFor="money-nerds-email-code">Verification code</label>
+          <label className="sr-only" htmlFor="money-nerds-email-code">{t("Verification code")}</label>
           <input
             id="money-nerds-email-code"
             className="min-h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-center text-lg font-bold tracking-[0.3em] text-nerd-paper outline-none transition focus:border-nerd-lime/60"
@@ -168,33 +169,32 @@ function EmailCodeAccess({ returnTo }: { returnTo: string }) {
             onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
           />
           <button className="button button-accent w-full" type="submit" disabled={busy || code.length !== 6}>
-            {busy ? "Verifying…" : "Verify and continue"}
+            {busy ? t("Verifying…") : t("Verify and continue")}
           </button>
           <button className="text-sm text-nerd-muted hover:text-nerd-paper" type="button" onClick={startOver} disabled={busy}>
-            Use another email
-          </button>
+            {t("Use another email")}</button>
         </form>
       ) : (
         <form className="mt-4 grid gap-3" onSubmit={sendCode}>
-          <label className="sr-only" htmlFor="money-nerds-email">Email address</label>
+          <label className="sr-only" htmlFor="money-nerds-email">{t("Email address")}</label>
           <input
             id="money-nerds-email"
             className="min-h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-nerd-paper outline-none transition placeholder:text-nerd-muted focus:border-nerd-lime/60"
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("you@example.com")}
             required
             value={emailAddress}
             onChange={(event) => setEmailAddress(event.target.value)}
           />
           <button className="button button-accent w-full" type="submit" disabled={busy}>
-            {busy ? "Sending…" : "Email me a code"}
+            {busy ? t("Sending…") : t("Email me a code")}
           </button>
         </form>
       )}
       <div id="clerk-captcha" />
-      {error ? <p className="mt-3 text-sm text-red-300" role="alert">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-300" role="alert">{t(error)}</p> : null}
     </section>
   );
 }
@@ -215,6 +215,7 @@ function safeReturnTo(value: string | null) {
 }
 
 export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -260,7 +261,7 @@ export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sig
           signUpFallbackRedirectUrl={returnTo}
         />
         <RefreshCw className="spin" aria-hidden="true" size={20} />
-        <span className="ml-3">Finishing secure sign-in…</span>
+        <span className="ml-3">{t("Finishing secure sign-in…")}</span>
       </div>
     );
   }
@@ -269,8 +270,7 @@ export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sig
     return (
       <div className="flex min-h-[60svh] items-center justify-center gap-3 text-nerd-muted">
         <RefreshCw className="spin" aria-hidden="true" size={20} />
-        Preparing secure sign-in…
-      </div>
+        {t("Preparing secure sign-in…")}</div>
     );
   }
 
@@ -280,23 +280,21 @@ export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sig
         <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-nerd-lime/15 text-nerd-lime">
           <ShieldCheck aria-hidden="true" size={25} />
         </div>
-        <span className="eyebrow">One identity, every device</span>
+        <span className="eyebrow">{t("One identity, every device")}</span>
         <h1 className="mt-4 text-4xl font-black tracking-tight text-nerd-paper sm:text-5xl">
-          {mode === "sign-up" ? "Join Money Nerds" : "Sign in to Money Nerds"}
+          {mode === "sign-up" ? t("Join Money Nerds") : t("Sign in to Money Nerds")}
         </h1>
         <p className="mt-5 text-lg text-nerd-muted">
-          Continue with a private email code, Telegram, or any enabled Clerk Web3 wallet. Every method maps to one durable Supabase-backed public profile.
-        </p>
+          {t("Continue with a private email code, Telegram, or any enabled Clerk Web3 wallet. Every method maps to one durable Supabase-backed public profile.")}</p>
         {mode === "sign-up" ? <EmailCodeAccess returnTo={returnTo} /> : null}
         {mobileWalletLinks ? (
           <div className="mt-7 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
             <div className="flex items-start gap-3">
               <Smartphone className="mt-0.5 shrink-0 text-nerd-lime" aria-hidden="true" size={20} />
               <div>
-                <strong className="text-sm text-nerd-paper">Using a wallet app on this phone?</strong>
+                <strong className="text-sm text-nerd-paper">{t("Using a wallet app on this phone?")}</strong>
                 <p className="mt-1 text-sm leading-relaxed text-nerd-muted">
-                  Open this secure page inside the wallet, then choose its Web3 option in Clerk below.
-                </p>
+                  {t("Open this secure page inside the wallet, then choose its Web3 option in Clerk below.")}</p>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -322,9 +320,9 @@ export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sig
         <div className="mt-7 max-w-sm">
           <TelegramSignInButton returnTo={returnTo} />
         </div>
+        <p className="mt-5 text-xs leading-relaxed text-nerd-muted">{t("Account and funding features are for adults aged 18 or older. By using them, you agree to the terms of use.")} <Link className="underline" href="/legal/terms">{t("Terms of use")}</Link> · <Link className="underline" href="/legal/privacy">{t("Privacy notice")}</Link></p>
         <p className="mt-5 text-xs leading-relaxed text-nerd-muted">
-          Email addresses and provider IDs stay in Clerk. Money Nerds stores only the stable profile link needed for posts, comments, likes, and transparent funding history.
-        </p>
+          {t("Email addresses and provider IDs stay in Clerk. Money Nerds stores only the stable profile link needed for posts, comments, likes, and transparent funding history.")}</p>
       </div>
       <div className="mx-auto min-w-0 max-w-full">
         {mode === "sign-up" ? (
@@ -348,8 +346,7 @@ export function SignInExperience({ mode = "sign-in" }: { mode?: "sign-in" | "sig
         )}
       </div>
       <Link className="text-center text-sm text-nerd-muted hover:text-nerd-paper lg:col-span-2" href="/">
-        Back to Money Nerds
-      </Link>
+        {t("Back to Money Nerds")}</Link>
     </div>
   );
 }

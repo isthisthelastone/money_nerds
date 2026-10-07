@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { ArrowUpRight, Check, FlaskConical, Landmark, LoaderCircle, LockKeyhole, Save } from "lucide-react";
 import Link from "next/link";
 import { type FormEvent, useEffect, useId, useState } from "react";
@@ -16,11 +18,12 @@ import {
 import styles from "./SbpSettings.module.css";
 
 export function SbpSettingsForm() {
+  const { t } = useI18n();
   const { authenticated, session, status, retrySignIn } = useWalletSession();
   if (status === "loading" || status === "preparing") {
     return (
       <div className={styles.panel} role="status">
-        <p className={styles.inline}><LoaderCircle className="spin" size={18} aria-hidden="true" /> Preparing your settings…</p>
+        <p className={styles.inline}><LoaderCircle className="spin" size={18} aria-hidden="true" /> {t("Preparing your settings…")}</p>
       </div>
     );
   }
@@ -28,12 +31,12 @@ export function SbpSettingsForm() {
     return (
       <section className={styles.panel} aria-labelledby="settings-sign-in-title">
         <LockKeyhole size={24} aria-hidden="true" className={styles.accent} />
-        <h2 id="settings-sign-in-title">Your preferences stay with your account.</h2>
-        <p className={styles.muted}>Sign in to enable experimental SBP transfers and manage your receiving details.</p>
+        <h2 id="settings-sign-in-title">{t("Your preferences stay with your account.")}</h2>
+        <p className={styles.muted}>{t("Sign in to enable experimental SBP transfers and manage your receiving details.")}</p>
         {status === "error" ? (
-          <button type="button" className="button button-accent" onClick={() => void retrySignIn()}>Retry your profile</button>
+          <button type="button" className="button button-accent" onClick={() => void retrySignIn()}>{t("Retry your profile")}</button>
         ) : (
-          <Link className="button button-accent" href="/sign-in?redirect_url=%2Fsettings">Sign in to continue</Link>
+          <Link className="button button-accent" href="/sign-in?redirect_url=%2Fsettings">{t("Sign in to continue")}</Link>
         )}
       </section>
     );
@@ -42,6 +45,7 @@ export function SbpSettingsForm() {
 }
 
 function AuthenticatedSbpSettings() {
+  const { t } = useI18n();
   const { invalidateSession } = useWalletSession();
   const phoneId = useId();
   const privacyId = useId();
@@ -138,22 +142,22 @@ function AuthenticatedSbpSettings() {
   };
 
   return (
-    <form className={styles.panel} onSubmit={save} aria-label="Experimental SBP settings">
+    <form className={styles.panel} onSubmit={save} aria-label={t("Experimental SBP settings")}>
       <div className={styles.heading}>
         <div className={styles.icon}><Landmark size={23} aria-hidden="true" /></div>
         <div>
-          <span className={styles.badge}><FlaskConical size={12} aria-hidden="true" /> Experimental</span>
-          <h2>SBP personal transfers</h2>
-          <p className={styles.muted}>Support someone directly through Russia’s Faster Payments System (СБП).</p>
+          <span className={styles.badge}><FlaskConical size={12} aria-hidden="true" /> {t("Experimental")}</span>
+          <h2>{t("SBP personal transfers")}</h2>
+          <p className={styles.muted}>{t("Support someone directly through Russia’s Faster Payments System (СБП).")}</p>
         </div>
       </div>
 
       {loading ? (
-        <p className={styles.inline} role="status"><LoaderCircle className="spin" size={17} aria-hidden="true" /> Loading your preferences…</p>
+        <p className={styles.inline} role="status"><LoaderCircle className="spin" size={17} aria-hidden="true" /> {t("Loading your preferences…")}</p>
       ) : loaded ? (
         <>
           <label className={styles.switchRow}>
-            <span><strong>Enable SBP transfers</strong><small>Off by default. Enable it to see SBP options on participating posts. Changes apply when you save.</small></span>
+            <span><strong>{t("Enable SBP transfers")}</strong><small>{t("Off by default. Enable it to see SBP options on participating posts. Changes apply when you save.")}</small></span>
             <input
               type="checkbox"
               role="switch"
@@ -165,16 +169,16 @@ function AuthenticatedSbpSettings() {
           </label>
           <div className={styles.privacy} id={privacyId}>
             <LockKeyhole size={17} aria-hidden="true" />
-            <p>Only signed-in people who also enable SBP can access receiving details on posts you individually opt in. Those people can still copy or share your phone number and bank links. Do not publish details you cannot accept being shared.</p>
+            <p>{t("Only signed-in people who also enable SBP can access receiving details on posts you individually opt in. Those people can still copy or share your phone number and bank links. Do not publish details you cannot accept being shared.")}</p>
           </div>
 
           {enabled ? (
             <fieldset className={styles.receiving} disabled={saving}>
-              <legend>Receive support <span>Optional</span></legend>
-              <p className={styles.muted}>Only want to send support? Leave both the number and bank choices empty. To receive, add your own number and the banks connected to it.</p>
-              <p className={styles.muted}>Each opted-in post keeps the receiving details saved when it was published. Changing your number or banks here affects new posts only; it does not redirect support on earlier posts. Turn SBP off and save to remove those earlier receiving details permanently.</p>
+              <legend>{t("Receive support")}{" "}<span>{t("Optional")}</span></legend>
+              <p className={styles.muted}>{t("Only want to send support? Leave both the number and bank choices empty. To receive, add your own number and the banks connected to it.")}</p>
+              <p className={styles.muted}>{t("Each opted-in post keeps the receiving details saved when it was published. Changing your number or banks here affects new posts only; it does not redirect support on earlier posts. Turn SBP off and save to remove those earlier receiving details permanently.")}</p>
               <div className={styles.phoneField}>
-                <label htmlFor={phoneId}>Phone number linked to SBP</label>
+                <label htmlFor={phoneId}>{t("Phone number linked to SBP")}</label>
                 <div className={styles.phoneInput}>
                   <span aria-hidden="true">+7</span>
                   <input
@@ -185,7 +189,7 @@ function AuthenticatedSbpSettings() {
                     pattern="[0-9]{10}"
                     maxLength={10}
                     value={phoneDigits}
-                    aria-label="SBP phone number: 10 digits after plus seven"
+                    aria-label={t("SBP phone number: 10 digits after plus seven")}
                     placeholder="9001234567"
                     onChange={(event) => { setPhoneDigits(sbpPhoneDigits(event.target.value)); setSuccess(null); }}
                     onPaste={(event) => {
@@ -197,9 +201,9 @@ function AuthenticatedSbpSettings() {
                     }}
                   />
                 </div>
-                <small>The +7 prefix stays fixed. Enter the remaining 10 digits.</small>
+                <small>{t("The +7 prefix stays fixed. Enter the remaining 10 digits.")}</small>
               </div>
-              <div className={styles.bankHeading}><h3>Your receiving banks</h3><p className={styles.muted}>Select only banks where this number can receive personal transfers.</p></div>
+              <div className={styles.bankHeading}><h3>{t("Your receiving banks")}</h3><p className={styles.muted}>{t("Select only banks where this number can receive personal transfers.")}</p></div>
               <div className={styles.bankGrid}>
                 {SBP_BANKS.map((bank) => {
                   const selected = banks.some((item) => item.bankId === bank.id);
@@ -213,15 +217,15 @@ function AuthenticatedSbpSettings() {
               </div>
               {banks.length > 0 ? (
                 <div className={styles.links}>
-                  <h3>Bank-issued collection links <span>Optional</span></h3>
-                  <p className={styles.muted}>A supported link created in your bank can give supporters a QR code and an “Open transfer” button. Currently, this supports Alfa-Bank personal collection links and T-Bank’s full collection URLs, not shortened links. Other banks use manual SBP instructions. Money Nerds cannot create a bank transfer link from a phone number alone.</p>
+                  <h3>{t("Bank-issued collection links")}{" "}<span>{t("Optional")}</span></h3>
+                  <p className={styles.muted}>{t("A supported link created in your bank can give supporters a QR code and an “Open transfer” button. Currently, this supports Alfa-Bank personal collection links and T-Bank’s full collection URLs, not shortened links. Other banks use manual SBP instructions. Money Nerds cannot create a bank transfer link from a phone number alone.")}</p>
                   {banks.map((bank) => {
                     const help = SBP_LINK_GUIDES[bank.bankId];
                     if (!help) return null;
                     const name = SBP_BANKS.find((item) => item.id === bank.bankId)?.name ?? bank.bankId;
                     return (
                       <label className={styles.linkField} key={bank.bankId}>
-                        <span>{name} · Personal collection link</span>
+                        <span>{t("{bank} · Personal collection link", { bank: name })}</span>
                         <input
                           type="url"
                           value={bank.transferUrl ?? ""}
@@ -236,35 +240,35 @@ function AuthenticatedSbpSettings() {
                             setSuccess(null);
                           }}
                         />
-                        <a href={help.url} target="_blank" rel="noopener noreferrer">{help.label}<ArrowUpRight size={13} aria-hidden="true" /></a>
+                        <a href={help.url} target="_blank" rel="noopener noreferrer">{t(help.label)}<ArrowUpRight size={13} aria-hidden="true" /></a>
                       </label>
                     );
                   })}
                 </div>
               ) : null}
-              {readyToReceive ? <p className={styles.ready}><Check size={16} aria-hidden="true" /> Ready to add SBP to new posts after saving. It stays unchecked in every new post.</p> : null}
+              {readyToReceive ? <p className={styles.ready}><Check size={16} aria-hidden="true" /> {t("Ready to add SBP to new posts after saving. It stays unchecked in every new post.")}</p> : null}
             </fieldset>
           ) : null}
 
           {!enabled && saved.enabled ? (
-            <p className={styles.warning}>Saving with SBP off removes your saved number and bank links, and permanently disables SBP on your earlier posts. Turning it back on will not restore SBP on those posts.</p>
+            <p className={styles.warning}>{t("Saving with SBP off removes your saved number and bank links, and permanently disables SBP on your earlier posts. Turning it back on will not restore SBP on those posts.")}</p>
           ) : null}
-          <p className={styles.finePrint}>Money Nerds takes no platform fee. Bank fees may apply. Confirm the recipient’s name and the amount in your bank before sending. SBP transfers are not verified by Money Nerds and do not appear in verified donation totals.</p>
+          <p className={styles.finePrint}>{t("Money Nerds takes no platform fee. Bank fees may apply. Confirm the recipient’s name and the amount in your bank before sending. SBP transfers are not verified by Money Nerds and do not appear in verified donation totals.")}</p>
         </>
       ) : null}
 
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
-      {success ? <p className={styles.ready} role="status"><Check size={16} aria-hidden="true" />{success}</p> : null}
+      {error ? <p className={styles.error} role="alert">{t(error)}</p> : null}
+      {success ? <p className={styles.ready} role="status"><Check size={16} aria-hidden="true" />{t(success)}</p> : null}
       <div className={styles.actions}>
         {loaded ? (
           <button type="submit" className="button button-accent" disabled={saving || !dirty}>
             {saving ? <LoaderCircle className="spin" size={16} aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
-            {saving ? "Saving…" : "Save preferences"}
+            {saving ? t("Saving…") : t("Save preferences")}
           </button>
         ) : !loading ? (
-          <button className="button button-secondary" type="button" onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1); }}>Retry loading</button>
+          <button className="button button-secondary" type="button" onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1); }}>{t("Retry loading")}</button>
         ) : null}
-        <Link href="/" className={styles.backLink}>Back to the board<ArrowUpRight size={15} aria-hidden="true" /></Link>
+        <Link href="/" className={styles.backLink}>{t("Back to the board")}<ArrowUpRight size={15} aria-hidden="true" /></Link>
       </div>
     </form>
   );

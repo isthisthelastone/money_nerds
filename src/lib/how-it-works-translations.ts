@@ -197,4 +197,4 @@ export const HOW_IT_WORKS_TRANSLATIONS = {
       action: "浏览信息板",
     },
   },
-} satisfies Record<TranslatedGuideLocale, GuideTranslation>;
+} satisfies Record<Exclude<TranslatedGuideLocale, "vi">, GuideTranslation>;

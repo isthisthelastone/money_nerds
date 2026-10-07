@@ -18,6 +18,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
+    "@clerk/localizations": "4.17.0",
     "@clerk/nextjs": "^7.9.1",
     "@metamask/connect-solana": "2.1.1",
     "@noble/hashes": "2.4.0",

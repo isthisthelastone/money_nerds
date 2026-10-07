@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { Heart, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useWalletSession } from "@/components/providers/WalletSessionProvider";
@@ -13,6 +15,7 @@ export function LikeButton({
   targetId: number;
   initialCount: number;
 }) {
+  const { locale, t } = useI18n();
   const { authenticated, invalidateSession, session } = useWalletSession();
   const targetKey = `${targetType}:${targetId}`;
   const viewerWallet = session?.walletAddress ?? null;
@@ -152,7 +155,9 @@ export function LikeButton({
         onClick={() => void toggle()}
         aria-pressed={shownLiked}
         aria-busy={loading}
-        aria-label={`${shownLiked ? "Unlike" : "Like"} ${targetType}. ${count} likes`}
+        aria-label={t(shownLiked
+          ? targetType === "post" ? "Unlike post. {count} likes" : "Unlike comment. {count} likes"
+          : targetType === "post" ? "Like post. {count} likes" : "Like comment. {count} likes", { count: count.toLocaleString(locale) })}
         disabled={loading}
       >
         {loading ? (
@@ -160,9 +165,9 @@ export function LikeButton({
         ) : (
           <Heart aria-hidden="true" size={18} fill={shownLiked ? "currentColor" : "none"} />
         )}
-        <span>{count}</span>
+        <span>{count.toLocaleString(locale)}</span>
       </button>
-      {message ? <span className="sr-only" role="status">{message}</span> : null}
+      {message ? <span className="sr-only" role="status">{t(message)}</span> : null}
     </>
   );
 }

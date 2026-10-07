@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { parseJsonArray } from "@/lib/format";
-import { PROFILE_PAGE_SIZES } from "@/lib/models";
+import { DEFAULT_PROFILE_PAGE_SIZE, isPostLanguage, PROFILE_PAGE_SIZES } from "@/lib/models";
 import type {
   CommentCardData,
   DonationRecord,
@@ -42,6 +42,7 @@ function normalizePost(row: Record<string, unknown>): PostCardData {
     nickname: String(row.nickname ?? "Anonymous nerd"),
     body: String(row.body ?? ""),
     category: String(row.category ?? "anything"),
+    language: isPostLanguage(row.language) ? row.language : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at ?? row.created_at),
     legacy_image_url: row.legacy_image_url ? String(row.legacy_image_url) : null,
@@ -131,10 +132,10 @@ function normalizeDonation(row: Record<string, unknown>): DonationRecord {
 }
 
 export const DEFAULT_PROFILE_ACTIVITY_PARAMS: ProfileActivityParams = {
-  posts: { page: 1, pageSize: 12 },
-  comments: { page: 1, pageSize: 12 },
-  sent: { page: 1, pageSize: 12 },
-  received: { page: 1, pageSize: 12 },
+  posts: { page: 1, pageSize: DEFAULT_PROFILE_PAGE_SIZE },
+  comments: { page: 1, pageSize: DEFAULT_PROFILE_PAGE_SIZE },
+  sent: { page: 1, pageSize: DEFAULT_PROFILE_PAGE_SIZE },
+  received: { page: 1, pageSize: DEFAULT_PROFILE_PAGE_SIZE },
 };
 
 interface ProfilePageWindow {
@@ -155,7 +156,7 @@ function profilePageWindow(
     requestedSize as ProfilePageSize,
   )
     ? (requestedSize as ProfilePageSize)
-    : 12;
+    : DEFAULT_PROFILE_PAGE_SIZE;
   const requestedPage = Number(requested?.page);
   const safeRequestedPage =
     Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -192,6 +193,8 @@ export async function getFeed(params: FeedParams) {
   // `anything` is the stable public URL sentinel for the unfiltered feed.
   // It also remains a valid legacy stored value, so existing posts need no rewrite.
   if (params.category !== "anything") query = query.eq("category", params.category);
+  if (params.language === "untagged") query = query.is("language", null);
+  else if (isPostLanguage(params.language)) query = query.eq("language", params.language);
 
   const sortColumn =
     params.sort === "loved"
@@ -214,6 +217,8 @@ export async function getFeed(params: FeedParams) {
     if (params.category !== "anything") {
       countQuery = countQuery.eq("category", params.category);
     }
+    if (params.language === "untagged") countQuery = countQuery.is("language", null);
+    else if (isPostLanguage(params.language)) countQuery = countQuery.eq("language", params.language);
     const { count: exactCount, error: countError } = await countQuery;
     if (countError) {
       throw new Error(`Unable to count the feed: ${countError.message}`);

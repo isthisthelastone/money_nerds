@@ -1,5 +1,8 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+import { usePrivacyConsent } from "@/components/legal/PrivacyConsent";
+
 import { ExternalLink, Eye, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -28,16 +31,18 @@ export function PostCard({
   detail?: boolean;
   initialComments?: CommentCardData[];
 }) {
+  const { locale, t } = useI18n();
+  const { optionalViews } = usePrivacyConsent();
   const totalLikes = post.like_count + post.legacy_like_count;
   const postCategory = isCategory(post.category) ? post.category : "anything";
   const externalAuthor = post.author_identity_kind === "external";
   const identityLabel = post.author_identity_provider
     ? IDENTITY_PROVIDER_LABELS[post.author_identity_provider]
-    : "External";
+    : t("External");
   const [viewCount, setViewCount] = useState(post.view_count);
 
   useEffect(() => {
-    if (!detail) return;
+    if (!detail || !optionalViews) return;
     const controller = new AbortController();
     void fetch(`/api/posts/${post.id}/view`, {
       method: "POST",
@@ -55,7 +60,7 @@ export function PostCard({
         }
       });
     return () => controller.abort();
-  }, [detail, post.id]);
+  }, [detail, optionalViews, post.id]);
   return (
     <article className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-[#111311] shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
       <div className="p-5 sm:p-6">
@@ -66,11 +71,11 @@ export function PostCard({
                 className="rounded-full bg-[#c9ff55]/10 px-2.5 py-1 font-medium text-[#c9ff55] transition hover:bg-[#c9ff55]/20"
                 href={categoryHref(postCategory)}
               >
-                {CATEGORY_LABELS[postCategory]}
+                {t(CATEGORY_LABELS[postCategory])}
               </a>
               <span>#{post.id}</span>
               <time dateTime={post.created_at} suppressHydrationWarning>
-                {formatRelativeTime(post.created_at)}
+                {formatRelativeTime(post.created_at, locale)}
               </time>
             </div>
             <div className="mt-3 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -79,21 +84,20 @@ export function PostCard({
               </Link>
               {externalAuthor ? (
                 <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.65rem] font-medium text-white/45">
-                  {identityLabel} profile
-                </span>
+                  {t("{provider} profile", { provider: t(identityLabel) })}</span>
               ) : (
                 <span className="font-mono text-xs text-white/35">{formatWallet(post.author_wallet, 5, 5)}</span>
               )}
             </div>
           </div>
           {!detail ? (
-            <Link className="rounded-full p-2 text-white/35 transition hover:bg-white/6 hover:text-white" href={`/p/${post.id}`} aria-label={`Open post ${post.id}`}>
+            <Link className="rounded-full p-2 text-white/35 transition hover:bg-white/6 hover:text-white" href={`/p/${post.id}`} aria-label={t("Open post {value0}", { value0: post.id })}>
               <ExternalLink aria-hidden="true" size={18} />
             </Link>
           ) : null}
         </header>
         {post.body ? (
-          <p className={`${detail ? "text-lg sm:text-xl" : "text-[1.02rem]"} mt-5 whitespace-pre-wrap leading-7 text-[#e8e5dc]`}>
+          <p lang={post.language ?? undefined} className={`${detail ? "text-lg sm:text-xl" : "text-[1.02rem]"} mt-5 whitespace-pre-wrap leading-7 text-[#e8e5dc]`}>
             {post.body}
           </p>
         ) : null}
@@ -107,33 +111,30 @@ export function PostCard({
               return (
                 <span key={total.asset}>
                   <strong className="font-semibold text-white/75">
-                    {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset}
+                    {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0, locale)} {total.asset}
                   </strong>{" "}
-                  verified
-                </span>
+                  {t("verified")}</span>
               );
             })
           ) : (
             <span>
-              <strong className="font-semibold text-white/75">{formatSol(post.verified_donation_lamports)} SOL</strong> verified funding
-            </span>
+              <strong className="font-semibold text-white/75">{formatSol(post.verified_donation_lamports, locale)} SOL</strong> {t("verified funding")}</span>
           )}
           {post.legacy_donation_lamports ? (
-            <span title="Imported from the original app without an available transaction signature">
-              +{formatSol(post.legacy_donation_lamports)} SOL legacy record
-            </span>
+            <span title={t("Imported from the original app without an available transaction signature")}>
+              {t("+{amount} SOL legacy record", { amount: formatSol(post.legacy_donation_lamports, locale) })}</span>
           ) : null}
           <span className="flex items-center gap-1.5">
             <MessageCircle aria-hidden="true" size={14} /> {post.comment_count}
           </span>
-          <span className="flex items-center gap-1.5" title="Unique viewers">
+          <span className="flex items-center gap-1.5" title={t("Unique viewers")}>
             <Eye aria-hidden="true" size={14} /> {viewCount}
           </span>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <LikeButton targetType="post" targetId={post.id} initialCount={totalLikes} />
           <DonateButton recipientAddress={post.author_wallet} targetType="post" targetId={post.id} />
-          <ShareButton path={`/p/${post.id}`} title={`${post.nickname} on Money Nerds`} />
+          <ShareButton path={`/p/${post.id}`} title={t("{value0} on Money Nerds", { value0: post.nickname })} />
         </div>
       </div>
       <div className="px-5 sm:px-6">

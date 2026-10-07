@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import { useI18n } from "@/components/providers/I18nProvider";
 import { useRouter } from "next/navigation";
 import {
   createContext,
@@ -61,6 +62,7 @@ function currentSignInUrl() {
  * public profile URLs continue to use the same durable identity key.
  */
 export function WalletSessionProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const { isLoaded, isSignedIn, userId, signOut } = useAuth();
   const router = useRouter();
   const [session, setSession] = useState<WalletSession | null>(null);
@@ -156,12 +158,12 @@ export function WalletSessionProvider({ children }: { children: ReactNode }) {
       session,
       status,
       authenticated: Boolean(isSignedIn && session && status === "authenticated"),
-      error,
+      error: error ? t(error) : null,
       retrySignIn,
       disconnect,
       invalidateSession,
     }),
-    [disconnect, error, invalidateSession, isSignedIn, retrySignIn, session, status],
+    [disconnect, error, invalidateSession, isSignedIn, retrySignIn, session, status, t],
   );
 
   return (

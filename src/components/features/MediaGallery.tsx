@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { Check, Download, Share2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { MediaAsset } from "@/lib/models";
@@ -14,6 +16,7 @@ function imageFilename(asset: MediaAsset) {
 }
 
 export function MediaGallery({ media }: { media: MediaAsset[] }) {
+  const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const previewTitleId = useId();
   const previewDescriptionId = useId();
@@ -39,7 +42,7 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Image on Money Nerds",
+          title: t("Image on Money Nerds"),
           text: activeImage.alt_text || undefined,
           url,
         });
@@ -60,9 +63,9 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
   return (
     <div className="mt-5 grid gap-3">
       {images.length ? (
-        <div className="flex flex-wrap items-start gap-3" aria-label="Attached images">
+        <div className="flex flex-wrap items-start gap-3" aria-label={t("Attached images")}>
           {images.map((asset) => {
-            const description = asset.alt_text || "Media attached to this message";
+            const description = asset.alt_text || t("Media attached to this message");
             return (
               <button
                 key={asset.id}
@@ -73,7 +76,7 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
                   setActiveImage(asset);
                 }}
                 aria-haspopup="dialog"
-                aria-label={`Open full-size image: ${description}`}
+                aria-label={t("Open full-size image: {value0}", { value0: description })}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -94,12 +97,12 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
           {messages.map((asset) =>
             asset.kind === "audio" ? (
               <figure key={asset.id} className="message-players__voice">
-                <VoiceMessagePlayer src={asset.public_url} label={asset.alt_text || "Voice message"} />
+                <VoiceMessagePlayer src={asset.public_url} label={asset.alt_text || t("Voice message")} />
                 {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ) : (
               <figure key={asset.id} className="message-players__circle">
-                <CircleVideoPlayer src={asset.public_url} label={asset.alt_text || "Circle video"} />
+                <CircleVideoPlayer src={asset.public_url} label={asset.alt_text || t("Circle video")} />
                 {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ),
@@ -128,12 +131,12 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
           <div className="media-preview-dialog__inner">
             <div className="flex items-start justify-between gap-4 px-4 pb-3 pt-4 sm:px-5">
               <div className="min-w-0">
-                <h2 id={previewTitleId} className="font-semibold text-[#f2efe6]">Full-size image</h2>
+                <h2 id={previewTitleId} className="font-semibold text-[#f2efe6]">{t("Full-size image")}</h2>
                 <p id={previewDescriptionId} className="mt-1 truncate text-xs text-white/50">
-                  {activeImage.alt_text || "Image attached to this message"}
+                  {activeImage.alt_text || t("Image attached to this message")}
                 </p>
               </div>
-              <button className="post-action shrink-0" type="button" onClick={closePreview} aria-label="Close image preview">
+              <button className="post-action shrink-0" type="button" onClick={closePreview} aria-label={t("Close image preview")}>
                 <X aria-hidden="true" size={18} />
               </button>
             </div>
@@ -141,7 +144,7 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={activeImage.public_url}
-                alt={activeImage.alt_text || "Media attached to this message"}
+                alt={activeImage.alt_text || t("Media attached to this message")}
                 width={activeImage.width ?? undefined}
                 height={activeImage.height ?? undefined}
                 className="max-h-full max-w-full object-contain"
@@ -154,22 +157,17 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
                 ) : (
                   <Share2 aria-hidden="true" size={17} />
                 )}
-                {shareStatus === "shared"
-                  ? "Shared"
-                  : shareStatus === "copied"
-                    ? "Link copied"
-                    : "Share"}
+                {shareStatus === "shared" ? t("Shared") : shareStatus === "copied" ? t("Link copied") : t("Share")}
               </button>
               <a
                 className="button button-accent"
                 href={activeImage.public_url}
                 download={imageFilename(activeImage)}
-                aria-label="Save full-size image"
+                aria-label={t("Save full-size image")}
               >
-                <Download aria-hidden="true" size={17} /> Save
-              </a>
+                <Download aria-hidden="true" size={17} /> {t("Save")}</a>
               <p className="min-h-5 flex-1 text-right text-xs text-white/45" role="status" aria-live="polite">
-                {shareStatus === "unavailable" ? "Sharing is unavailable. You can save the image instead." : ""}
+                {shareStatus === "unavailable" ? t("Sharing is unavailable. You can save the image instead.") : ""}
               </p>
             </div>
           </div>

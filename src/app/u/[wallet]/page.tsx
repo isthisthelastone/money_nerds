@@ -1,3 +1,4 @@
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import {
   ArrowDownLeft,
@@ -115,20 +116,21 @@ export async function generateMetadata({
   params: RouteParams;
   searchParams: SearchParams;
 }): Promise<Metadata> {
+  const t = await getTranslator();
   const wallet = normalizeWallet((await params).wallet);
-  if (!wallet) return { title: "Wallet not found" };
+  if (!wallet) return { title: t("Wallet not found") };
   const [profile, query] = await Promise.all([getWalletProfile(wallet), searchParams]);
   const name = profile?.display_name || formatWallet(wallet, 6, 6);
   const externalProfile = profile?.identity_kind === "external";
   const identityLabel = profile?.identity_provider
     ? IDENTITY_PROVIDER_LABELS[profile.identity_provider]
-    : "External";
+    : t("External");
   const hasQuery = Object.values(query).some((value) => value !== undefined);
   return {
-    title: `${name} — public ${externalProfile ? `${identityLabel} profile` : "wallet profile"}`,
+    title: externalProfile ? t("{name} — public {provider} profile", { name, provider: identityLabel }) : t("{name} — public wallet profile", { name }),
     description: externalProfile
-      ? `Posts, comments, and transparent multi-network funding from a ${identityLabel}-authenticated Money Nerds profile.`
-      : `Posts, comments, and transparent multi-network funding connected to ${formatWallet(wallet, 8, 8)} on Money Nerds.`,
+      ? t("Posts, comments, and transparent multi-network funding from a {provider}-authenticated Money Nerds profile.", { provider: identityLabel })
+      : t("Posts, comments, and transparent multi-network funding connected to {wallet} on Money Nerds.", { wallet: formatWallet(wallet, 8, 8) }),
     alternates: { canonical: `/u/${wallet}` },
     robots: hasQuery
       ? {
@@ -140,7 +142,7 @@ export async function generateMetadata({
     openGraph: {
       type: "profile",
       url: `${SITE_URL}/u/${wallet}`,
-      title: `${name} on Money Nerds`,
+      title: t("{name} on Money Nerds", { name }),
       images: [SOCIAL_PREVIEW_IMAGE],
     },
   };
@@ -153,6 +155,9 @@ export default async function WalletProfilePage({
   params: RouteParams;
   searchParams: SearchParams;
 }) {
+  const t = await getTranslator();
+  const { locale } = await getRequestPreferences();
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const wallet = normalizeWallet((await params).wallet);
   if (!wallet) notFound();
   const requestedParams = parseProfileActivityParams(await searchParams);
@@ -189,7 +194,7 @@ export default async function WalletProfilePage({
   const externalProfile = activity.profile.identity_kind === "external";
   const identityLabel = activity.profile.identity_provider
     ? IDENTITY_PROVIDER_LABELS[activity.profile.identity_provider]
-    : "External";
+    : t("External");
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
@@ -202,8 +207,8 @@ export default async function WalletProfilePage({
       description:
         activity.profile.bio ||
         (externalProfile
-          ? `A ${identityLabel}-authenticated Money Nerds profile with transparent direct-funding activity.`
-          : "A public Money Nerds profile with transparent direct-funding activity."),
+          ? t("A {provider}-authenticated Money Nerds profile with transparent direct-funding activity.", { provider: identityLabel })
+          : t("A public Money Nerds profile with transparent direct-funding activity.")),
     },
   };
 
@@ -216,7 +221,7 @@ export default async function WalletProfilePage({
       <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#111311]">
         <div className="border-b border-white/8 bg-[radial-gradient(circle_at_80%_0%,rgba(201,255,85,.16),transparent_38%)] p-6 sm:p-9">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#c9ff55]">
-            <Radio aria-hidden="true" size={14} /> Public {externalProfile ? `${identityLabel} profile` : "Money Nerds profile"}
+            <Radio aria-hidden="true" size={14} /> {externalProfile ? t("Public {provider} profile", { provider: identityLabel }) : t("Public Money Nerds profile")}
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
             <div className="min-w-0">
@@ -234,27 +239,22 @@ export default async function WalletProfilePage({
                   {displayName}
                 </h1>
               </div>
-              <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-white/35">
-                Money Nerds profile ID
-              </p>
+              <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-white/35"> {t("Money Nerds profile ID")} </p>
               <p className="mt-1 break-all font-mono text-xs text-white/45 sm:text-sm">
                 {wallet}
               </p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
-                This stable profile ID links posts, comments, and verified transfers. Funding
-                destinations are listed separately for each asset and network.
-              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50"> {t("This stable profile ID links posts, comments, and verified transfers. Funding destinations are listed separately for each asset and network.")} </p>
               {activity.profile.bio ? (
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-white/60">
                   {activity.profile.bio}
                 </p>
               ) : null}
             </div>
-            <CopyWalletButton walletAddress={wallet} label="Copy profile ID" />
+            <CopyWalletButton walletAddress={wallet} label={t("Copy profile ID")} />
           </div>
           {aliases.length ? (
             <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-white/40">
-              <span>Names in the activity shown below</span>
+              <span>{t("Names in the activity shown below")}</span>
               {aliases.map((alias) => (
                 <span
                   key={alias}
@@ -268,37 +268,35 @@ export default async function WalletProfilePage({
         </div>
         <dl className="grid grid-cols-2 divide-x divide-y divide-white/8 sm:grid-cols-4 sm:divide-y-0">
           <div className="p-5">
-            <dt className="text-xs text-white/40">Posts</dt>
+            <dt className="text-xs text-white/40">{t("Posts")}</dt>
             <dd className="mt-2 text-2xl font-semibold text-[#f2efe6]">
-              {activity.stats.post_count}
+              {number(activity.stats.post_count)}
             </dd>
           </div>
           <div className="p-5">
-            <dt className="text-xs text-white/40">Comments</dt>
+            <dt className="text-xs text-white/40">{t("Comments")}</dt>
             <dd className="mt-2 text-2xl font-semibold text-[#f2efe6]">
-              {activity.stats.comment_count}
+              {number(activity.stats.comment_count)}
             </dd>
           </div>
           <div className="p-5">
-            <dt className="text-xs text-white/40">Verified sent</dt>
+            <dt className="text-xs text-white/40">{t("Verified sent")}</dt>
             <dd className="mt-2 text-xl font-semibold text-[#f2efe6]">
-              {activity.sent.total} transfer{activity.sent.total === 1 ? "" : "s"}
+              {t("Transfers: {count}", { count: number(activity.sent.total) })}
             </dd>
-            <p className="mt-1 text-[0.68rem] text-white/35">Across {sentAssetCount} asset{sentAssetCount === 1 ? "" : "s"}</p>
+            <p className="mt-1 text-[0.68rem] text-white/35">{t("Assets: {count}", { count: number(sentAssetCount) })}</p>
           </div>
           <div className="p-5">
-            <dt className="text-xs text-white/40">Verified received</dt>
+            <dt className="text-xs text-white/40">{t("Verified received")}</dt>
             <dd className="mt-2 text-xl font-semibold text-[#c9ff55]">
-              {activity.received.total} transfer{activity.received.total === 1 ? "" : "s"}
+              {t("Transfers: {count}", { count: number(activity.received.total) })}
             </dd>
-            <p className="mt-1 text-[0.68rem] text-white/35">Across {receivedAssetCount} asset{receivedAssetCount === 1 ? "" : "s"}</p>
+            <p className="mt-1 text-[0.68rem] text-white/35">{t("Assets: {count}", { count: number(receivedAssetCount) })}</p>
           </div>
         </dl>
         {activity.funding_routes.length ? (
           <div className="border-t border-white/8 p-5 sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
-              Accepts direct funding
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45"> {t("Accepts direct funding")} </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {activity.funding_routes.map((route) => {
                 const asset = isPayoutAsset(route.asset) ? route.asset : null;
@@ -320,7 +318,7 @@ export default async function WalletProfilePage({
                           ? "bg-[#c9ff55]/12 text-[#dfff9c]"
                           : "bg-white/7 text-white/45"
                       }`}>
-                        {route.verification_status === "verified" ? "Ownership verified" : "User declared"}
+                        {route.verification_status === "verified" ? t("Ownership verified") : t("User declared")}
                       </span>
                     </span>
                     <code className="mt-2 block break-all font-mono text-[0.65rem] leading-4 text-white/35">
@@ -336,12 +334,8 @@ export default async function WalletProfilePage({
 
       {activity.funding_totals.length ? (
         <section className="mt-6 rounded-[1.4rem] border border-white/10 bg-[#111311] p-5 sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#c9ff55]">
-            Exact verified totals
-          </p>
-          <p className="mt-2 text-sm leading-6 text-white/48">
-            Assets stay separate; unlike currencies are never combined into a misleading total.
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#c9ff55]"> {t("Exact verified totals")} </p>
+          <p className="mt-2 text-sm leading-6 text-white/48"> {t("Assets stay separate; unlike currencies are never combined into a misleading total.")} </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {activity.funding_totals.map((total) => {
               const config = isPayoutAsset(total.asset)
@@ -352,15 +346,15 @@ export default async function WalletProfilePage({
                   <strong className="text-sm text-[#f2efe6]">{total.asset}</strong>
                   <dl className="mt-2 grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <dt className="text-white/35">Sent</dt>
+                      <dt className="text-white/35">{t("Sent")}</dt>
                       <dd className="mt-1 font-medium text-white/75">
-                        {formatAtomicAmount(total.sent_atomic, config?.decimals ?? 0)}
+                        {formatAtomicAmount(total.sent_atomic, config?.decimals ?? 0, 6, locale)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-white/35">Received</dt>
+                      <dt className="text-white/35">{t("Received")}</dt>
                       <dd className="mt-1 font-medium text-[#c9ff55]">
-                        {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)}
+                        {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0, 6, locale)}
                       </dd>
                     </div>
                   </dl>
@@ -374,26 +368,20 @@ export default async function WalletProfilePage({
       <section className="mt-10" id="posts" aria-labelledby="wallet-posts-title">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#c9ff55]">
-              Published asks
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#c9ff55]"> {t("Published asks")} </p>
             <h2
               className="mt-2 text-2xl font-semibold tracking-tight text-[#f2efe6]"
               id="wallet-posts-title"
-            >
-              Posts
-            </h2>
+            > {t("Posts")} </h2>
           </div>
-          <p className="text-sm text-white/40">{activity.posts.total} total</p>
+          <p className="text-sm text-white/40">{t("Total: {count}", { count: number(activity.posts.total) })}</p>
         </div>
         <div className="mt-4 grid gap-5">
           {activity.posts.items.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
           {!activity.posts.items.length ? (
-            <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-white/40">
-              No posts from this profile yet.
-            </p>
+            <p className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-white/40"> {t("No posts from this profile yet.")} </p>
           ) : null}
         </div>
         <SectionPager
@@ -401,7 +389,7 @@ export default async function WalletProfilePage({
           params={effectiveParams}
           section="posts"
           pageData={activity.posts}
-          label="Posts"
+          label={t("Posts")}
           anchor="posts"
         />
       </section>
@@ -417,9 +405,8 @@ export default async function WalletProfilePage({
               className="flex items-center gap-2 text-lg font-semibold text-[#f2efe6]"
               id="wallet-comments-title"
             >
-              <MessageCircle aria-hidden="true" size={18} /> Comments
-            </h2>
-            <span className="text-xs text-white/35">{activity.comments.total} total</span>
+              <MessageCircle aria-hidden="true" size={18} /> {t("Comments")} </h2>
+            <span className="text-xs text-white/35">{t("Total: {count}", { count: number(activity.comments.total) })}</span>
           </div>
           <div className="mt-4 grid gap-4">
             {activity.comments.items.map((comment) => (
@@ -430,7 +417,7 @@ export default async function WalletProfilePage({
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/35">
                   <strong className="font-medium text-white/70">{comment.nickname}</strong>
                   <time dateTime={comment.created_at} suppressHydrationWarning>
-                    {formatRelativeTime(comment.created_at)}
+                    {formatRelativeTime(comment.created_at, locale)}
                   </time>
                 </div>
                 {comment.body ? (
@@ -438,30 +425,28 @@ export default async function WalletProfilePage({
                     {comment.body}
                   </p>
                 ) : (
-                  <p className="mt-2 text-sm text-white/45">Media comment</p>
+                  <p className="mt-2 text-sm text-white/45">{t("Media comment")}</p>
                 )}
                 <MediaGallery media={comment.media} />
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.68rem] text-white/35">
-                  <Link className="text-[#9ccaff] hover:underline" href={`/p/${comment.post_id}`}>
-                    Post #{comment.post_id}
+                  <Link className="text-[#9ccaff] hover:underline" href={`/p/${comment.post_id}`}> {t("Post #{id}", { id: comment.post_id })}
                   </Link>
-                  <span>Comment #{comment.id}</span>
-                  {comment.parent_id ? <span>Reply to #{comment.parent_id}</span> : null}
+                  <span>{t("Comment #{id}", { id: comment.id })}</span>
+                  {comment.parent_id ? <span>{t("Reply to #{id}", { id: comment.parent_id })}</span> : null}
                   {comment.funding_totals.map((total) => {
                     const config = isPayoutAsset(total.asset)
                       ? PAYOUT_ASSET_CONFIG[total.asset]
                       : null;
                     return (
                       <span key={total.asset}>
-                        {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset} received
-                      </span>
+                        {t("{amount} {asset} received", { amount: formatAtomicAmount(total.received_atomic, config?.decimals ?? 0, 6, locale), asset: total.asset })} </span>
                     );
                   })}
                 </div>
               </article>
             ))}
             {!activity.comments.items.length ? (
-              <p className="text-sm text-white/40">No comments yet.</p>
+              <p className="text-sm text-white/40">{t("No comments yet.")}</p>
             ) : null}
           </div>
           <SectionPager
@@ -469,20 +454,20 @@ export default async function WalletProfilePage({
             params={effectiveParams}
             section="comments"
             pageData={activity.comments}
-            label="Comments"
+            label={t("Comments")}
             anchor="comments"
           />
         </section>
 
         <DonationLedger
-          title="Verified sent"
+          title={t("Verified sent")}
           direction="sent"
           page={activity.sent}
           wallet={wallet}
           params={effectiveParams}
         />
         <DonationLedger
-          title="Verified received"
+          title={t("Verified received")}
           direction="received"
           page={activity.received}
           wallet={wallet}
@@ -502,7 +487,7 @@ interface PagerData {
   to: number;
 }
 
-function SectionPager({
+async function SectionPager({
   wallet,
   params,
   section,
@@ -517,17 +502,19 @@ function SectionPager({
   label: string;
   anchor: string;
 }) {
+  const t = await getTranslator();
+  const { locale } = await getRequestPreferences();
+  const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   return (
     <nav
       className="mt-5 grid gap-3 border-t border-white/8 pt-4 text-xs text-white/40"
-      aria-label={`${label} pagination`}
+      aria-label={t("{label} pagination", { label })}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span>
-          Showing {pageData.from}–{pageData.to} of {pageData.total}
+        <span> {t("Showing {from}–{to} of {total}", { from: number(pageData.from), to: number(pageData.to), total: number(pageData.total) })}
         </span>
-        <div className="flex items-center gap-1" aria-label={`${label} page size`}>
-          <span className="mr-1">Per page</span>
+        <div className="flex items-center gap-1" aria-label={t("{label} page size", { label })}>
+          <span className="mr-1">{t("Per page")}</span>
           {PROFILE_PAGE_SIZES.map((size) =>
             size === pageData.pageSize ? (
               <span
@@ -535,7 +522,7 @@ function SectionPager({
                 className="rounded-md bg-[#c9ff55] px-2 py-1 font-semibold text-[#10120f]"
                 aria-current="true"
               >
-                {size}
+                {number(size)}
               </span>
             ) : (
               <Link
@@ -547,7 +534,7 @@ function SectionPager({
                   anchor,
                 )}
               >
-                {size}
+                {number(size)}
               </Link>
             ),
           )}
@@ -563,13 +550,11 @@ function SectionPager({
               anchor,
             )}
           >
-            <ArrowLeft aria-hidden="true" size={14} /> Previous
-          </Link>
+            <ArrowLeft aria-hidden="true" size={14} /> {t("Previous")} </Link>
         ) : (
           <span />
         )}
-        <span>
-          Page {pageData.page} of {pageData.totalPages}
+        <span> {t("Page {page} of {pages}", { page: number(pageData.page), pages: number(pageData.totalPages) })}
         </span>
         {pageData.page < pageData.totalPages ? (
           <Link
@@ -579,8 +564,7 @@ function SectionPager({
               updateSection(params, section, { page: pageData.page + 1 }),
               anchor,
             )}
-          >
-            Next <ArrowRight aria-hidden="true" size={14} />
+          > {t("Next")} <ArrowRight aria-hidden="true" size={14} />
           </Link>
         ) : (
           <span />
@@ -590,7 +574,7 @@ function SectionPager({
   );
 }
 
-function DonationLedger({
+async function DonationLedger({
   title,
   direction,
   page,
@@ -603,6 +587,8 @@ function DonationLedger({
   wallet: string;
   params: ProfileActivityParams;
 }) {
+  const t = await getTranslator();
+  const { locale } = await getRequestPreferences();
   const Icon = direction === "sent" ? ArrowUpRight : ArrowDownLeft;
   const section = direction;
   return (
@@ -618,7 +604,7 @@ function DonationLedger({
         >
           <Icon aria-hidden="true" size={18} /> {title}
         </h2>
-        <span className="text-xs text-white/35">{page.total} total</span>
+        <span className="text-xs text-white/35">{t("Total: {count}", { count: new Intl.NumberFormat(locale).format(page.total) })}</span>
       </div>
       <div className="mt-4 grid gap-4">
         {page.items.map((donation) => {
@@ -628,6 +614,8 @@ function DonationLedger({
           const amount = formatAtomicAmount(
             donation.amount_atomic,
             asset ? PAYOUT_ASSET_CONFIG[asset].decimals : 0,
+            6,
+            locale,
           );
           const transactionUrl = asset
             ? transactionExplorerUrl(asset, donation.signature)
@@ -649,12 +637,12 @@ function DonationLedger({
                   dateTime={donation.created_at}
                   suppressHydrationWarning
                 >
-                  {formatRelativeTime(donation.created_at)}
+                  {formatRelativeTime(donation.created_at, locale)}
                 </time>
               </div>
               <div className="mt-2 grid gap-1.5 text-xs leading-5 text-white/45">
                 <p>
-                  {direction === "sent" ? "To" : "From"}{" "}
+                  {direction === "sent" ? t("To") : t("From")}{" "}
                   {donation.counterpart_profile ? (
                     <Link
                       className="font-medium text-[#9ccaff] hover:underline"
@@ -680,8 +668,7 @@ function DonationLedger({
                 <code className="break-all font-mono text-[0.65rem] text-white/30">
                   {donation.counterpart_wallet}
                 </code>
-                <p>
-                  Target: <DonationTarget donation={donation} />
+                <p> {t("Target:")} <DonationTarget donation={donation} />
                 </p>
               </div>
               {transactionUrl ? (
@@ -690,9 +677,8 @@ function DonationLedger({
                   href={transactionUrl}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={`View ${amount} ${donation.asset} donation in its network explorer`}
-                >
-                  View transaction · {formatWallet(donation.signature, 6, 6)}
+                  aria-label={t("View {amount} {asset} donation in its network explorer", { amount, asset: donation.asset })}
+                > {t("View transaction ·")} {formatWallet(donation.signature, 6, 6)}
                   <ExternalLink aria-hidden="true" size={12} />
                 </a>
               ) : null}
@@ -700,7 +686,7 @@ function DonationLedger({
           );
         })}
         {!page.items.length ? (
-          <p className="text-sm text-white/40">No verified transfers yet.</p>
+          <p className="text-sm text-white/40">{t("No verified transfers yet.")}</p>
         ) : null}
       </div>
       <SectionPager
@@ -715,26 +701,23 @@ function DonationLedger({
   );
 }
 
-function DonationTarget({ donation }: { donation: ProfileDonationRecord }) {
+async function DonationTarget({ donation }: { donation: ProfileDonationRecord }) {
+  const t = await getTranslator();
   if (donation.target_type === "post" && donation.post_id) {
     return (
-      <Link className="text-[#9ccaff] hover:underline" href={`/p/${donation.post_id}`}>
-        Post #{donation.post_id}
+      <Link className="text-[#9ccaff] hover:underline" href={`/p/${donation.post_id}`}> {t("Post #{id}", { id: donation.post_id })}
       </Link>
     );
   }
   if (donation.target_type === "comment" && donation.comment_id) {
     return donation.target_post_id ? (
-      <Link className="text-[#9ccaff] hover:underline" href={`/p/${donation.target_post_id}`}>
-        Comment #{donation.comment_id} on post #{donation.target_post_id}
+      <Link className="text-[#9ccaff] hover:underline" href={`/p/${donation.target_post_id}`}> {t("Comment #{id} on post #{post}", { id: donation.comment_id, post: donation.target_post_id })}
       </Link>
     ) : (
-      <span>Comment #{donation.comment_id} (post unavailable)</span>
+      <span>{t("Comment #{id} (post unavailable)", { id: donation.comment_id })}</span>
     );
   }
   return (
-    <Link className="text-[#9ccaff] hover:underline" href="/transparency">
-      Money Nerds service
-    </Link>
+    <Link className="text-[#9ccaff] hover:underline" href="/transparency"> {t("Money Nerds service")} </Link>
   );
 }

@@ -1,3 +1,4 @@
+import { getTranslator } from "@/lib/i18n/server";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
@@ -9,7 +10,7 @@ const GUIDES = [
   { href: "/community", label: "Community guide" },
 ] as const;
 
-export function GuidePage({
+export async function GuidePage({
   path,
   title,
   introduction,
@@ -20,21 +21,22 @@ export function GuidePage({
   introduction: string;
   children: ReactNode;
 }) {
+  const t = await getTranslator();
   const current = GUIDES.find((guide) => guide.href === path)!;
 
   return (
     <main className="site-page site-shell">
-      <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-2 text-sm text-white/55">
+      <nav aria-label={t("Breadcrumb")} className="mb-8 flex flex-wrap items-center gap-2 text-sm text-white/55">
         <Link className="hover:text-[#c9ff55]" href="/">Money Nerds</Link>
         <ChevronRight aria-hidden="true" size={14} />
-        <span aria-current="page">{current.label}</span>
+        <span aria-current="page">{t(current.label)}</span>
       </nav>
       <header className="site-page-hero">
-        <p className="site-kicker">{current.label}</p>
-        <h1>{title}</h1>
-        <p className="site-page-hero__lede">{introduction}</p>
+        <p className="site-kicker">{t(current.label)}</p>
+        <h1>{t(title)}</h1>
+        <p className="site-page-hero__lede">{t(introduction)}</p>
       </header>
-      <nav aria-label="Money Nerds guides" className="mt-8 flex flex-wrap gap-2">
+      <nav aria-label={t("Money Nerds guides")} className="mt-8 flex flex-wrap gap-2">
         {GUIDES.map((guide) => (
           <Link
             key={guide.href}
@@ -46,26 +48,25 @@ export function GuidePage({
                 : "border-white/15 text-white/65 hover:border-white/35 hover:text-white"
             }`}
           >
-            {guide.label}
+            {t(guide.label)}
           </Link>
         ))}
       </nav>
       {children}
       <section className="site-callout" aria-labelledby="guide-board-title">
         <div>
-          <p className="site-kicker">Start with a real person</p>
-          <h2 id="guide-board-title">Find an ask that speaks to you.</h2>
-          <p>Browse without signing in. Read the context, ask questions, and choose whether to support.</p>
+          <p className="site-kicker">{t("Start with a real person")}</p>
+          <h2 id="guide-board-title">{t("Find an ask that speaks to you.")}</h2>
+          <p>{t("Browse without signing in. Read the context, ask questions, and choose whether to support.")}</p>
         </div>
-        <Link className="site-button site-button--primary" href="/#feed">
-          Browse the board <ArrowRight aria-hidden="true" size={17} />
+        <Link className="site-button site-button--primary" href="/#feed"> {t("Browse the board")} <ArrowRight aria-hidden="true" size={17} />
         </Link>
       </section>
     </main>
   );
 }
 
-export function GuideSection({
+export async function GuideSection({
   id,
   title,
   children,
@@ -74,9 +75,10 @@ export function GuideSection({
   title: string;
   children: ReactNode;
 }) {
+  const t = await getTranslator();
   return (
     <section className="site-section" aria-labelledby={id}>
-      <h2 className="site-section__heading" id={id}>{title}</h2>
+      <h2 className="site-section__heading" id={id}>{t(title)}</h2>
       {children}
     </section>
   );

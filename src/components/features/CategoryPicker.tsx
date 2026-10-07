@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import {
   Check,
   ChevronDown,
@@ -35,6 +37,7 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ value, disabled = false, onChange }: CategoryPickerProps) {
+  const { locale, t } = useI18n();
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -91,13 +94,13 @@ export function CategoryPicker({ value, disabled = false, onChange }: CategoryPi
     } else if (event.key.length === 1 && event.key !== " " && !event.altKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       const now = event.timeStamp;
-      const letter = event.key.toLocaleLowerCase();
+      const letter = event.key.toLocaleLowerCase(locale);
       const previous = now - searchRef.current.time < 700 ? searchRef.current.text : "";
       const query = previous === letter ? letter : previous + letter;
       searchRef.current = { text: query, time: now };
       for (let offset = 1; offset <= CATEGORY_SCOPES.length; offset += 1) {
         const index = (activeIndex + offset) % CATEGORY_SCOPES.length;
-        if (CATEGORY_SCOPES[index].label.toLocaleLowerCase().startsWith(query)) {
+        if (t(CATEGORY_SCOPES[index].label).toLocaleLowerCase(locale).startsWith(query)) {
           setActiveIndex(index);
           break;
         }
@@ -113,7 +116,7 @@ export function CategoryPicker({ value, disabled = false, onChange }: CategoryPi
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <span id={`${id}-label`} className={styles.label}>Category</span>
+      <span id={`${id}-label`} className={styles.label}>{t("Category")}</span>
       <button
         ref={triggerRef}
         type="button"
@@ -132,12 +135,12 @@ export function CategoryPicker({ value, disabled = false, onChange }: CategoryPi
         }}
       >
         <Icon size={17} className={styles.currentIcon} aria-hidden="true" />
-        <span id={`${id}-value`} className={styles.value}>{selected.label}</span>
+        <span id={`${id}-value`} className={styles.value}>{t(selected.label)}</span>
         <ChevronDown size={16} className={styles.chevron} aria-hidden="true" />
       </button>
       {open ? (
         <div className={styles.popover}>
-          <p className={styles.heading}>Find your corner of the internet</p>
+          <p className={styles.heading}>{t("Find your corner of the internet")}</p>
           <div
             id={`${id}-options`}
             className={styles.options}
@@ -163,8 +166,8 @@ export function CategoryPicker({ value, disabled = false, onChange }: CategoryPi
                 >
                   <span className={styles.optionIcon}><OptionIcon size={18} aria-hidden="true" /></span>
                   <span className={styles.optionText}>
-                    <span id={`${id}-${category.value}-label`} className={styles.optionLabel}>{category.label}</span>
-                    <span id={`${id}-${category.value}-hint`} className={styles.description}>{category.shortDescription}</span>
+                    <span id={`${id}-${category.value}-label`} className={styles.optionLabel}>{t(category.label)}</span>
+                    <span id={`${id}-${category.value}-hint`} className={styles.description}>{t(category.shortDescription)}</span>
                   </span>
                   {category.value === value ? <Check size={16} className={styles.check} aria-hidden="true" /> : null}
                 </button>

@@ -1,6 +1,7 @@
-const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+import type { Locale } from "@/lib/i18n/config";
 
-export function formatRelativeTime(value: string) {
+export function formatRelativeTime(value: string, locale: Locale = "en") {
+  const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   const timestamp = new Date(value).getTime();
   const deltaSeconds = Math.round((timestamp - Date.now()) / 1000);
   const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
@@ -26,9 +27,9 @@ export function formatWallet(wallet: string, start = 4, end = 4) {
   return `${wallet.slice(0, start)}…${wallet.slice(-end)}`;
 }
 
-export function formatSol(lamports: number) {
+export function formatSol(lamports: number, locale: Locale = "en") {
   const sol = lamports / 1_000_000_000;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(locale, {
     maximumFractionDigits: sol < 0.01 ? 4 : 2,
     minimumFractionDigits: 0,
   }).format(sol);
@@ -37,8 +38,11 @@ export function formatSol(lamports: number) {
 export function formatAtomicAmount(
   amountAtomic: string | number | bigint,
   decimals: number,
-  maximumFractionDigits = 6,
+  digitsOrLocale: number | Locale = 6,
+  requestedLocale: Locale = "en",
 ) {
+  const maximumFractionDigits = typeof digitsOrLocale === "number" ? digitsOrLocale : 6;
+  const locale = typeof digitsOrLocale === "string" ? digitsOrLocale : requestedLocale;
   const raw = String(amountAtomic);
   if (!/^-?\d+$/.test(raw) || !Number.isInteger(decimals) || decimals < 0) return "0";
   const negative = raw.startsWith("-");
@@ -51,8 +55,9 @@ export function formatAtomicAmount(
         .slice(0, maximumFractionDigits)
         .replace(/0+$/, "")
     : "";
-  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return `${negative ? "-" : ""}${groupedWhole}${fraction ? `.${fraction}` : ""}`;
+  const groupedWhole = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(BigInt(whole));
+  const separator = new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === "decimal")?.value ?? ".";
+  return `${negative ? "-" : ""}${groupedWhole}${fraction ? `${separator}${fraction}` : ""}`;
 }
 
 export function parseJsonArray<T>(value: unknown): T[] {

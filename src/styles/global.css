@@ -1,5 +1,42 @@
 @import "tailwindcss";
 
+/* Language controls use native names alongside decorative flags, never flags alone. */
+.language-switcher { display: grid; gap: .35rem; min-width: 0; }
+.language-switcher__label { color: #b8c0b2; font-size: .8rem; }
+.language-switcher select, .preferences-country select {
+  max-width: 100%; border: 1px solid #ffffff24; border-radius: .75rem;
+  background: #141914; color: #f2eee4; padding: .65rem .75rem; min-height: 44px;
+  font: inherit; font-size: .85rem;
+}
+.language-switcher--compact select { max-width: 10rem; }
+.language-switcher select:focus-visible, .preferences-country select:focus-visible,
+.privacy-link:focus-visible { outline: 2px solid #c9ff55; outline-offset: 3px; }
+.preferences-card { display: grid; gap: 1rem; padding: clamp(1rem,3vw,2rem); margin-block: 1.5rem; border: 1px solid #ffffff20; border-radius: 1.3rem; background: #111611; }
+.preferences-card h2 { font-size: 1.4rem; font-weight: 650; }
+.preferences-card p { color: #b0b9ae; font-size: .9rem; line-height: 1.7; max-width: 75ch; }
+.preferences-country { display: grid; gap: .5rem; }
+.privacy-link { color: #c9ff55; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; text-align: start; min-height: 36px; }
+.privacy-panel { position: fixed; z-index: 110; inset-inline: 1rem; bottom: max(1rem, env(safe-area-inset-bottom)); max-width: 66rem; margin-inline: auto; max-height: 75dvh; overflow-y: auto; display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #c9ff5550; border-radius: 1rem; background: #111810; box-shadow: 0 12px 70px #000b; }
+.privacy-panel h2 { font-size: 1rem; font-weight: 650; margin-bottom: .5rem; }
+.privacy-panel p { font-size: .8rem; line-height: 1.7; color: #b8c2b5; }
+.privacy-panel a { color: #c9ff55; text-decoration: underline; }
+.privacy-panel__actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+.privacy-panel__actions .button { white-space: normal; text-align: center; }
+.localized-wallet-dialog { position: fixed; inset: 0; margin: auto; width: min(28rem, calc(100vw - 2rem)); max-height: 85dvh; overflow-y: auto; border: 1px solid #ffffff30; border-radius: 1.4rem; padding: 1.5rem; background: #111811; color: #f2eee4; }
+.localized-wallet-dialog::backdrop { background: #000b; backdrop-filter: blur(5px); }
+@media (max-width: 30rem) {
+  .site-header .site-logo__wordmark small { display: none; }
+  .site-header .site-logo { gap: .45rem; }
+  .site-header .mn-wallet-button { min-width: 0; max-width: 8rem; padding-inline: .65rem; font-size: .8rem; white-space: normal; line-height: 1.25; }
+  .site-header .site-mobile-nav { flex: none; }
+}
+@media (max-width: 700px) {
+  .site-header__inner > .language-switcher { display: none; }
+  .site-mobile-nav__panel .language-switcher { margin-top: .65rem; }
+  .privacy-panel { inset-inline: .5rem; padding: 1rem; }
+  .privacy-panel__actions .button { flex: 1 1 100%; }
+}
+
 @theme {
   --font-sans: var(--font-ui);
   --font-mono: var(--font-code);

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { ArrowUpRight, Check, Copy, Landmark, LoaderCircle, LockKeyhole, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -39,19 +41,20 @@ function readTransferDetails(value: unknown, bankId: SbpBankId): SbpTransferDeta
 
 /** The identity-keyed child never retains another account's private transfer data. */
 export function SbpFundingPanel({ postId, initialBankId, standalone = false }: Props) {
+  const { t } = useI18n();
   const { authenticated, session, status, retrySignIn } = useWalletSession();
   if (!authenticated || !session) {
     if (!standalone) return null;
     return (
-      <section className={styles.panel} aria-label="Private bank transfer instructions">
+      <section className={styles.panel} aria-label={t("Private bank transfer instructions")}>
         <LockKeyhole aria-hidden="true" size={24} />
-        <h2 className={styles.title}>Private bank transfer instructions</h2>
+        <h2 className={styles.title}>{t("Private bank transfer instructions")}</h2>
         {status === "loading" || status === "preparing" ? (
-          <p className={styles.copy} role="status">Checking your account…</p>
+          <p className={styles.copy} role="status">{t("Checking your account…")}</p>
         ) : (
           <>
-            <p className={styles.copy}>Sign in and enable experimental SBP in Funding settings to view eligible transfer instructions.</p>
-            <button className={styles.primary} type="button" onClick={() => void retrySignIn()}>Sign in to continue</button>
+            <p className={styles.copy}>{t("Sign in and enable experimental SBP in Funding settings to view eligible transfer instructions.")}</p>
+            <button className={styles.primary} type="button" onClick={() => void retrySignIn()}>{t("Sign in to continue")}</button>
           </>
         )}
       </section>
@@ -61,6 +64,7 @@ export function SbpFundingPanel({ postId, initialBankId, standalone = false }: P
 }
 
 function PrivateSbpFundingPanel({ postId, initialBankId, standalone }: Props) {
+  const { t } = useI18n();
   const selectId = useId();
   const [availability, setAvailability] = useState<SbpAvailability | null>(null);
   const [bankId, setBankId] = useState<SbpBankId | undefined>(initialBankId);
@@ -179,7 +183,7 @@ function PrivateSbpFundingPanel({ postId, initialBankId, standalone }: Props) {
   };
 
   if (!availability) {
-    return standalone ? <p className={styles.copy} role="status">Loading private transfer options…</p> : null;
+    return standalone ? <p className={styles.copy} role="status">{t("Loading private transfer options…")}</p> : null;
   }
   if (!availability.available) {
     // Do not reveal whether an author opted in to viewers who cannot access it.
@@ -187,25 +191,25 @@ function PrivateSbpFundingPanel({ postId, initialBankId, standalone }: Props) {
     return (
       <section className={styles.panel}>
         <LockKeyhole aria-hidden="true" size={24} />
-        <h2 className={styles.title}>Transfer instructions are unavailable</h2>
-        <p className={styles.copy}>You can view eligible instructions only when experimental SBP is enabled in your Funding settings. Availability may change.</p>
+        <h2 className={styles.title}>{t("Transfer instructions are unavailable")}</h2>
+        <p className={styles.copy}>{t("You can view eligible instructions only when experimental SBP is enabled in your Funding settings. Availability may change.")}</p>
         <div className={styles.actions}>
-          <Link className={styles.primary} href="/settings">Funding settings</Link>
-          <button className={styles.secondary} type="button" onClick={() => setReload((value) => value + 1)}>Check again</button>
+          <Link className={styles.primary} href="/settings">{t("Funding settings")}</Link>
+          <button className={styles.secondary} type="button" onClick={() => setReload((value) => value + 1)}>{t("Check again")}</button>
         </div>
-        {error ? <p className={styles.error} role="status">{error}</p> : null}
+        {error ? <p className={styles.error} role="status">{t(error)}</p> : null}
       </section>
     );
   }
 
   return (
-    <section className={styles.panel} aria-label="Experimental SBP bank transfer">
+    <section className={styles.panel} aria-label={t("Experimental SBP bank transfer")}>
       <div className={styles.heading}>
         <span className={styles.icon}><Landmark aria-hidden="true" size={21} /></span>
-        <div><span className={styles.eyebrow}>Experimental · private</span><h3 className={styles.title}>Bank transfer · SBP</h3></div>
+        <div><span className={styles.eyebrow}>{t("Experimental · private")}</span><h3 className={styles.title}>{t("Bank transfer · SBP")}</h3></div>
       </div>
-      <p className={styles.copy}>Send rubles directly to the recipient. Money Nerds takes no fee; bank fees may apply.</p>
-      <label className={styles.label} htmlFor={selectId}>Recipient’s bank</label>
+      <p className={styles.copy}>{t("Send rubles directly to the recipient. Money Nerds takes no fee; bank fees may apply.")}</p>
+      <label className={styles.label} htmlFor={selectId}>{t("Recipient’s bank")}</label>
       <select
         id={selectId}
         className={styles.select}
@@ -221,70 +225,70 @@ function PrivateSbpFundingPanel({ postId, initialBankId, standalone }: Props) {
           setManualVisible(false);
         }}
       >
-        {availability.banks.map((bank) => <option key={bank.bankId} value={bank.bankId}>{sbpBankName(bank.bankId)}{bank.hasLink ? " · bank link" : " · phone instructions"}</option>)}
+        {availability.banks.map((bank) => <option key={bank.bankId} value={bank.bankId}>{sbpBankName(bank.bankId)}{bank.hasLink ? t(" · bank link") : t(" · phone instructions")}</option>)}
       </select>
       {!details ? (
         <>
-          <p className={styles.hint}>{selectedBank?.hasLink ? "The recipient supplied a bank-issued collection link. Choose your sending bank and amount on the bank’s page." : "No bank-issued link is attached for this bank. Use manual SBP instructions; your banking app will not be prefilled."}</p>
+          <p className={styles.hint}>{selectedBank?.hasLink ? t("The recipient supplied a bank-issued collection link. Choose your sending bank and amount on the bank’s page.") : t("No bank-issued link is attached for this bank. Use manual SBP instructions; your banking app will not be prefilled.")}</p>
           <button className={styles.primary} type="button" disabled={loading || !selectedBank} onClick={() => void reveal()}>
             {loading ? <LoaderCircle className="spin" aria-hidden="true" size={17} /> : <LockKeyhole aria-hidden="true" size={17} />}
-            {loading ? "Loading instructions…" : selectedBank?.hasLink ? "Show bank transfer" : "Show phone transfer instructions"}
+            {loading ? t("Loading instructions…") : selectedBank?.hasLink ? t("Show bank transfer") : t("Show phone transfer instructions")}
           </button>
         </>
       ) : (
         <>
           <div className={styles.transfer}>
             <figure className={styles.qr}>
-              <div className={styles.qrImage}><QRCodeSVG value={details.transferUrl ?? instructionUrl} size={152} level="M" title={details.transferUrl ? "Recipient’s bank-issued transfer link" : "Private Money Nerds transfer instructions"} /></div>
-              <figcaption>{details.transferUrl ? "Bank-issued link QR" : "Transfer instructions QR"}</figcaption>
+              <div className={styles.qrImage}><QRCodeSVG value={details.transferUrl ?? instructionUrl} size={152} level="M" title={details.transferUrl ? t("Recipient’s bank-issued transfer link") : t("Private Money Nerds transfer instructions")} /></div>
+              <figcaption>{details.transferUrl ? t("Bank-issued link QR") : t("Transfer instructions QR")}</figcaption>
             </figure>
             <div className={styles.transferCopy}>
-              <p className={styles.destination}>To {sbpBankName(details.bankId)}</p>
+              <p className={styles.destination}>{t("To {bank}", { bank: sbpBankName(details.bankId) })}</p>
               {details.transferUrl ? (
                 <>
-                  <p className={styles.copy}>Open the bank’s page, then choose your sending bank and amount. Available payment methods depend on the bank.</p>
-                  <a className={styles.primary} href={details.transferUrl} target="_blank" rel="noreferrer noopener"><ArrowUpRight aria-hidden="true" size={17} /> Open bank transfer</a>
-                  <p className={styles.hint}>Or scan the QR with your phone camera to open the same bank-issued link.</p>
+                  <p className={styles.copy}>{t("Open the bank’s page, then choose your sending bank and amount. Available payment methods depend on the bank.")}</p>
+                  <a className={styles.primary} href={details.transferUrl} target="_blank" rel="noreferrer noopener"><ArrowUpRight aria-hidden="true" size={17} /> {t("Open bank transfer")}</a>
+                  <p className={styles.hint}>{t("Or scan the QR with your phone camera to open the same bank-issued link.")}</p>
                 </>
               ) : (
                 <>
-                  <p className={styles.copy}>Scan with your phone camera to open these private instructions. This is not a payment QR for a banking app.</p>
-                  {!standalone ? <Link className={styles.primary} href={`/p/${postId}/sbp?bank=${details.bankId}`}><ArrowUpRight aria-hidden="true" size={17} /> Open transfer instructions</Link> : null}
-                  <p className={styles.hint}>On another device, sign in and enable SBP there too.</p>
+                  <p className={styles.copy}>{t("Scan with your phone camera to open these private instructions. This is not a payment QR for a banking app.")}</p>
+                  {!standalone ? <Link className={styles.primary} href={`/p/${postId}/sbp?bank=${details.bankId}`}><ArrowUpRight aria-hidden="true" size={17} /> {t("Open transfer instructions")}</Link> : null}
+                  <p className={styles.hint}>{t("On another device, sign in and enable SBP there too.")}</p>
                 </>
               )}
             </div>
           </div>
           {details.transferUrl && !manualVisible ? (
-            <button className={styles.textButton} type="button" onClick={() => setManualVisible(true)}>Bank link not working? Show manual phone instructions</button>
+            <button className={styles.textButton} type="button" onClick={() => setManualVisible(true)}>{t("Bank link not working? Show manual phone instructions")}</button>
           ) : null}
           {manualVisible ? (
             <div className={styles.manual}>
-              <label className={styles.label} htmlFor={`${selectId}-sender`}>Your sending bank</label>
+              <label className={styles.label} htmlFor={`${selectId}-sender`}>{t("Your sending bank")}</label>
               <select id={`${selectId}-sender`} className={styles.select} value={sendingBank} onChange={(event) => { if (isSbpBankId(event.target.value) || event.target.value === "other" || event.target.value === "") setSendingBank(event.target.value); }}>
-                <option value="">Choose your bank</option>
+                <option value="">{t("Choose your bank")}</option>
                 {SBP_BANKS.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
-                <option value="other">Another SBP bank</option>
+                <option value="other">{t("Another SBP bank")}</option>
               </select>
-              <label className={styles.label} htmlFor={`${selectId}-phone`}>Recipient’s phone · provided by the recipient</label>
+              <label className={styles.label} htmlFor={`${selectId}-phone`}>{t("Recipient’s phone · provided by the recipient")}</label>
               <div className={styles.phoneRow}>
-                <input id={`${selectId}-phone`} className={styles.phone} type="text" inputMode="tel" value={details.phone} readOnly aria-label="Recipient’s phone number" />
-                <button className={styles.secondary} type="button" onClick={() => void copyPhone()}>{copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}{copied ? "Copied" : "Copy"}</button>
+                <input id={`${selectId}-phone`} className={styles.phone} type="text" inputMode="tel" value={details.phone} readOnly aria-label={t("Recipient’s phone number")} />
+                <button className={styles.secondary} type="button" onClick={() => void copyPhone()}>{copied ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}{copied ? t("Copied") : t("Copy")}</button>
               </div>
               {sendingBank && sendingBank !== "other" ? <SbpBankAppAction bankId={sendingBank} /> : (
-                <p className={styles.hint}>{sendingBank === "other" ? "Open your bank’s installed app and follow the steps below. We do not have a verified opening link for this bank." : "Choose your sending bank above to see its opening button and instructions."}</p>
+                <p className={styles.hint}>{sendingBank === "other" ? t("Open your bank’s installed app and follow the steps below. We do not have a verified opening link for this bank.") : t("Choose your sending bank above to see its opening button and instructions.")}</p>
               )}
               <ol className={styles.steps}>
-                <li>Copy the recipient’s phone number, then open {sendingBank && sendingBank !== "other" ? sbpBankName(sendingBank) : "your bank"} using its button above or your installed app.</li>
-                <li>Choose a transfer by phone number via SBP. Paste the number and select <strong>{sbpBankName(details.bankId)}</strong> as the recipient’s bank.</li>
-                <li>Enter the amount. Check the recipient’s name, number, bank and any fee before confirming.</li>
+                <li>{t("Copy the recipient’s phone number, then open {bank} using its button above or your installed app.", { bank: sendingBank && sendingBank !== "other" ? sbpBankName(sendingBank) : t("your bank") })}</li>
+                <li>{t("Choose a transfer by phone number via SBP. Paste the number and select {bank} as the recipient’s bank.", { bank: sbpBankName(details.bankId) })}</li>
+                <li>{t("Enter the amount. Check the recipient’s name, number, bank and any fee before confirming.")}</li>
               </ol>
             </div>
           ) : null}
         </>
       )}
-      <p className={styles.warning}><ShieldAlert aria-hidden="true" size={17} /><span>Recipient details are self-declared, not verified by Money Nerds. Bank transfers are not tracked or included in verified donation totals. Never pay if the bank shows an unexpected recipient.</span></p>
-      {error || copied ? <p className={error ? styles.error : styles.hint} role="status">{error || "Phone number copied."}</p> : null}
+      <p className={styles.warning}><ShieldAlert aria-hidden="true" size={17} /><span>{t("Recipient details are self-declared, not verified by Money Nerds. Bank transfers are not tracked or included in verified donation totals. Never pay if the bank shows an unexpected recipient.")}</span></p>
+      {error || copied ? <p className={error ? styles.error : styles.hint} role="status">{error ? t(error) : t("Phone number copied.")}</p> : null}
     </section>
   );
 }

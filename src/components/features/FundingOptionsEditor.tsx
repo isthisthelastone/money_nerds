@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { Check, CircleDollarSign, ShieldCheck } from "lucide-react";
 import {
   normalizePayoutAddress,
@@ -78,6 +80,7 @@ export function FundingOptionsEditor({
   disabled?: boolean;
   allowEmpty?: boolean;
 }) {
+  const { t } = useI18n();
   const selected = new Map(value.map((option) => [option.asset, option.address]));
 
   const toggle = (asset: PayoutAsset, groupAssets: PayoutAsset[]) => {
@@ -106,12 +109,9 @@ export function FundingOptionsEditor({
       <div className="border-b border-white/8 p-4 sm:p-5">
         <p className="flex items-center gap-2 text-sm font-semibold text-[#f2efe6]">
           <CircleDollarSign aria-hidden="true" size={18} className="text-[#c9ff55]" />
-          Where can people fund this ask?
-        </p>
+          {t("Where can people fund this ask?")}</p>
         <p className="mt-1.5 max-w-3xl text-xs leading-5 text-white/50">
-          Select every asset you accept, then add the matching mainnet destination. The Fund
-          button will show only these choices. {allowEmpty ? "Crypto is optional while SBP is included for this post." : "Choose at least one, or include a configured SBP option below."} Money Nerds never redirects or takes a cut.
-        </p>
+          {t("Select every asset you accept, then add the matching mainnet destination. The Fund button will show only these choices.")}{" "}{allowEmpty ? t("Crypto is optional while SBP is included for this post.") : t("Choose at least one, or include a configured SBP option below.")} {t("Money Nerds never redirects or takes a cut.")}</p>
       </div>
       <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4">
         {FUNDING_GROUPS.map((group) => {
@@ -133,7 +133,7 @@ export function FundingOptionsEditor({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-[#f2efe6]">{group.title}</p>
-                  <p className="mt-1 text-[0.68rem] leading-4 text-white/38">{group.hint}</p>
+                  <p className="mt-1 text-[0.68rem] leading-4 text-white/38">{t(group.hint)}</p>
                 </div>
                 {activeAssets.length ? (
                   <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#c9ff55]/12 text-[#c9ff55]">
@@ -164,8 +164,7 @@ export function FundingOptionsEditor({
               </div>
               {activeAssets.length ? (
                 <label className="mt-3 grid gap-1.5 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-white/45">
-                  {PAYOUT_ASSET_CONFIG[activeAssets[0]].networkName} address
-                  <input
+                  {t("{network} address", { network: PAYOUT_ASSET_CONFIG[activeAssets[0]].networkName })}<input
                     className={`min-h-10 rounded-lg border bg-black/30 px-3 font-mono text-xs normal-case tracking-normal text-[#f2efe6] outline-none transition ${
                       invalid
                         ? "border-[#ff8066]/60 focus:ring-2 focus:ring-[#ff8066]/10"
@@ -173,7 +172,7 @@ export function FundingOptionsEditor({
                     }`}
                     value={address}
                     onChange={(event) => updateGroupAddress(group.assets, event.target.value)}
-                    placeholder={`Paste ${group.title} mainnet address`}
+                    placeholder={t("Paste {value0} mainnet address", { value0: group.title })}
                     autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
@@ -182,8 +181,7 @@ export function FundingOptionsEditor({
                   />
                   {invalid ? (
                     <span className="normal-case tracking-normal text-[#ff9a86]">
-                      This does not look like a valid {group.title} mainnet address.
-                    </span>
+                      {t("This does not look like a valid {network} mainnet address.", { network: group.title })}</span>
                   ) : null}
                 </label>
               ) : null}
@@ -193,9 +191,7 @@ export function FundingOptionsEditor({
       </div>
       <p className="flex items-start gap-2 border-t border-white/8 px-4 py-3 text-[0.7rem] leading-5 text-white/42">
         <ShieldCheck aria-hidden="true" size={15} className="mt-0.5 shrink-0 text-[#9ccaff]" />
-        Destinations are saved to your Money Nerds profile and snapshotted on this post, so a
-        later profile edit cannot silently change where an existing Fund button sends people.
-      </p>
+        {t("Destinations are saved to your Money Nerds profile and snapshotted on this post, so a later profile edit cannot silently change where an existing Fund button sends people.")}</p>
     </section>
   );
 }

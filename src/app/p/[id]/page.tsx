@@ -9,6 +9,8 @@ import { getComments, getPost } from "@/lib/data";
 import { type CommentCardData, type MediaAsset } from "@/lib/models";
 import { metadataExcerpt, serializeJsonLd } from "@/lib/seo";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
+import { getTranslator } from "@/lib/i18n/server";
+import type { Translate } from "@/lib/i18n/config";
 
 // Clerk reads the request session in the shared layout. Rendering an on-demand
 // dynamic post as ISR makes Next.js attempt a static pass and fail with
@@ -42,13 +44,13 @@ interface CommentSchema {
   interactionStatistic: { "@type": "InteractionCounter"; interactionType: string; userInteractionCount: number };
 }
 
-function visibleCommentsSchema(comments: CommentCardData[], parentId: number | null = null): CommentSchema[] {
+function visibleCommentsSchema(comments: CommentCardData[], t: Translate, parentId: number | null = null): CommentSchema[] {
   return comments.filter((comment) => comment.parent_id === parentId).flatMap((comment) => {
     // Match the SSR-visible thread tree. Audio/video-only comments remain
     // visible to people, but cannot satisfy Google's text/image requirements
     // without fabricating a transcript or video thumbnail.
     if (!comment.body.trim() && !comment.media.some((asset) => asset.kind === "image")) return [];
-    const replies = visibleCommentsSchema(comments, comment.id);
+    const replies = visibleCommentsSchema(comments, t, comment.id);
     return [{
       "@type": "Comment" as const,
       ...(comment.body ? {text: comment.body} : {}),
@@ -56,7 +58,7 @@ function visibleCommentsSchema(comments: CommentCardData[], parentId: number | n
       datePublished: comment.created_at,
       author: {
         "@type": "Person" as const,
-        name: comment.nickname || comment.legacy_author_label || "Anonymous nerd",
+        name: comment.nickname || comment.legacy_author_label || t("Anonymous nerd"),
         ...(comment.author_wallet ? {url: `${SITE_URL}/u/${encodeURIComponent(comment.author_wallet)}`} : {}),
       },
       interactionStatistic: {
@@ -70,16 +72,17 @@ function visibleCommentsSchema(comments: CommentCardData[], parentId: number | n
 }
 
 export async function generateMetadata({ params }: { params: RouteParams }): Promise<Metadata> {
+  const t = await getTranslator();
   const id = Number((await params).id);
-  if (!Number.isSafeInteger(id) || id <= 0) return { title: "Post not found", robots: {index: false, follow: false} };
+  if (!Number.isSafeInteger(id) || id <= 0) return { title: t("Post not found"), robots: {index: false, follow: false} };
   const post = await getPost(id);
-  if (!post) return { title: "Post not found", robots: {index: false, follow: false} };
+  if (!post) return { title: t("Post not found"), robots: {index: false, follow: false} };
   const scope = categoryScope(post.category);
-  const excerpt = metadataExcerpt(post.body) || `A ${scope?.label.toLowerCase() ?? "public"} media post by ${post.nickname}. Read the discussion and available direct-support options on Money Nerds.`;
-  const title = metadataExcerpt(post.body, 65) || `${post.nickname}'s ${scope?.label ?? "public"} post`;
+  const excerpt = metadataExcerpt(post.body) || t("A media post by {name}. Read the discussion and available direct-support options on Money Nerds.", { name: post.nickname });
+  const title = metadataExcerpt(post.body, 65) || t("Post by {name}", { name: post.nickname });
   const image = post.media.find((asset) => asset.kind === "image");
   const images = image
-    ? [{url: image.public_url, alt: image.alt_text || `Image attached to ${post.nickname}'s post`}]
+    ? [{url: image.public_url, alt: image.alt_text || t("Image attached to {name}'s post", { name: post.nickname })}]
     : [SOCIAL_PREVIEW_IMAGE];
   return {
     title,
@@ -94,7 +97,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
       publishedTime: post.created_at,
       modifiedTime: post.updated_at,
       authors: [`${SITE_URL}/u/${encodeURIComponent(post.author_wallet)}`],
-      ...(scope ? {section: scope.label} : {}),
+      ...(scope ? {section: t(scope.label)} : {}),
       images,
     },
     twitter: {
@@ -107,6 +110,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
 }
 
 export default async function PostPage({ params }: { params: RouteParams }) {
+  const t = await getTranslator();
   const id = Number((await params).id);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
   const [post, comments] = await Promise.all([getPost(id), getComments(id)]);
@@ -114,7 +118,7 @@ export default async function PostPage({ params }: { params: RouteParams }) {
   const scope = categoryScope(post.category);
   const canonicalUrl = `${SITE_URL}/p/${post.id}`;
   const forumEligibleContent = Boolean(post.body.trim() || post.media.some((asset) => asset.kind === "image"));
-  const commentsSchema = visibleCommentsSchema(comments);
+  const commentsSchema = visibleCommentsSchema(comments, t);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -153,9 +157,9 @@ export default async function PostPage({ params }: { params: RouteParams }) {
     ],
   };
   const breadcrumbs = [
-    {"@type": "ListItem", position: 1, name: "All posts", item: SITE_URL},
-    ...(scope ? [{"@type": "ListItem", position: 2, name: scope.label, item: `${SITE_URL}/?category=${scope.value}`}] : []),
-    {"@type": "ListItem", position: scope ? 3 : 2, name: `Post #${post.id}`, item: canonicalUrl},
+    {"@type": "ListItem", position: 1, name: t("All posts"), item: SITE_URL},
+    ...(scope ? [{"@type": "ListItem", position: 2, name: t(scope.label), item: `${SITE_URL}/?category=${scope.value}`}] : []),
+    {"@type": "ListItem", position: scope ? 3 : 2, name: t("Post #{id}", { id: post.id }), item: canonicalUrl},
   ];
 
   return (
@@ -163,14 +167,14 @@ export default async function PostPage({ params }: { params: RouteParams }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd({"@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: breadcrumbs}) }} />
       <div className="mx-auto max-w-3xl">
-        <nav className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/50" aria-label="Breadcrumb">
+        <nav className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/50" aria-label={t("Breadcrumb")}>
           <Link className="inline-flex items-center gap-2 transition hover:text-white" href="/#feed">
-            <ArrowLeft aria-hidden="true" size={16} /> All posts
+            <ArrowLeft aria-hidden="true" size={16} /> {t("All posts")}
           </Link>
-          {scope ? <><span aria-hidden="true">/</span><Link className="transition hover:text-white" href={categoryHref(scope.value)}>{scope.label}</Link></> : null}
-          <span aria-hidden="true">/</span><span aria-current="page">Post #{post.id}</span>
+          {scope ? <><span aria-hidden="true">/</span><Link className="transition hover:text-white" href={categoryHref(scope.value)}>{t(scope.label)}</Link></> : null}
+          <span aria-hidden="true">/</span><span aria-current="page">{t("Post #{id}", { id: post.id })}</span>
         </nav>
-        <h1 className="sr-only">Post by {post.nickname}{scope ? ` in ${scope.label}` : ""}</h1>
+        <h1 className="sr-only">{scope ? t("Post by {name} in {category}", { name: post.nickname, category: t(scope.label) }) : t("Post by {name}", { name: post.nickname })}</h1>
         <PostCard post={post} detail initialComments={comments} />
       </div>
     </main>

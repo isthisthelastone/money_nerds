@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/components/providers/I18nProvider";
+
 import { ChevronDown, LoaderCircle, MessageCircle, Reply } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +35,7 @@ export function CommentsPanel({
   initialComments,
   defaultOpen = false,
 }: CommentsPanelProps) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
   const [comments, setComments] = useState<CommentCardData[]>(initialComments ?? []);
   const [optimisticCount, setOptimisticCount] = useState(initialCount);
@@ -134,7 +137,7 @@ export function CommentsPanel({
       >
         <span className="flex items-center gap-2">
           <MessageCircle aria-hidden="true" size={18} />
-          {commentCount === 1 ? "1 comment" : `${commentCount} comments`}
+          {commentCount === 1 ? t("1 comment") : t("{value0} comments", { value0: commentCount })}
         </span>
         <ChevronDown className={`transition ${open ? "rotate-180" : ""}`} aria-hidden="true" size={17} />
       </button>
@@ -142,10 +145,9 @@ export function CommentsPanel({
         <div className="pb-5">
           {loading && !loaded ? (
             <p className="flex items-center gap-2 py-5 text-sm text-white/45">
-              <LoaderCircle className="spin" aria-hidden="true" size={17} /> Loading thread
-            </p>
+              <LoaderCircle className="spin" aria-hidden="true" size={17} /> {t("Loading thread")}</p>
           ) : null}
-          {error ? <p className="py-4 text-sm text-[#ff8066]">{error}</p> : null}
+          {error ? <p className="py-4 text-sm text-[#ff8066]">{t(error)}</p> : null}
           {loaded || (!loading && !error) ? (
             <div className="grid gap-3">
               {roots.map((comment) => (
@@ -159,20 +161,18 @@ export function CommentsPanel({
               ))}
               {!comments.length ? (
                 <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-white/40">
-                  No comments yet. Be the first useful stranger.
-                </p>
+                  {t("No comments yet. Be the first useful stranger.")}</p>
               ) : null}
             </div>
           ) : null}
           {loaded && (comments.length > 0 || hasMore) ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/8 bg-black/15 px-3 py-2.5">
               <p className="text-xs text-white/40">
-                Showing {comments.length} of {commentCount}
+                {t("Showing {shown} of {total}", { shown: comments.length.toLocaleString(locale), total: commentCount.toLocaleString(locale) })}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2 text-xs text-white/45">
-                  Page size
-                  <select
+                  {t("Page size")}<select
                     className="rounded-lg border border-white/10 bg-[#151815] px-2 py-1.5 text-xs text-white outline-none focus:border-[#c9ff55]/60"
                     value={pageSize}
                     onChange={(event) => {
@@ -197,8 +197,7 @@ export function CommentsPanel({
                     disabled={loading}
                   >
                     {loading ? <LoaderCircle className="spin" aria-hidden="true" size={16} /> : null}
-                    Load more
-                  </button>
+                    {t("Load more")}</button>
                 ) : null}
               </div>
             </div>
@@ -225,13 +224,14 @@ function CommentBranch({
   onReplyPublished: (id: number) => void;
   depth?: number;
 }) {
+  const { locale, t } = useI18n();
   const [replying, setReplying] = useState(false);
   const children = allComments.filter((candidate) => candidate.parent_id === comment.id);
-  const authorLabel = comment.nickname || comment.legacy_author_label || "Anonymous nerd";
+  const authorLabel = comment.nickname || comment.legacy_author_label || t("Anonymous nerd");
   const externalAuthor = comment.author_identity_kind === "external";
   const identityLabel = comment.author_identity_provider
     ? IDENTITY_PROVIDER_LABELS[comment.author_identity_provider]
-    : "External";
+    : t("External");
 
   return (
     <div className={depth ? "ml-3 border-l border-white/10 pl-3 sm:ml-7 sm:pl-5" : ""}>
@@ -247,15 +247,14 @@ function CommentBranch({
           {comment.author_wallet ? (
             externalAuthor ? (
               <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.62rem] font-medium text-white/45">
-                {identityLabel} profile
-              </span>
+                {t("{provider} profile", { provider: t(identityLabel) })}</span>
             ) : (
               <span className="font-mono">{formatWallet(comment.author_wallet)}</span>
             )
           ) : null}
           <span aria-hidden="true">·</span>
           <time dateTime={comment.created_at} suppressHydrationWarning>
-            {formatRelativeTime(comment.created_at)}
+            {formatRelativeTime(comment.created_at, locale)}
           </time>
         </header>
         {comment.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/75">{comment.body}</p> : null}
@@ -268,8 +267,7 @@ function CommentBranch({
                 : null;
               return (
                 <span key={total.asset} className="rounded-full border border-white/8 px-2 py-1">
-                  {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0)} {total.asset} verified
-                </span>
+                  {formatAtomicAmount(total.received_atomic, config?.decimals ?? 0, locale)} {total.asset} {t("verified")}</span>
               );
             })}
           </div>
@@ -281,12 +279,11 @@ function CommentBranch({
               recipientAddress={comment.author_wallet}
               targetType="comment"
               targetId={comment.id}
-              label="Fund"
+              label={t("Fund")}
             />
           ) : null}
           <button className="post-action" type="button" onClick={() => setReplying((value) => !value)}>
-            <Reply aria-hidden="true" size={17} /> Reply
-          </button>
+            <Reply aria-hidden="true" size={17} /> {t("Reply")}</button>
         </div>
       </article>
       {replying ? (
