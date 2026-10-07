@@ -1,6 +1,11 @@
 import type { Locale, Messages } from "./config";
 
 const rows: Array<[string, string, string, string, string]> = [
+  ["Page not found", "Página no encontrada", "找不到页面", "Страница не найдена", "Không tìm thấy trang"],
+  ["This page is unavailable or the link has changed.", "Esta página no está disponible o el enlace ha cambiado.", "此页面不可用，或链接已更改。", "Страница недоступна или ссылка изменилась.", "Trang này không khả dụng hoặc liên kết đã thay đổi."],
+  ["This page could not be loaded", "No se pudo cargar esta página", "无法加载此页面", "Не удалось загрузить страницу", "Không thể tải trang này"],
+  ["Please retry. Your account and published content have not been changed.", "Inténtalo de nuevo. Tu cuenta y el contenido publicado no han cambiado.", "请重试。您的账户和已发布内容未被更改。", "Попробуйте ещё раз. Ваш аккаунт и опубликованные материалы не изменились.", "Vui lòng thử lại. Tài khoản và nội dung đã đăng của bạn không bị thay đổi."],
+  ["Try again", "Reintentar", "重试", "Повторить", "Thử lại"],
   ["settings", "ajustes", "设置", "настройки", "cài đặt"],
   ["Account and funding features are for adults aged 18 or older. By using them, you agree to the terms of use.", "Las funciones de cuenta y financiación son para mayores de 18 años. Al usarlas, aceptas las condiciones de uso.", "账户和资助功能仅供年满 18 岁的成年人使用。使用这些功能即表示您同意使用条款。", "Аккаунт и функции финансирования предназначены для лиц от 18 лет. Используя их, вы принимаете условия использования.", "Các tính năng tài khoản và ủng hộ dành cho người từ 18 tuổi. Khi sử dụng, bạn đồng ý với điều khoản sử dụng."],
   ["Connect a wallet on Solana to continue", "Conecta una cartera de Solana para continuar", "连接 Solana 钱包以继续", "Подключите кошелёк Solana, чтобы продолжить", "Kết nối ví Solana để tiếp tục"],
