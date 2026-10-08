@@ -3,28 +3,31 @@
 import { useI18n } from "@/components/providers/I18nProvider";
 
 import { LoaderCircle, Pause, Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useId, useRef, type KeyboardEvent, type PointerEvent } from "react";
 import { formatMediaTime, useMediaPlayback } from "./useMediaPlayback";
+import { PlaybackSpeedSelect } from "./PlaybackSpeedSelect";
+import { useMediaVolume } from "./useMediaVolume";
 
 interface CircleVideoPlayerProps {
   src: string;
   label?: string;
+  durationHint?: number;
 }
 
 export function CircleVideoPlayer(props: CircleVideoPlayerProps) {
   return <CircleVideo key={props.src} {...props} />;
 }
 
-function CircleVideo({ src, label: providedLabel }: CircleVideoPlayerProps) {
+function CircleVideo({ src, label: providedLabel, durationHint }: CircleVideoPlayerProps) {
   const { t } = useI18n();
   const label = providedLabel ?? t("Circle video");
   const {
     mediaRef, playing, loading, currentTime, duration, progress, error,
-    togglePlayback, seek, mediaEvents,
-  } = useMediaPlayback<HTMLVideoElement>();
+    togglePlayback, seek, mediaEvents, rate, changeRate, mediaSource,
+  } = useMediaPlayback<HTMLVideoElement>({ src, durationHint });
   const descriptionId = useId();
   const dragging = useRef<number | null>(null);
-  const [muted, setMuted] = useState(false);
+  const { volume, muted, setVolume, toggleMute, resume, deviceVolumeOnly } = useMediaVolume(mediaRef);
 
   const seekFromPointer = (event: PointerEvent<SVGSVGElement>) => {
     if (!duration) return;
@@ -68,36 +71,24 @@ function CircleVideo({ src, label: providedLabel }: CircleVideoPlayerProps) {
       <div className="circle-message__player" data-playing={playing} data-loading={loading}>
         <video
           ref={mediaRef}
-          src={src}
+          src={mediaSource}
+          crossOrigin="anonymous"
           playsInline
           preload="metadata"
           className="circle-message__video"
           aria-label={label}
           {...mediaEvents}
-          onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
         />
         <div className="circle-message__shade" aria-hidden="true" />
         <button
           type="button"
           className="circle-message__toggle"
-          onClick={() => void togglePlayback()}
+          onClick={() => { resume(); void togglePlayback(); }}
           aria-label={t(error ? "Retry {label}" : playing ? "Pause {label}" : "Play {label}", { label })}
         >
           <span className="circle-message__play-disc">
             {loading ? <LoaderCircle className="media-player__spinner" size={28} aria-hidden="true" /> : error ? <RotateCcw size={28} aria-hidden="true" /> : playing ? <Pause size={28} fill="currentColor" aria-hidden="true" /> : <Play size={30} fill="currentColor" aria-hidden="true" />}
           </span>
-        </button>
-        <button
-          className="circle-message__mute"
-          type="button"
-          aria-label={muted ? t("Unmute video") : t("Mute video")}
-          aria-pressed={muted}
-          onClick={() => {
-            const video = mediaRef.current;
-            if (video) video.muted = !video.muted;
-          }}
-        >
-          {muted ? <VolumeX size={17} aria-hidden="true" /> : <Volume2 size={17} aria-hidden="true" />}
         </button>
         <div className="circle-message__time" aria-hidden="true">
           <span>{time}</span><span className="circle-message__time-divider">/</span>
@@ -144,6 +135,15 @@ function CircleVideo({ src, label: providedLabel }: CircleVideoPlayerProps) {
           <circle className="circle-message__seek-hit" cx="120" cy="120" r="105" />
         </svg>
       </div>
+      <div className="circle-message__controls">
+        <button className="circle-message__mute" type="button" aria-label={muted ? t("Unmute video") : t("Mute video")} aria-pressed={muted} onClick={toggleMute}>
+          {muted ? <VolumeX size={17} aria-hidden="true" /> : <Volume2 size={17} aria-hidden="true" />}
+        </button>
+        <input className="circle-message__volume" type="range" min={0} max={1} step={.05} value={muted ? 0 : volume} disabled={deviceVolumeOnly} aria-label={t("Video volume")} aria-valuetext={`${Math.round((muted ? 0 : volume) * 100)}%`} onChange={event => setVolume(Number(event.target.value))} />
+        <span className="circle-message__volume-value" aria-hidden="true">{Math.round((muted ? 0 : volume) * 100)}%</span>
+        <PlaybackSpeedSelect rate={rate} onChange={changeRate} />
+      </div>
+      {deviceVolumeOnly ? <p className="media-volume-note" role="status">{t("Use your device volume buttons in this browser.")}</p> : null}
       <span id={descriptionId} className="sr-only">{t("Drag around the edge, or use arrow keys to seek five seconds.")}</span>
       {loading ? <span className="sr-only" role="status">{t("Loading video…")}</span> : null}
       {error ? (

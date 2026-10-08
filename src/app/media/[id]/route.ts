@@ -21,13 +21,16 @@ export async function GET(_request: Request, { params }: { params: RouteParams }
 
   const { data: signed, error: signError } = await supabase.storage
     .from("media")
-    .createSignedUrl(asset.storage_path, 300);
+    .createSignedUrl(asset.storage_path, 3600);
   if (signError || !signed?.signedUrl) {
     return new NextResponse(null, { status: 503 });
   }
 
   const response = NextResponse.redirect(signed.signedUrl, 307);
-  response.headers.set("Cache-Control", "public, max-age=30, s-maxage=240");
+  // Only published assets reach this route. CDN TTL stays bounded for moderation;
+  // the longer signed lifetime prevents an open player failing during later seeks.
+  response.headers.set("Cache-Control", "public, max-age=30");
+  response.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=240");
   response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;
 }

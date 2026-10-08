@@ -97,12 +97,12 @@ export function MediaGallery({ media }: { media: MediaAsset[] }) {
           {messages.map((asset) =>
             asset.kind === "audio" ? (
               <figure key={asset.id} className="message-players__voice">
-                <VoiceMessagePlayer src={asset.public_url} label={asset.alt_text || t("Voice message")} />
+                <VoiceMessagePlayer src={asset.public_url} durationHint={Number(asset.duration_seconds) || undefined} label={asset.alt_text || t("Voice message")} />
                 {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ) : (
               <figure key={asset.id} className="message-players__circle">
-                <CircleVideoPlayer src={asset.public_url} label={asset.alt_text || t("Circle video")} />
+                <CircleVideoPlayer src={asset.public_url} durationHint={Number(asset.duration_seconds) || undefined} label={asset.alt_text || t("Circle video")} />
                 {asset.alt_text ? <figcaption className="media-message-caption">{asset.alt_text}</figcaption> : null}
               </figure>
             ),

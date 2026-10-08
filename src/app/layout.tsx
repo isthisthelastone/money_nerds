@@ -103,6 +103,7 @@ export default async function RootLayout({children}: Readonly<{children: ReactNo
     const privacyChoice = (await headers()).get("sec-gpc") === "1" ? "necessary" : readPrivacyChoice((await cookies()).get("mn_privacy")?.value);
     return (
         <html lang={locale === "zh" ? "zh-Hans" : locale}>
+            <head>{process.env.NEXT_PUBLIC_SUPABASE_URL ? <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" /> : null}</head>
             <body>
                 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(publisherJsonLd) }} />
                 <ClerkProvider

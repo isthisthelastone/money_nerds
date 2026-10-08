@@ -2,6 +2,11 @@ import type { Locale, Messages } from "./config";
 
 // Reviewed interface copy overrides the initial translation draft.
 const rows: Array<[string, string, string, string, string]> = [
+  ["Playback speed", "Velocidad de reproducción", "播放速度", "Скорость воспроизведения", "Tốc độ phát"],
+  ["Video volume", "Volumen del vídeo", "视频音量", "Громкость видео", "Âm lượng video"],
+  ["Use your device volume buttons in this browser.", "Usa los botones de volumen de tu dispositivo en este navegador.", "请在此浏览器中使用设备的音量按钮。", "В этом браузере используйте кнопки громкости устройства.", "Trong trình duyệt này, hãy dùng nút âm lượng trên thiết bị."],
+  ["Preparing attachments…", "Preparando archivos adjuntos…", "正在处理附件…", "Подготовка вложений…", "Đang chuẩn bị tệp đính kèm…"],
+  ["Compressed locally for faster uploads", "Comprimido en tu dispositivo para subir más rápido", "已在设备上压缩以加快上传", "Сжато на устройстве для быстрой загрузки", "Đã nén trên thiết bị để tải lên nhanh hơn"],
   ["Digital Services Act", "Ley de Servicios Digitales", "数字服务法", "Закон о цифровых услугах", "Đạo luật Dịch vụ Kỹ thuật số"],
   ["Apply", "Aplicar", "应用", "Применить", "Áp dụng"],
   ["We never skim user-to-user funding. Service funding routes and verified transfers stay public.", "No descontamos comisión del apoyo entre usuarios. Las rutas de apoyo al servicio y las transferencias verificadas son públicas.", "我们不从用户之间的资助中抽成。平台收款方式和已核实转账保持公开。", "Мы не удерживаем комиссию с переводов между участниками. Реквизиты поддержки сервиса и подтверждённые переводы открыты.", "Chúng tôi không trích phí từ khoản ủng hộ giữa người dùng. Các địa chỉ nhận tiền của dịch vụ và giao dịch đã xác minh được công khai."],

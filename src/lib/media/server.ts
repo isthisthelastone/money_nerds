@@ -48,6 +48,9 @@ export interface MediaUploadRequest {
   size: number;
   kind: MediaKind;
   alt: string;
+  duration?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface ParsedComposerPayload {
@@ -169,6 +172,11 @@ export function validateMediaUploadRequest(value: unknown): MediaUploadRequest {
   if (!Number.isSafeInteger(size) || size < 1 || size > MAX_MEDIA_BYTES) {
     throw new Error("INVALID_MEDIA");
   }
+  const boundedNumber = (value: unknown, max: number, integer = false) => {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > max || (integer && !Number.isInteger(value))) throw new Error("INVALID_MEDIA");
+    return value;
+  };
 
   return {
     name: String(candidate.name ?? "attachment").slice(0, 255),
@@ -176,6 +184,10 @@ export function validateMediaUploadRequest(value: unknown): MediaUploadRequest {
     size,
     kind,
     alt: String(candidate.alt ?? "").trim().slice(0, 500),
+    // Display hints only: never used to authorize access, quotas, or payments.
+    duration: boundedNumber(candidate.duration, 86400),
+    width: boundedNumber(candidate.width, 8192, true),
+    height: boundedNumber(candidate.height, 8192, true),
   };
 }
 
@@ -237,6 +249,9 @@ export async function createSignedMediaUploads({
         size_bytes: files[index].size,
         alt_text: files[index].alt || null,
         metadata: {},
+        duration_seconds: files[index].duration ?? null,
+        width: files[index].width ?? null,
+        height: files[index].height ?? null,
       })),
     );
     if (assetError) {

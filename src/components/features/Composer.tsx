@@ -63,6 +63,10 @@ interface DraftAttachment {
   preview: string;
   alt: string;
   source: "upload" | "recording";
+  duration?: number;
+  width?: number;
+  height?: number;
+  compressed?: boolean;
 }
 
 interface ComposerProps {
@@ -83,6 +87,7 @@ interface ActiveRecordingAttempt {
   timerId: number | null;
   discard: boolean;
   finalized: boolean;
+  startedAt: number;
 }
 
 interface PreparedRecording {
@@ -170,6 +175,8 @@ export function Composer({
   const { t } = useI18n();
   const router = useRouter();
   const recordingSetupTitleId = useId();
+  const mediaPreparationRef = useRef<AbortController | null>(null);
+  const [preparingMedia, setPreparingMedia] = useState(false);
   const {
     authenticated,
     session,
@@ -335,6 +342,7 @@ export function Composer({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      mediaPreparationRef.current?.abort();
       invalidatePendingRecordingStart();
       attachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.preview));
       cleanupPreparedRecording();
@@ -371,6 +379,7 @@ export function Composer({
     files: File[],
     source: DraftAttachment["source"] = "upload",
     replaceAttachmentId: string | null = null,
+    timing: { duration?: number; width?: number; height?: number; compressed?: boolean } = {},
   ) => {
     setError(null);
     setAttachments((current) => {
@@ -396,6 +405,7 @@ export function Composer({
           preview: URL.createObjectURL(file),
           alt: "",
           source,
+          ...timing,
         };
         if (replacementIndex >= 0) {
           URL.revokeObjectURL(next[replacementIndex].preview);
@@ -410,8 +420,33 @@ export function Composer({
     });
   };
 
+  const prepareFiles = async (files: File[], source: DraftAttachment["source"] = "upload", replaceAttachmentId: string | null = null, durationHint?: number) => {
+    mediaPreparationRef.current?.abort();
+    const controller = new AbortController();
+    mediaPreparationRef.current = controller;
+    setPreparingMedia(true);
+    try {
+      for (const file of files) {
+        if (controller.signal.aborted) return;
+        const kind = ACCEPTED_TYPES[file.type];
+        if (!kind || kind === "image" || file.size > MAX_BYTES) { appendFiles([file], source, replaceAttachmentId); continue; }
+        try {
+          const { prepareMediaFile } = await import("@/lib/media/prepare");
+          const result = await prepareMediaFile(file, kind, controller.signal);
+          if (!mountedRef.current || controller.signal.aborted) return;
+          appendFiles([result.file], source, replaceAttachmentId, { duration: result.duration ?? durationHint, width: result.width, height: result.height, compressed: result.compressed });
+        } catch {
+          if (mountedRef.current && !controller.signal.aborted) appendFiles([file], source, replaceAttachmentId, { duration: durationHint });
+        }
+        replaceAttachmentId = null;
+      }
+    } finally {
+      if (mountedRef.current && mediaPreparationRef.current === controller) { setPreparingMedia(false); mediaPreparationRef.current = null; }
+    }
+  };
+
   const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    appendFiles(Array.from(event.target.files ?? []));
+    void prepareFiles(Array.from(event.target.files ?? []));
     event.target.value = "";
   };
 
@@ -598,6 +633,7 @@ export function Composer({
         timerId: null,
         discard: false,
         finalized: false,
+        startedAt: 0,
       };
       activeAttempt = attempt;
       activeRecordingRef.current = attempt;
@@ -617,7 +653,8 @@ export function Composer({
         cleanupRecordingAttempt(attempt);
 
         if (!shouldKeepRecording) return;
-        void recordedFileFromChunks(kind, chunks, recorder.mimeType)
+        const durationMs = Math.max(1, performance.now() - attempt.startedAt);
+        void recordedFileFromChunks(kind, chunks, recorder.mimeType, durationMs)
           .then((file) => {
             if (
               !mountedRef.current ||
@@ -626,7 +663,7 @@ export function Composer({
             ) {
               return;
             }
-            appendFiles([file], "recording", replaceAttachmentId);
+            return prepareFiles([file], "recording", replaceAttachmentId, durationMs / 1000);
           })
           .catch((fileError: unknown) => {
             if (!mountedRef.current || recordingAttemptSequence.current !== attempt.id) return;
@@ -657,6 +694,7 @@ export function Composer({
       };
       // A single final chunk produces substantially more reliable MP4 metadata on iOS.
       recorder.start();
+      attempt.startedAt = performance.now();
       setRecordingSetup(null);
       setRecording(kind);
       setRecordingSeconds(0);
@@ -723,7 +761,7 @@ export function Composer({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!authenticated || submitting) return;
+    if (!authenticated || submitting || preparingMedia) return;
     if (recording || recordingSetup) {
       setError("Finish or cancel the recording before publishing.");
       return;
@@ -773,6 +811,9 @@ export function Composer({
               size: attachment.file.size,
               kind: attachment.kind,
               alt: attachment.alt.trim(),
+              duration: attachment.duration,
+              width: attachment.width,
+              height: attachment.height,
             })),
           }),
         });
@@ -1130,11 +1171,13 @@ export function Composer({
                       ) : attachment.kind === "audio" ? (
                         <VoiceMessagePlayer
                           src={attachment.preview}
+                          durationHint={attachment.duration}
                           label={attachment.source === "recording" ? t("Voice recording preview") : t("Audio attachment preview")}
                         />
                       ) : (
                         <CircleVideoPlayer
                           src={attachment.preview}
+                          durationHint={attachment.duration}
                           label={attachment.source === "recording" ? t("Circle video preview") : t("Video attachment preview")}
                         />
                       )}
@@ -1157,6 +1200,8 @@ export function Composer({
                         type="button"
                         disabled={
                           Boolean(recording || recordingSetup) ||
+                          preparingMedia ||
+                          submitting ||
                           deviceSetupBusy ||
                           recordingStartBusy
                         }
@@ -1168,6 +1213,7 @@ export function Composer({
                         <RotateCcw aria-hidden="true" size={15} /> {t("Retake")}</button>
                     </div>
                   ) : null}
+                  {attachment.compressed ? <p className="mt-2 text-xs text-[#c9ff55]">{t("Compressed locally for faster uploads")}</p> : null}
                   <label className="mt-3 grid gap-1 text-[0.68rem] uppercase tracking-[0.12em] text-white/45">
                     {attachment.kind === "image" ? t("Image description") : t("Transcript or description")}
                     <input
@@ -1189,6 +1235,7 @@ export function Composer({
             </div>
           ) : null}
 
+          {preparingMedia ? <p className="mt-3 flex items-center gap-2 text-xs text-white/60" role="status"><LoaderCircle size={16} className="media-player__spinner" aria-hidden="true" />{t("Preparing attachments…")}</p> : null}
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/8 pt-4">
             <input
               ref={inputRef}
@@ -1205,6 +1252,8 @@ export function Composer({
                 Boolean(recording || recordingSetup) ||
                 deviceSetupBusy ||
                 recordingStartBusy ||
+                preparingMedia ||
+                submitting ||
                 attachments.length >= 4
               }
               onClick={() => inputRef.current?.click()}
@@ -1227,6 +1276,8 @@ export function Composer({
                     Boolean(recordingSetup) ||
                     deviceSetupBusy ||
                     recordingStartBusy ||
+                    preparingMedia ||
+                    submitting ||
                     attachments.length >= 4
                   }
                   onClick={() => void prepareRecording("audio")}
@@ -1240,6 +1291,8 @@ export function Composer({
                     Boolean(recordingSetup) ||
                     deviceSetupBusy ||
                     recordingStartBusy ||
+                    preparingMedia ||
+                    submitting ||
                     attachments.length >= 4
                   }
                   onClick={() => void prepareRecording("video_circle")}
@@ -1258,6 +1311,7 @@ export function Composer({
               type="submit"
               disabled={
                 submitting ||
+                preparingMedia ||
                 Boolean(recording || recordingSetup) ||
                 deviceSetupBusy ||
                 recordingStartBusy

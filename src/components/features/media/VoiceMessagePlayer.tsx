@@ -5,21 +5,23 @@ import { useI18n } from "@/components/providers/I18nProvider";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { useId } from "react";
 import { formatMediaTime, useMediaPlayback } from "./useMediaPlayback";
+import { PlaybackSpeedSelect } from "./PlaybackSpeedSelect";
 
 type VoiceMessagePlayerProps = {
   src: string;
   label?: string;
+  durationHint?: number;
 };
 
 const TIMELINE_TICKS = Array.from({ length: 36 }, (_, index) => index);
 
-function VoiceMessagePlayback({ src, label: providedLabel }: VoiceMessagePlayerProps) {
+function VoiceMessagePlayback({ src, label: providedLabel, durationHint }: VoiceMessagePlayerProps) {
   const { t } = useI18n();
   const label = providedLabel ?? t("Voice message");
   const {
     mediaRef, playing, loading, currentTime, duration, progress, error, rate,
-    togglePlayback, seek, cycleRate, mediaEvents,
-  } = useMediaPlayback<HTMLAudioElement>();
+    togglePlayback, seek, changeRate, mediaEvents, mediaSource,
+  } = useMediaPlayback<HTMLAudioElement>({ src, durationHint });
   const errorId = useId();
   const elapsed = formatMediaTime(currentTime);
   const total = duration > 0 ? formatMediaTime(duration) : "—:—";
@@ -27,7 +29,7 @@ function VoiceMessagePlayback({ src, label: providedLabel }: VoiceMessagePlayerP
 
   return (
     <div className="voice-player" data-playing={playing} role="group" aria-label={label}>
-      <audio ref={mediaRef} src={src} preload="metadata" {...mediaEvents} hidden />
+      <audio ref={mediaRef} src={mediaSource} preload="metadata" {...mediaEvents} hidden />
       <button
         type="button"
         className="media-play-button voice-player__play"
@@ -41,14 +43,7 @@ function VoiceMessagePlayback({ src, label: providedLabel }: VoiceMessagePlayerP
       <div className="voice-player__body">
         <div className="voice-player__heading">
           <span className="voice-player__label">{label}</span>
-          <button
-            type="button"
-            className="voice-player__rate"
-            onClick={cycleRate}
-            aria-label={t("Playback speed {value0} times. Change playback speed", { value0: rate })}
-          >
-            {rate}×
-          </button>
+          <PlaybackSpeedSelect rate={rate} onChange={changeRate} />
         </div>
         <div className="voice-player__timeline">
           <div className="voice-player__track" aria-hidden="true">
@@ -84,7 +79,7 @@ function VoiceMessagePlayback({ src, label: providedLabel }: VoiceMessagePlayerP
           <span>{total}</span>
         </div>
       </div>
-      {error ? <p id={errorId} className="voice-player__error" role="status">{t(error)}</p> : null}
+      {error ? <p id={errorId} className="voice-player__error" role="status">{t(error)} <a href={src} target="_blank" rel="noopener noreferrer">{t("Open recording")}</a></p> : null}
     </div>
   );
 }

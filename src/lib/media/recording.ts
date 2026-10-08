@@ -55,10 +55,11 @@ function uniqueConstraints(candidates: MediaStreamConstraints[]) {
 }
 
 function audioConstraint(deviceId: string, exact: boolean): MediaTrackConstraints | true {
-  if (!deviceId) return true;
-  return exact
-    ? { deviceId: { exact: deviceId } }
-    : { deviceId: { ideal: deviceId } };
+  return {
+    ...(deviceId ? { deviceId: exact ? { exact: deviceId } : { ideal: deviceId } } : {}),
+    channelCount: { ideal: 1 }, sampleRate: { ideal: 48000 },
+    echoCancellation: true, noiseSuppression: true,
+  };
 }
 
 function videoConstraint(
@@ -71,8 +72,9 @@ function videoConstraint(
         ? { deviceId: { exact: deviceId } }
         : { deviceId: { ideal: deviceId } }
       : { facingMode: { ideal: "user" } }),
-    width: { ideal: 720 },
-    height: { ideal: 720 },
+    width: { ideal: 480, max: 640 },
+    height: { ideal: 480, max: 640 },
+    frameRate: { ideal: 24, max: 24 },
   };
 }
 
@@ -159,17 +161,23 @@ export function recorderMimeCandidates(kind: RecordingKind) {
 }
 
 export function createCompatibleMediaRecorder(stream: MediaStream, kind: RecordingKind) {
+  const quality: MediaRecorderOptions = {
+    audioBitsPerSecond: 48000,
+    ...(kind === "video_circle" ? { videoBitsPerSecond: 450000 } : {}),
+  };
   for (const mimeType of MIME_CANDIDATES[kind]) {
     try {
       if (typeof MediaRecorder.isTypeSupported === "function" && !MediaRecorder.isTypeSupported(mimeType)) {
         continue;
       }
-      return new MediaRecorder(stream, { mimeType });
+      try { return new MediaRecorder(stream, { mimeType, ...quality }); }
+      catch { return new MediaRecorder(stream, { mimeType }); }
     } catch {
       // Safari versions occasionally advertise a MIME that the constructor rejects.
     }
   }
-  return new MediaRecorder(stream);
+  try { return new MediaRecorder(stream, quality); }
+  catch { return new MediaRecorder(stream); }
 }
 
 function baseMimeType(value: string | undefined) {
@@ -233,13 +241,21 @@ export async function recordedFileFromChunks(
   kind: RecordingKind,
   chunks: readonly Blob[],
   recorderMimeType: string,
+  durationMs?: number,
 ) {
   const size = chunks.reduce((total, chunk) => total + chunk.size, 0);
   if (!size) throw new Error("EMPTY_RECORDING");
   const mimeType = await resolveRecordedMimeType(kind, chunks, recorderMimeType);
   if (!mimeType) throw new Error("UNSUPPORTED_RECORDING_FORMAT");
   const extension = recordingFileExtension(kind, mimeType);
-  const blob = new Blob([...chunks], { type: mimeType });
+  let blob = new Blob([...chunks], { type: mimeType });
+  if (mimeType.endsWith("/webm") && durationMs && Number.isFinite(durationMs) && durationMs > 0) {
+    // Without a Duration element Chromium frequently exposes Infinity.
+    try {
+      const { fixWebmDuration } = await import("@fix-webm-duration/fix");
+      blob = await fixWebmDuration(blob, durationMs, { logger: false });
+    } catch { /* Keep a playable original; stored timing still supplies the UI total. */ }
+  }
   return new File(
     [blob],
     `${kind === "audio" ? "voice" : "circle"}-${Date.now()}.${extension}`,
