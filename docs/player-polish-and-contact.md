@@ -19,7 +19,7 @@
 - [x] Email readiness defaults off. No nonfunctional mailto links or report collection while the inbox is inactive; setup-pending copy translated into all five UI languages.
 - [x] Finish live desktop/phone layout and playback QA; push main/develop/master; confirm production READY and absence of the personal contact.
 - [x] Provision Resend free-tier receiving for contact@moneynerds.online; add and verify provider-returned MX/DKIM/SPF records and a real neutral delivery.
-- [ ] Enable NEXT_PUBLIC_CONTACT_EMAIL_READY and confirm the production contact/report surfaces after redeployment.
+- [x] Enable NEXT_PUBLIC_CONTACT_EMAIL_READY and confirm the production contact/report surfaces after redeployment.
 
 ## Contact email setup — acceptance completed
 
@@ -49,7 +49,7 @@ Public DNS resolvers 1.1.1.1 and 8.8.8.8 return exact matches for all four provi
 
 One neutral message was sent from/to the project address using idempotency key `money-nerds-contact/2026-10-10-check1`. Outbound ID `01a12564-0e8c-74a0-a144-5bc89fd83fbd` reports `delivered`; inbound ID `e600ad85-ab36-4b14-9b1c-57af2b7e6c1e` arrived at `2026-10-10T10:37:58.309Z`. The receiving API returned the expected recipient, subject and exact test marker in the actual plain-text body. No personal data, wallet funds, user posts or report submissions were involved.
 
-Continuation if interrupted: do not provision another resource or send another verification message. Enable the public readiness flag only for the verified project, push main/develop/master without rewriting history, confirm production READY and verify real contact links/report drafting. Keep the provider API key out of the browser and source. Local `.env` files remain untouched and the template's readiness default stays false for unprovisioned installations.
+Maintenance if interrupted: mailbox provisioning, readiness activation, branch pushes and production verification are complete. Do not provision another resource or send another verification message. Keep the provider API key out of the browser and source. Local `.env` files remain untouched and the template's readiness default stays false for unprovisioned installations. Verify the existing resource and inbox before changing DNS or readiness again.
 
 Incoming emails can be read in Resend's dashboard → Emails → Receiving. This is not a Gmail/IMAP mailbox, automatic forwarding or an automated moderation system. Human inbox monitoring, responses and legal reporting operations still need an owner. No webhook or processing of arbitrary inbound email has been introduced.
 
@@ -58,6 +58,16 @@ Operational limits: the free plan's 100/day and 3,000/month allowance is shared 
 No authentication, funding, user profile, existing media or database-schema change is in this release. Git history is not rewritten; third-party cached copies of old pages are outside the live-site removal guarantee.
 
 ## Production verification
+
+### Verified email activation
+
+Commit `82faa8dac1c8a3f47e8fdab279aa571249b242a1` was pushed atomically to main/develop/master. `NEXT_PUBLIC_CONTACT_EMAIL_READY=true` is configured for production, preview and development. Production deployment `dpl_4kp8PtgioCuKAYK4xH3MrTTMbNEq` reached READY after a roughly 65-second build, assigned both www.moneynerds.online and the apex domain. The Git push did not trigger a build during a bounded check; the existing Git connection was then deployed through the scoped Vercel API with the exact main-branch commit. No local environment files were uploaded and no project/auth settings were changed.
+
+All seven routes listed below × all five locales returned HTTP200: 35 checks confirmed active project-address mailto links, no pending-inbox notice and no old private contact. All report pages contain the form and all privacy pages disclose Resend. A fresh production browser confirmed an enabled Open email draft button, three project-address mailto links and the hydrated Sign in header. No legal report was submitted and no user's email application was launched; actual delivery was verified separately by the neutral provider message above.
+
+Focused ESLint, typecheck and the translation audit passed (684 phrases, 971 reviewed messages, zero missing phrases or placeholder mismatches). No error/fatal server logs were returned in the scoped ten-minute production check. This verification does not certify unrelated security issues or jurisdiction-wide legal compliance.
+
+### Player redesign release history
 
 Implementation `4fa1577e2e39abea1798cba101a1f99a06059045` reached production READY as `dpl_ChA4bNcmtvxrCyeWdKeJP8Ac2CD9`, assigned to www.moneynerds.online in fra1. The three branches were pushed atomically, without rewriting history.
 
