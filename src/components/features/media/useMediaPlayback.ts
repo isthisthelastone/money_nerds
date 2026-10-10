@@ -151,6 +151,8 @@ export function useMediaPlayback<T extends HTMLMediaElement>({ src, durationHint
   const changeRate = useCallback((nextRate: number) => {
     const media = mediaRef.current;
     if (!media || !PLAYBACK_RATES.some(value => value === nextRate)) return;
+    // load()/source refresh resets the current rate to this browser default.
+    media.defaultPlaybackRate = nextRate;
     media.playbackRate = nextRate;
     setRate(media.playbackRate);
   }, []);
