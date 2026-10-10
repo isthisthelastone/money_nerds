@@ -45,7 +45,7 @@ export function PrivacyConsentProvider({ initialChoice, children }: { initialCho
   return <PrivacyContext.Provider value={{ optionalViews: choice === "all", openSettings: () => { setScrolling(false); setOpen(true); } }}>
     {children}
     {open ? <section className="privacy-panel" data-scrolling={scrolling} aria-label={t("Privacy choices")}>
-      <button className="privacy-panel__close" type="button" disabled={busy} aria-label={t("Necessary only")} title={t("Necessary only")} onClick={() => void save("necessary")}><X size={20} aria-hidden="true" /></button>
+      <button className="privacy-panel__close" type="button" disabled={busy} aria-label={t("Necessary only")} title={t("Necessary only")} onClick={() => void save("necessary")}><X size={16} aria-hidden="true" /></button>
       <div className="privacy-panel__copy">
         <h2>{t("Cookies and local storage")}</h2>
         <p>{t("Necessary storage keeps sign-in, security, your chosen language and requested transfer recovery working. Optional storage counts unique post views. We do not add advertising cookies.")}</p>

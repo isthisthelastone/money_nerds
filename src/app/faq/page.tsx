@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
+import { ContactLink, ContactStatus } from "@/components/legal/ContactLink";
 
 const description = "Answers about Money Nerds sign-in, supported currencies, direct funding, public profiles, media recording, and experimental SBP transfers.";
 
@@ -87,7 +88,8 @@ export default async function FaqPage() {
       </GuideSection>
       <GuideSection id="more-help" title={t("Need the step-by-step version?")}>
         <p className="site-section__intro">{t("Follow")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/how-it-works">{t("how it works")}</Link> {t("to create or fund a post. Read")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/safety">{t("safety and privacy")}</Link> {t("before sharing personal details, or use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/community">{t("community guide")}</Link> {t("to make a clearer ask.")}</p>
-        <p className="site-section__intro">{t("Still stuck? Email")} <a className="break-all text-[#c9ff55] underline underline-offset-4" href="mailto:unluckypleasure@yandex.ru">unluckypleasure@yandex.ru</a> {t("with the relevant public URL and what happened. Never include sign-in codes or wallet secrets.")}</p>
+        <p className="site-section__intro">{t("Still stuck? Email")} <ContactLink className="break-all text-[#c9ff55] underline underline-offset-4" /> {t("with the relevant public URL and what happened. Never include sign-in codes or wallet secrets.")}</p>
+        <ContactStatus />
       </GuideSection>
     </GuidePage>
   );

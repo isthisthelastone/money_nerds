@@ -2,6 +2,8 @@ import type { Locale, Messages } from "./config";
 
 // Reviewed interface copy overrides the initial translation draft.
 const rows: Array<[string, string, string, string, string]> = [
+  ["The new contact address is not active yet. This page cannot submit or send reports.", "La nueva dirección de contacto aún no está activa. Esta página no puede presentar ni enviar informes.", "新的联系邮箱尚未启用，此页面暂时无法提交或发送举报。", "Новая контактная почта ещё не активна. Эта страница пока не может отправлять обращения.", "Địa chỉ liên hệ mới chưa hoạt động. Trang này chưa thể gửi yêu cầu hoặc báo cáo."],
+  ["Contact email is being set up. Please do not send messages yet.", "Estamos configurando el correo de contacto. Por favor, no envíes mensajes todavía.", "联系邮箱正在设置中，请暂时不要发送邮件。", "Контактная почта ещё настраивается. Пожалуйста, пока не отправляйте письма.", "Email liên hệ đang được thiết lập. Vui lòng chưa gửi thư."],
   ["Playback speed", "Velocidad de reproducción", "播放速度", "Скорость воспроизведения", "Tốc độ phát"],
   ["Video volume", "Volumen del vídeo", "视频音量", "Громкость видео", "Âm lượng video"],
   ["Use your device volume buttons in this browser.", "Usa los botones de volumen de tu dispositivo en este navegador.", "请在此浏览器中使用设备的音量按钮。", "В этом браузере используйте кнопки громкости устройства.", "Trong trình duyệt này, hãy dùng nút âm lượng trên thiết bị."],

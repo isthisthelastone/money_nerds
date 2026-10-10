@@ -3,6 +3,7 @@ import Link from "next/link";
 import {ArrowUpRight, BadgeDollarSign, Radio} from "lucide-react";
 import {LanguageSwitcher} from "./LanguageSwitcher";
 import {PrivacyChoicesButton} from "@/components/legal/PrivacyConsent";
+import {ContactLink} from "@/components/legal/ContactLink";
 
 export async function SiteFooter() {
   const t = await getTranslator();
@@ -45,7 +46,7 @@ export async function SiteFooter() {
                                 target="_blank"
                             > {t("Public service ledger")} <ArrowUpRight aria-hidden="true" size={13} />
                             </a>
-                            <a href="mailto:unluckypleasure@yandex.ru">{t("Contact")}</a>
+                            <ContactLink label={t("Contact")} />
                         </div>
                         <div className="site-footer__links mt-4">
                             <Link href="/legal">{t("Legal information")}</Link>

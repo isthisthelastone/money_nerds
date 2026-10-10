@@ -1,5 +1,7 @@
-export const LEGAL_CONTACT = "unluckypleasure@yandex.ru";
-export const LEGAL_UPDATED = "2026-10-07";
+export const LEGAL_CONTACT = "contact@moneynerds.online";
+// Publish email actions only after the provider's receiving setup is verified.
+export const CONTACT_EMAIL_READY = process.env.NEXT_PUBLIC_CONTACT_EMAIL_READY === "true";
+export const LEGAL_UPDATED = "2026-10-10";
 
 export const legalDocuments = {
   terms: {

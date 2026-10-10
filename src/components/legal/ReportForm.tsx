@@ -1,13 +1,20 @@
 "use client";
 import { useState } from "react";
 import { useI18n } from "@/components/providers/I18nProvider";
-import { LEGAL_CONTACT } from "@/lib/legal/content";
+import { CONTACT_EMAIL_READY, LEGAL_CONTACT } from "@/lib/legal/content";
+import { ContactLink, ContactStatus } from "./ContactLink";
 
 export function ReportForm() {
   const { t } = useI18n();
   const [kind, setKind] = useState("content");
+  if (!CONTACT_EMAIL_READY) return <section className="preferences-card">
+    <ContactStatus />
+    <p>{t("The new contact address is not active yet. This page cannot submit or send reports.")}</p>
+    <ContactLink className="privacy-link break-all" />
+  </section>;
   return <form className="preferences-card" onSubmit={(event) => {
     event.preventDefault();
+    if (!CONTACT_EMAIL_READY) return;
     const values = new FormData(event.currentTarget);
     const body = [
       `Request type: ${kind}`, `Public URL or account: ${values.get("url")}`,
@@ -33,8 +40,8 @@ export function ReportForm() {
     <label className="grid gap-2">{t("Electronic signature (type your name)") }<input name="signature" className="feed-select w-full" maxLength={120} required={kind === "intimate-imagery" || kind === "copyright"} /></label>
     <label className="flex items-start gap-3"><input name="goodFaith" type="checkbox" required className="mt-1 size-5" /><span>{t("I confirm in good faith that this report is accurate. For intimate imagery, I am the depicted person or their authorized representative and publication was without consent.")}</span></label>
     <p>{t("Do not attach intimate images, passwords, identity documents or wallet secrets. Identify the existing content using its URL.")}</p>
-    <button className="button button-secondary" type="submit">{t("Open email draft")}</button>
+    <button className="button button-secondary" type="submit" disabled={!CONTACT_EMAIL_READY}>{t("Open email draft")}</button>
     <p>{t("This opens your email app. Review and send the email to submit your request; this page does not send it or display a false receipt.")}</p>
-    <a className="privacy-link break-all" href={`mailto:${LEGAL_CONTACT}`}>{LEGAL_CONTACT}</a>
+    <ContactLink className="privacy-link break-all" />
   </form>;
 }

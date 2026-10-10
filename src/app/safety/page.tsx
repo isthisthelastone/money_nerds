@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
+import { ContactLink, ContactStatus } from "@/components/legal/ContactLink";
 
 const description = "Protect your wallet and privacy on Money Nerds: check recipients, understand public profiles, use SBP carefully, and report suspicious posts.";
 
@@ -51,7 +52,8 @@ export default async function SafetyPage() {
       </GuideSection>
 
       <GuideSection id="report-a-problem" title={t("Something looks wrong? Tell us.")}>
-        <p className="site-section__intro">{t("Send the public post or profile URL and a short explanation to")} <a className="break-all text-[#c9ff55] underline underline-offset-4" href="mailto:unluckypleasure@yandex.ru">unluckypleasure@yandex.ru</a>{t(". For a funding problem, include the network and public transaction ID if available—not wallet secrets, passwords, or unredacted personal documents.")}</p>
+        <p className="site-section__intro">{t("Send the public post or profile URL and a short explanation to")} <ContactLink className="break-all text-[#c9ff55] underline underline-offset-4" />{t(". For a funding problem, include the network and public transaction ID if available—not wallet secrets, passwords, or unredacted personal documents.")}</p>
+        <ContactStatus />
         <p className="site-section__intro">{t("If a transfer may already have gone wrong, stop sending and contact your bank or wallet provider through its official support channel. Reporting a post does not reverse a transfer. For ordinary setup questions, start with the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/faq">{t("FAQ")}</Link>.</p>
       </GuideSection>
     </GuidePage>

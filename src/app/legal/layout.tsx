@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getTranslator } from "@/lib/i18n/server";
-import { LEGAL_CONTACT, legalLinks } from "@/lib/legal/content";
+import { legalLinks } from "@/lib/legal/content";
+import { ContactLink, ContactStatus } from "@/components/legal/ContactLink";
 
 export default async function LegalLayout({ children }: { children: ReactNode }) {
   const t = await getTranslator();
@@ -11,7 +12,7 @@ export default async function LegalLayout({ children }: { children: ReactNode })
     </nav>
     {children}
     <aside className="site-callout mt-12">
-      <div><h2>{t("Contact Money Nerds")}</h2><a className="break-all text-[#c9ff55] underline underline-offset-4" href={`mailto:${LEGAL_CONTACT}`}>{LEGAL_CONTACT}</a></div>
+      <div><h2>{t("Contact Money Nerds")}</h2><ContactLink className="break-all text-[#c9ff55] underline underline-offset-4" /><ContactStatus /></div>
       <Link href="/legal/report" className="site-button site-button--primary">{t("Rights and content reports")}</Link>
     </aside>
   </main>;

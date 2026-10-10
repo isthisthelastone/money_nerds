@@ -38,13 +38,10 @@ function VoiceMessagePlayback({ src, label: providedLabel, durationHint }: Voice
         aria-describedby={error ? errorId : undefined}
         aria-busy={loading}
       >
-        {loading ? <LoaderCircle className="media-player__spinner" size={24} aria-hidden="true" /> : error ? <RotateCcw size={23} aria-hidden="true" /> : playing ? <Pause size={24} fill="currentColor" aria-hidden="true" /> : <Play size={24} fill="currentColor" aria-hidden="true" />}
+        {loading ? <LoaderCircle className="media-player__spinner" size={21} aria-hidden="true" /> : error ? <RotateCcw size={21} aria-hidden="true" /> : playing ? <Pause size={21} fill="currentColor" aria-hidden="true" /> : <Play size={22} fill="currentColor" aria-hidden="true" />}
       </button>
       <div className="voice-player__body">
-        <div className="voice-player__heading">
-          <span className="voice-player__label">{label}</span>
-          <PlaybackSpeedSelect rate={rate} onChange={changeRate} />
-        </div>
+        <span className="voice-player__label">{label}</span>
         <div className="voice-player__timeline">
           <div className="voice-player__track" aria-hidden="true">
             {TIMELINE_TICKS.map((tick) => (
@@ -75,10 +72,11 @@ function VoiceMessagePlayback({ src, label: providedLabel, durationHint }: Voice
           />
         </div>
         <div className="voice-player__time" aria-hidden="true">
-          <span>{elapsed}</span>
+          <span>{elapsed}</span><span className="voice-player__time-divider">/</span>
           <span>{total}</span>
         </div>
       </div>
+      <PlaybackSpeedSelect rate={rate} onChange={changeRate} />
       {error ? <p id={errorId} className="voice-player__error" role="status">{t(error)} <a href={src} target="_blank" rel="noopener noreferrer">{t("Open recording")}</a></p> : null}
     </div>
   );

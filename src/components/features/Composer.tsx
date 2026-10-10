@@ -10,7 +10,6 @@ import {
   Mic,
   RotateCcw,
   Send,
-  Trash2,
   Video,
   X,
 } from "lucide-react";
@@ -1156,8 +1155,8 @@ export function Composer({
           {attachments.length ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
-                  <div className="flex items-start gap-3">
+                <div key={attachment.id} className={`min-w-0 rounded-xl border border-white/10 bg-black/20 p-2 ${attachment.kind === "audio" ? "sm:col-span-2" : ""}`}>
+                  <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       {attachment.kind === "image" ? (
                         <div className="media-thumbnail-box flex items-center justify-center overflow-hidden rounded-lg bg-black/30">
@@ -1183,12 +1182,12 @@ export function Composer({
                       )}
                     </div>
                     <button
-                      className="ml-auto rounded-lg p-2 text-white/45 transition hover:bg-white/8 hover:text-[#ff8066]"
+                      className="attachment-remove"
                       type="button"
                       onClick={() => removeAttachment(attachment.id)}
                       aria-label={t("Remove attachment")}
                     >
-                      <Trash2 aria-hidden="true" size={16} />
+                      <X aria-hidden="true" size={15} />
                     </button>
                   </div>
                   {attachment.source === "recording" ? (
