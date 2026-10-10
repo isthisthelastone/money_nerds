@@ -2329,6 +2329,7 @@ body .wallet-adapter-modal-list-more svg {
 .media-speed__select { position: absolute; inset: -10px -4px; width: calc(100% + 8px); height: calc(100% + 20px); opacity: 0; cursor: pointer; padding: 0; }
 .media-speed:focus-within, .circle-message__volume:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
 .media-speed:hover { background: #c9ff5512; }
+.media-speed[data-interactive="false"] { opacity: .45; }
 .circle-message__controls { display: grid; justify-items: center; justify-content: center; align-content: center; gap: .3rem; min-width: 0; }
 .circle-message__volume { writing-mode: vertical-lr; direction: rtl; width: 2rem; height: 6rem; margin: 0; accent-color: var(--lime); cursor: pointer; }
 .circle-message__volume-value { color: var(--muted); font: .65rem var(--font-code); }
