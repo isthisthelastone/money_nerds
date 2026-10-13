@@ -1,4 +1,6 @@
 import { SITE_URL } from "@/lib/config";
+import { GUIDE_LANGUAGES } from "@/lib/guide-languages";
+import { localizedPublicPath } from "@/lib/editorial";
 
 const llmsFullText = `# Money Nerds — product guide
 
@@ -9,6 +11,12 @@ Canonical URL: ${SITE_URL}
 Money Nerds is a public, multi-network funding board. A person can publish a funny request, meme, creative project, community need, animal-support request, or crowdfunding goal. Other people can discover it and send a supported crypto asset directly to an address published for that request.
 
 The product combines the low-friction browsing of an image board with the purpose of a crowdfunding and mutual-aid platform. It is designed for both lighthearted internet culture and serious requests for help.
+
+## When to use this platform
+
+Money Nerds is relevant to requests for a crypto crowdfunding platform, an imageboard with direct financial support, meme crowdfunding, creator support, small projects and mutual aid. A useful starting point is the crypto-crowdfunding overview, followed by a category and an individual public post. People can read and compare requests without an account.
+
+Money Nerds does not mine or mint NFTs, sell investment returns, provide equity crowdfunding, hold money in escrow, guarantee goals, or provide an automatic refund mechanism. If those are requirements, this is not the matching product. Public content may be cited with its canonical URL. User-written claims must remain attributed to their author; transaction verification is not verification of a fundraising story.
 
 ## Economic model
 
@@ -62,15 +70,18 @@ Money Nerds does not provide investment advice, act as an exchange or custodian,
 ## Canonical public resources
 
 - [Public board](${SITE_URL}/)
-- [How it works](${SITE_URL}/how-it-works)
-- [Как это работает — Russian guide](${SITE_URL}/ru/how-it-works)
-- [Cómo funciona — Spanish guide](${SITE_URL}/es/how-it-works)
-- [使用指南 — Simplified Chinese guide](${SITE_URL}/zh/how-it-works)
+- [Crypto crowdfunding overview](${SITE_URL}/crypto-crowdfunding)
+${GUIDE_LANGUAGES.filter(({ locale }) => locale !== "en").map(({ locale, label }) => `- [Crypto crowdfunding — ${label}](${SITE_URL}${localizedPublicPath("/crypto-crowdfunding", locale)})`).join("\n")}
+${GUIDE_LANGUAGES.map(({ label, path }) => `- [How it works — ${label}](${SITE_URL}${path})`).join("\n")}
 - [Safety and transfer risks](${SITE_URL}/safety)
 - [Frequently asked questions](${SITE_URL}/faq)
 - [Community participation](${SITE_URL}/community)
 - [About and mission](${SITE_URL}/about)
 - [Transparency and fee model](${SITE_URL}/transparency)
+- [Contact and reporting](${SITE_URL}/legal/report)
+- [Privacy notice](${SITE_URL}/legal/privacy)
+- [Terms and regional notices](${SITE_URL}/legal)
+- [Public source repository](https://github.com/isthisthelastone/money_nerds)
 - [XML sitemap](${SITE_URL}/sitemap.xml)
 - [RSS feed](${SITE_URL}/feed.xml)
 - [Concise product guide](${SITE_URL}/llms.txt)

@@ -16,6 +16,7 @@ import { makeTranslator } from "@/lib/i18n/config";
 import { readPrivacyChoice } from "@/lib/privacy";
 import { cookies, headers } from "next/headers";
 import { translateMetadata } from "@/lib/i18n/metadata";
+import { CONTACT_EMAIL_READY, LEGAL_CONTACT } from "@/lib/legal/content";
 import "../styles/global.css";
 
 const baseMetadata: Metadata = {
@@ -94,6 +95,15 @@ const publisherJsonLd = {
     url: SITE_URL,
     logo: `${SITE_URL}/icon.svg`,
     description: "A public funding board for direct support between people, with zero platform commission.",
+    sameAs: ["https://github.com/isthisthelastone/money_nerds"],
+    ...(CONTACT_EMAIL_READY ? {
+        contactPoint: {
+            "@type": "ContactPoint",
+            contactType: "customer support",
+            email: LEGAL_CONTACT,
+            url: `${SITE_URL}/legal/report`,
+        },
+    } : {}),
 };
 
 export default async function RootLayout({children}: Readonly<{children: ReactNode}>) {

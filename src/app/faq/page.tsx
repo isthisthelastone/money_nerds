@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { editorialMetadata, localizedPublicPath } from "@/lib/editorial";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
@@ -8,13 +9,13 @@ import { ContactLink, ContactStatus } from "@/components/legal/ContactLink";
 const description = "Answers about Money Nerds sign-in, supported currencies, direct funding, public profiles, media recording, and experimental SBP transfers.";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslator();
-  return {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  return editorialMetadata({
   title: t("Frequently asked questions"),
   description: t(description),
   alternates: { canonical: "/faq" },
   openGraph: { title: t("Money Nerds FAQ"), description: t(description), url: "/faq", images: [SOCIAL_PREVIEW_IMAGE] },
-};
+}, "/faq", locale);
 }
 
 const questions = [
@@ -69,7 +70,7 @@ const questions = [
 ] as const;
 
 export default async function FaqPage() {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
   return (
     <GuidePage
       path="/faq"
@@ -87,7 +88,7 @@ export default async function FaqPage() {
         </div>
       </GuideSection>
       <GuideSection id="more-help" title={t("Need the step-by-step version?")}>
-        <p className="site-section__intro">{t("Follow")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/how-it-works">{t("how it works")}</Link> {t("to create or fund a post. Read")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/safety">{t("safety and privacy")}</Link> {t("before sharing personal details, or use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/community">{t("community guide")}</Link> {t("to make a clearer ask.")}</p>
+        <p className="site-section__intro">{t("Follow")} <Link className="text-[#c9ff55] underline underline-offset-4" href={localizedPublicPath("/how-it-works", locale)}>{t("how it works")}</Link> {t("to create or fund a post. Read")} <Link className="text-[#c9ff55] underline underline-offset-4" href={localizedPublicPath("/safety", locale)}>{t("safety and privacy")}</Link> {t("before sharing personal details, or use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href={localizedPublicPath("/community", locale)}>{t("community guide")}</Link> {t("to make a clearer ask.")}</p>
         <p className="site-section__intro">{t("Still stuck? Email")} <ContactLink className="break-all text-[#c9ff55] underline underline-offset-4" /> {t("with the relevant public URL and what happened. Never include sign-in codes or wallet secrets.")}</p>
         <ContactStatus />
       </GuideSection>

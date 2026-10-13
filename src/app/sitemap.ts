@@ -1,7 +1,8 @@
 import type {MetadataRoute} from "next";
 import {CATEGORY_SCOPES} from "@/lib/categories";
 import {SITE_URL} from "@/lib/config";
-import {GUIDE_LANGUAGES, HOW_IT_WORKS_ALTERNATES} from "@/lib/guide-languages";
+import {EDITORIAL_SLUGS, editorialAlternates, localizedPublicPath} from "@/lib/editorial";
+import {LOCALES} from "@/lib/i18n/config";
 import {createPublicSupabase} from "@/lib/supabase/public";
 
 const PAGE_SIZE = 1000;
@@ -57,19 +58,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         {
             url: SITE_URL,
         },
-        {
-            url: `${SITE_URL}/about`,
-        },
-        {
-            url: `${SITE_URL}/transparency`,
-        },
-        ...["safety", "faq", "community"].map((path) => ({
-            url: `${SITE_URL}/${path}`,
-        })),
-        ...GUIDE_LANGUAGES.map(({path}) => ({
-            url: `${SITE_URL}${path}`,
-            alternates: {languages: HOW_IT_WORKS_ALTERNATES},
-        })),
+        ...EDITORIAL_SLUGS.flatMap((slug) => LOCALES.map((locale) => ({
+            url: `${SITE_URL}${localizedPublicPath(`/${slug}`, locale)}`,
+            alternates: {languages: editorialAlternates(`/${slug}`)},
+        }))),
         ...CATEGORY_SCOPES.map((category) => ({
             url: `${SITE_URL}/?category=${category.value}`,
         })),

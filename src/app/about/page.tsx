@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { editorialMetadata } from "@/lib/editorial";
 import type {Metadata} from "next";
 import Link from "next/link";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
@@ -13,8 +14,8 @@ import {
 } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslator();
-  return {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  return editorialMetadata({
     title: t("About"),
     description: t("Why Money Nerds exists, how direct multi-network support works, and what zero platform commission means."),
     alternates: {canonical: "/about"},
@@ -24,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
         description: t("Internet-native expression meets direct, transparent generosity."),
         images: [SOCIAL_PREVIEW_IMAGE],
     },
-};
+}, "/about", locale);
 }
 
 export default async function AboutPage() {

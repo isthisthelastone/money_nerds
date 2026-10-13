@@ -1,7 +1,7 @@
-import { SITE_URL } from "@/lib/config";
+import { editorialAlternates } from "@/lib/editorial";
 
 export const GUIDE_LANGUAGES = [
-  { locale: "en", language: "en", label: "English", path: "/how-it-works", openGraphLocale: "en_US" },
+  { locale: "en", language: "en", label: "English", path: "/how-it-works", openGraphLocale: "en_GB" },
   { locale: "ru", language: "ru", label: "Русский", path: "/ru/how-it-works", openGraphLocale: "ru_RU" },
   { locale: "es", language: "es", label: "Español", path: "/es/how-it-works", openGraphLocale: "es_ES" },
   { locale: "zh", language: "zh-Hans", label: "简体中文", path: "/zh/how-it-works", openGraphLocale: "zh_CN" },
@@ -18,11 +18,4 @@ export function isTranslatedGuideLocale(locale: string): locale is TranslatedGui
 }
 
 // Every language page and sitemap entry uses this same reciprocal set.
-export const HOW_IT_WORKS_ALTERNATES = {
-  en: `${SITE_URL}/how-it-works`,
-  ru: `${SITE_URL}/ru/how-it-works`,
-  es: `${SITE_URL}/es/how-it-works`,
-  "zh-Hans": `${SITE_URL}/zh/how-it-works`,
-  vi: `${SITE_URL}/vi/how-it-works`,
-  "x-default": `${SITE_URL}/how-it-works`,
-};
+export const HOW_IT_WORKS_ALTERNATES = editorialAlternates("/how-it-works");

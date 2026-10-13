@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { isLocale, LANGUAGE_OPTIONS, LOCALES, type Locale } from "@/lib/i18n/config";
+import { editorialRoute, localizedPublicPath } from "@/lib/editorial";
 
 export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { locale, t } = useI18n();
@@ -20,10 +21,12 @@ export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
       const response = await fetch("/api/settings/preferences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locale: next }) });
       if (!response.ok) throw new Error();
       const url = new URL(window.location.href);
-      if (/^\/(en|es|zh|ru|vi)\/how-it-works\/?$/.test(url.pathname)) {
-        url.pathname = next === "en" ? "/how-it-works" : `/${next}/how-it-works`;
+      if (editorialRoute(url.pathname)) {
+        url.pathname = localizedPublicPath(url.pathname, next);
+        url.searchParams.delete("ui");
+      } else {
+        url.searchParams.set("ui", next);
       }
-      url.searchParams.set("ui", next);
       router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
       router.refresh();
     } catch { setError("Preferences could not be saved. Try again."); }

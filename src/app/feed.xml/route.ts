@@ -17,7 +17,7 @@ export async function GET() {
     const supabase = createPublicSupabase();
     const {data, error} = await supabase
         .from("post_cards")
-        .select("id, nickname, body, author_wallet, created_at")
+        .select("id, nickname, body, created_at, updated_at")
         .order("created_at", {ascending: false})
         .limit(50);
     if (error) return new Response("Feed unavailable", {status: 503});
@@ -30,20 +30,26 @@ export async function GET() {
   <link>${url}</link>
   <guid isPermaLink="true">${url}</guid>
   <pubDate>${new Date(post.created_at).toUTCString()}</pubDate>
-  <author>${xml(post.author_wallet)}</author>
+  <dc:creator>${xml(post.nickname)}</dc:creator>
   <description>${xml(description)}</description>
 </item>`;
     }).join("\n");
 
+    // Use actual content timestamps; refreshing the cache does not publish news.
+    const timestamps = (data ?? []).flatMap((post) => [post.created_at, post.updated_at])
+        .map((value) => Date.parse(value))
+        .filter(Number.isFinite);
+    const lastBuildDate = timestamps.length ? new Date(Math.max(...timestamps)).toUTCString() : null;
+
     const document = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
 <channel>
   <title>Money Nerds — public board</title>
   <link>${SITE_URL}</link>
   <description>Public posts receiving direct support across multiple crypto networks.</description>
   <language>en</language>
   <atom:link href="${SITE_URL}/feed.xml" rel="self" type="application/rss+xml" />
-  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+  ${lastBuildDate ? `<lastBuildDate>${lastBuildDate}</lastBuildDate>` : ""}
 ${items}
 </channel>
 </rss>`;

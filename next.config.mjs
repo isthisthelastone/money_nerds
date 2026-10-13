@@ -76,6 +76,8 @@ const nextConfig = {
   reactStrictMode: true,
   async redirects() {
     return [
+      { source: "/contact", destination: "/legal/report", permanent: true },
+      { source: "/privacy", destination: "/legal/privacy", permanent: true },
       {
         source: "/favicon.ico",
         destination: "/icon.svg",

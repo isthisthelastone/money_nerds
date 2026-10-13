@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { localizedPublicPath } from "@/lib/editorial";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronRight } from "lucide-react";
@@ -8,6 +9,7 @@ const GUIDES = [
   { href: "/safety", label: "Safety" },
   { href: "/faq", label: "FAQ" },
   { href: "/community", label: "Community guide" },
+  { href: "/crypto-crowdfunding", label: "Crypto crowdfunding" },
 ] as const;
 
 export async function GuidePage({
@@ -21,7 +23,7 @@ export async function GuidePage({
   introduction: string;
   children: ReactNode;
 }) {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
   const current = GUIDES.find((guide) => guide.href === path)!;
 
   return (
@@ -40,7 +42,7 @@ export async function GuidePage({
         {GUIDES.map((guide) => (
           <Link
             key={guide.href}
-            href={guide.href}
+            href={localizedPublicPath(guide.href, locale)}
             aria-current={guide.href === path ? "page" : undefined}
             className={`inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition ${
               guide.href === path

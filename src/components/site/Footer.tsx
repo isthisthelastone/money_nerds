@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { localizedPublicPath } from "@/lib/editorial";
 import Link from "next/link";
 import {ArrowUpRight, BadgeDollarSign, Radio} from "lucide-react";
 import {LanguageSwitcher} from "./LanguageSwitcher";
@@ -6,7 +7,7 @@ import {PrivacyChoicesButton} from "@/components/legal/PrivacyConsent";
 import {ContactLink} from "@/components/legal/ContactLink";
 
 export async function SiteFooter() {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
     return (
         <footer className="site-footer">
             <div className="site-shell">
@@ -28,18 +29,19 @@ export async function SiteFooter() {
                         <p className="site-footer__label">{t("Explore")}</p>
                         <nav className="site-footer__links" aria-label={t("Footer navigation")}>
                             <Link href="/">{t("Home")}</Link>
-                            <Link href="/about">{t("About")}</Link>
-                            <Link href="/transparency">{t("Transparency")}</Link>
-                            <Link href="/how-it-works">{t("How it works")}</Link>
-                            <Link href="/community">{t("Community guide")}</Link>
+                            <Link href={localizedPublicPath("/about", locale)}>{t("About")}</Link>
+                            <Link href={localizedPublicPath("/transparency", locale)}>{t("Transparency")}</Link>
+                            <Link href={localizedPublicPath("/how-it-works", locale)}>{t("How it works")}</Link>
+                            <Link href={localizedPublicPath("/community", locale)}>{t("Community guide")}</Link>
+                            <Link href={localizedPublicPath("/crypto-crowdfunding", locale)}>{t("Crypto crowdfunding")}</Link>
                         </nav>
                     </div>
 
                     <div>
                         <p className="site-footer__label">{t("Trust & help")}</p>
                         <div className="site-footer__links">
-                            <Link href="/safety">{t("Safety & privacy")}</Link>
-                            <Link href="/faq">{t("FAQ")}</Link>
+                            <Link href={localizedPublicPath("/safety", locale)}>{t("Safety & privacy")}</Link>
+                            <Link href={localizedPublicPath("/faq", locale)}>{t("FAQ")}</Link>
                             <a
                                 href="https://solscan.io/account/BqzLRNsHraeahvfppDs9QmRDdYx3gUYt69pgA6UR9GQg"
                                 rel="noreferrer"

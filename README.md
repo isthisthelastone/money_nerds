@@ -1,10 +1,11 @@
 # Money Nerds
 
-Money Nerds is a public board for asks, ideas, memes, and mutual aid. People sign
+Money Nerds is a crypto crowdfunding board for asks, ideas, memes, and mutual aid. People sign
 in once, publish a request, and receive direct support through the crypto routes
 they choose. The platform takes no commission and never custodies user funds.
 
 **[Explore the live board](https://www.moneynerds.online)** ·
+[Crypto crowdfunding](https://www.moneynerds.online/crypto-crowdfunding) ·
 [How it works](https://www.moneynerds.online/how-it-works) ·
 [Safety](https://www.moneynerds.online/safety) ·
 [FAQ](https://www.moneynerds.online/faq)
@@ -13,6 +14,17 @@ Post a meme, describe a project, or explain a real need. Choose the asset and
 network you accept; supporters decide whether to send directly to your published
 address. Network fees may apply. Funding and the truth of a request are not
 guaranteed. You can browse without an account.
+
+The public guides are available in [English](https://www.moneynerds.online/crypto-crowdfunding),
+[Español](https://www.moneynerds.online/es/crypto-crowdfunding),
+[简体中文](https://www.moneynerds.online/zh/crypto-crowdfunding),
+[Русский](https://www.moneynerds.online/ru/crypto-crowdfunding), and
+[Tiếng Việt](https://www.moneynerds.online/vi/crypto-crowdfunding).
+Each language has a stable URL; user-written posts are not automatically translated.
+
+For readers and agents, public content is available as normal HTML, the [RSS feed](https://www.moneynerds.online/feed.xml),
+and factual [product reference](https://www.moneynerds.online/llms.txt). The public board also
+supports `Accept: text/markdown` with the same public posts and filter choices.
 
 Contributions and specific bug reports are welcome through this repository.
 Never put credentials, identity documents, or private payment details in an issue.

@@ -11,11 +11,11 @@ import { CATEGORY_SCOPES, categoryScope } from "@/lib/categories";
 import { SERVICE_WALLET, SITE_URL } from "@/lib/config";
 import { getFeed, getSiteStats } from "@/lib/data";
 import { formatSol } from "@/lib/format";
+import { feedSeo } from "@/lib/feed-seo";
+import { parseFeedParams } from "@/lib/feed-params";
 import {
   DEFAULT_FEED_PAGE_SIZE,
   FEED_PAGE_SIZES,
-  isCategory,
-  isPostLanguage,
   POST_LANGUAGES,
   POST_LANGUAGE_LABELS,
   type FeedParams,
@@ -25,32 +25,32 @@ import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 
 export const revalidate = 60;
 
-const SORTS = ["latest", "loved", "funded"] as const;
-
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const t = await getTranslator();
-  const values = await searchParams;
-  const requestedCategory = first(values.category);
-  const scope = categoryScope(requestedCategory);
-  const categoryOnly = Boolean(scope) && Object.entries(values).every(
-    ([key, value]) => key === "category" || value === undefined,
-  );
-  const bareHome = Object.values(values).every((value) => value === undefined);
-  const canonical = scope ? `/?category=${scope.value}` : "/";
+  const { scope, page, indexable, canonical } = feedSeo(await searchParams);
+  const pageLabel = page > 1 ? t("Page {page}", { page }) : "";
+  const baseTitle = scope
+    ? t("{category} posts — direct multi-currency support", { category: t(scope.label) })
+    : t("Money Nerds — Crypto Crowdfunding & Direct Support");
+  const title = pageLabel ? `${baseTitle} · ${pageLabel}` : baseTitle;
 
   return {
+    ...(scope || page > 1 ? { title: { absolute: title } } : {}),
     ...(scope
       ? {
-          title: t("{category} posts — direct multi-currency support", { category: t(scope.label) }),
           description: `${t(scope.shortDescription)} ${t("Explore public requests and support people directly across supported crypto networks with zero platform commission.")}`,
           openGraph: {
-            title: t("{category} posts on Money Nerds", { category: t(scope.label) }),
+            title: pageLabel ? `${t("{category} posts on Money Nerds", { category: t(scope.label) })} · ${pageLabel}` : t("{category} posts on Money Nerds", { category: t(scope.label) }),
             description: t(scope.shortDescription),
-            url: `${SITE_URL}/?category=${scope.value}`,
+            url: `${SITE_URL}${canonical}`,
             images: [SOCIAL_PREVIEW_IMAGE],
           },
+        }
+      : page > 1
+      ? {
+          openGraph: { title, url: `${SITE_URL}${canonical}`, images: [SOCIAL_PREVIEW_IMAGE] },
         }
       : {}),
     alternates: {
@@ -59,7 +59,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
         "application/rss+xml": `${SITE_URL}/feed.xml`,
       },
     },
-    robots: bareHome || categoryOnly
+    robots: indexable
       ? {
           index: true,
           follow: true,
@@ -76,31 +76,6 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
           follow: true,
           googleBot: { index: false, follow: true },
         },
-  };
-}
-
-function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function parseFeedParams(values: Awaited<SearchParams>): FeedParams {
-  const requestedPage = Number(first(values.page));
-  const requestedSize = Number(first(values.size));
-  const requestedSort = first(values.sort);
-  const requestedCategory = first(values.category);
-  const requestedLanguage = first(values.language);
-  return {
-    page: Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
-    pageSize: FEED_PAGE_SIZES.includes(requestedSize as (typeof FEED_PAGE_SIZES)[number])
-      ? requestedSize
-      : DEFAULT_FEED_PAGE_SIZE,
-    sort: SORTS.includes(requestedSort as (typeof SORTS)[number])
-      ? (requestedSort as FeedParams["sort"])
-      : "latest",
-    category: isCategory(requestedCategory) ? requestedCategory : "anything",
-    language: isPostLanguage(requestedLanguage) || requestedLanguage === "untagged"
-      ? requestedLanguage
-      : "all",
   };
 }
 

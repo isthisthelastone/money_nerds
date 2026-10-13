@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { editorialMetadata, localizedPublicPath } from "@/lib/editorial";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
@@ -8,17 +9,17 @@ import { ContactLink, ContactStatus } from "@/components/legal/ContactLink";
 const description = "Protect your wallet and privacy on Money Nerds: check recipients, understand public profiles, use SBP carefully, and report suspicious posts.";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslator();
-  return {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  return editorialMetadata({
   title: t("Safety and privacy"),
   description: t(description),
   alternates: { canonical: "/safety" },
   openGraph: { title: t("Money Nerds safety and privacy"), description: t(description), url: "/safety", images: [SOCIAL_PREVIEW_IMAGE] },
-};
+}, "/safety", locale);
 }
 
 export default async function SafetyPage() {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
   return (
     <GuidePage
       path="/safety"
@@ -54,7 +55,7 @@ export default async function SafetyPage() {
       <GuideSection id="report-a-problem" title={t("Something looks wrong? Tell us.")}>
         <p className="site-section__intro">{t("Send the public post or profile URL and a short explanation to")} <ContactLink className="break-all text-[#c9ff55] underline underline-offset-4" />{t(". For a funding problem, include the network and public transaction ID if available—not wallet secrets, passwords, or unredacted personal documents.")}</p>
         <ContactStatus />
-        <p className="site-section__intro">{t("If a transfer may already have gone wrong, stop sending and contact your bank or wallet provider through its official support channel. Reporting a post does not reverse a transfer. For ordinary setup questions, start with the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/faq">{t("FAQ")}</Link>.</p>
+        <p className="site-section__intro">{t("If a transfer may already have gone wrong, stop sending and contact your bank or wallet provider through its official support channel. Reporting a post does not reverse a transfer. For ordinary setup questions, start with the")} <Link className="text-[#c9ff55] underline underline-offset-4" href={localizedPublicPath("/faq", locale)}>{t("FAQ")}</Link>.</p>
       </GuideSection>
     </GuidePage>
   );

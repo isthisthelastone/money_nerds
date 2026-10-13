@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { editorialMetadata, localizedPublicPath } from "@/lib/editorial";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GuidePage, GuideSection } from "@/components/site/GuidePage";
@@ -8,17 +9,17 @@ import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
 const description = "Make a clear Money Nerds ask, choose a useful category, share your post respectfully, and help the community without misleading people.";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslator();
-  return {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  return editorialMetadata({
   title: t("Community guide"),
   description: t(description),
   alternates: { canonical: "/community" },
   openGraph: { title: t("Money Nerds community guide"), description: t(description), url: "/community", images: [SOCIAL_PREVIEW_IMAGE] },
-};
+}, "/community", locale);
 }
 
 export default async function CommunityPage() {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
   return (
     <GuidePage
       path="/community"
@@ -62,7 +63,7 @@ export default async function CommunityPage() {
         <div className="site-bento">
           <article className="site-card"><h3>{t("Ask a useful question")}</h3><p>{t("Help an author clarify a missing detail. Discuss the request respectfully; do not demand sensitive documents in public comments.")}</p></article>
           <article className="site-card"><h3>{t("Offer a relevant idea")}</h3><p>{t("A practical suggestion, encouragement, or a thoughtful reply can help too. Do not turn someone else’s ask into an advertisement.")}</p></article>
-          <article className="site-card"><h3>{t("Flag a concern safely")}</h3><p>{t("If something appears misleading or abusive, use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href="/safety#report-a-problem">{t("reporting contact")}</Link>{t(". Share the public URL and your concern, not private information about the person.")}</p></article>
+          <article className="site-card"><h3>{t("Flag a concern safely")}</h3><p>{t("If something appears misleading or abusive, use the")} <Link className="text-[#c9ff55] underline underline-offset-4" href={localizedPublicPath("/safety#report-a-problem", locale)}>{t("reporting contact")}</Link>{t(". Share the public URL and your concern, not private information about the person.")}</p></article>
         </div>
       </GuideSection>
     </GuidePage>

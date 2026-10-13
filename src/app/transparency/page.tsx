@@ -1,4 +1,5 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { editorialMetadata } from "@/lib/editorial";
 import type {Metadata} from "next";
 import Link from "next/link";
 import { SOCIAL_PREVIEW_IMAGE } from "@/lib/social-preview";
@@ -17,8 +18,8 @@ const SERVICE_WALLET = "BqzLRNsHraeahvfppDs9QmRDdYx3gUYt69pgA6UR9GQg";
 const SOLSCAN_URL = `https://solscan.io/account/${SERVICE_WALLET}`;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslator();
-  return {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  return editorialMetadata({
     title: t("Transparency"),
     description: t("See how Money Nerds handles direct donations, network fees, and voluntary support for the service."),
     alternates: {canonical: "/transparency"},
@@ -28,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
         description: t("Direct settlement, zero platform commission, and a public service wallet."),
         images: [SOCIAL_PREVIEW_IMAGE],
     },
-};
+}, "/transparency", locale);
 }
 
 export default async function TransparencyPage() {
