@@ -71,6 +71,9 @@ check(/\baccept\b/i.test(markdown.response.headers.get('vary') ?? '') && markdow
 const html = await fetchPage('/', { Accept: 'text/html' });
 check(html.response.headers.get('content-type')?.startsWith('text/html'), 'HTML negotiation failed');
 check(/\baccept\b/i.test(html.response.headers.get('vary') ?? ''), 'HTML Vary: Accept missing');
+const htmlPosts = [...new Set([...html.body.matchAll(/<a\b[^>]*href="\/p\/(\d+)"/g)].map((match) => match[1]))].sort();
+const markdownPosts = [...new Set([...markdown.body.matchAll(/### \[[^\n]+\]\(https:\/\/www\.moneynerds\.online\/p\/(\d+)\)/g)].map((match) => match[1]))].sort();
+check(htmlPosts.length > 0 && JSON.stringify(htmlPosts) === JSON.stringify(markdownPosts), 'HTML/Markdown public post links differ');
 const rss = await fetchPage('/feed.xml');
 check(rss.response.status === 200 && rss.body.includes('xmlns:dc=') && !rss.body.includes('<author>'), 'RSS creator namespace/semantics failed');
 const sitemap = await fetchPage('/sitemap.xml');
