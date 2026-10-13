@@ -88,6 +88,13 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: "/",
+        // The HTML app renderer adds its own Vary fields after Proxy runs.
+        // Declare the complete union here so both negotiated representations
+        // keep Accept without losing Next's navigation cache boundaries.
+        headers: [{ key: "Vary", value: "Accept, RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },

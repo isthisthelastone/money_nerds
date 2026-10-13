@@ -54,7 +54,7 @@ for (const [path, canonical, indexable] of [
   const links = [...body.matchAll(/<link\b[^>]*>/g)].map(([tag]) => attributes(tag));
   const metas = [...body.matchAll(/<meta\b[^>]*>/g)].map(([tag]) => attributes(tag));
   check(response.status === 200, `${path}: HTTP ${response.status}`);
-  check(links.some(link => link.rel === 'canonical' && link.href === `${canonicalOrigin}${canonical}`), `${path}: wrong pagination canonical`);
+  check(links.some(link => link.rel === 'canonical' && link.href && new URL(link.href).href === new URL(`${canonicalOrigin}${canonical}`).href), `${path}: wrong pagination canonical`);
   const noindex = metas.some(meta => meta.name === 'robots' && /noindex/.test(meta.content ?? ''));
   check(noindex !== indexable, `${path}: incorrect indexing directive`);
 }
