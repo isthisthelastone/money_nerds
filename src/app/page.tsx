@@ -96,6 +96,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const t = await getTranslator();
   const params = parseFeedParams(await searchParams);
   const scope = categoryScope(params.category);
+  // Keep real HTTP redirects for invalid pagination before streaming starts.
+  // Page one (the landing) never waits on this database request.
+  const prefetchedFeed = params.page > 1 ? await getFeed(params).catch(() => null) : undefined;
+  if (prefetchedFeed && params.page > Math.max(1, Math.ceil(prefetchedFeed.count / params.pageSize))) {
+    redirect(pageHref(params, Math.max(1, Math.ceil(prefetchedFeed.count / params.pageSize))));
+  }
 
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -137,17 +143,20 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       {scope ? null : <><Hero /><HomeIntroduction /></>}
       <Suspense fallback={<section id="feed" className="site-shell pb-20" aria-busy="true" aria-label={t("The public board")}><p role="status" className="py-10 text-white/55">{t("Loading the public board…")}</p></section>}>
-        <PublicBoard params={params} />
+        <PublicBoard params={params} prefetchedFeed={prefetchedFeed} />
       </Suspense>
     </>
   );
 }
 
 /** A data outage must not take the public introduction or navigation offline. */
-async function PublicBoard({ params }: { params: FeedParams }) {
+async function PublicBoard({ params, prefetchedFeed }: { params: FeedParams; prefetchedFeed?: Awaited<ReturnType<typeof getFeed>> | null }) {
   const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
   const scope = categoryScope(params.category);
-  const [feedResult, statsResult] = await Promise.allSettled([getFeed(params), getSiteStats()]);
+  const [feedResult, statsResult] = await Promise.allSettled([
+    prefetchedFeed === undefined ? getFeed(params) : Promise.resolve(prefetchedFeed),
+    getSiteStats(),
+  ]);
   const feed = feedResult.status === "fulfilled" ? feedResult.value : null;
   const stats = statsResult.status === "fulfilled" ? statsResult.value : null;
   if (!feed) console.error("homepage_feed_unavailable");

@@ -18,6 +18,7 @@ No schema, access policy, identity mapping, credentials, billing plan, or domain
 - Stream the public introduction independently of posts/statistics using a Suspense boundary.
 - Handle feed and statistics failures independently. A failed feed shows a retry notice rather than a false empty-board message; failed statistics show unknown values rather than fabricated zero totals.
 - Preserve feed filters when retrying and only redirect out-of-range pages after a successful count.
+- Check requested pages above page one before streaming, preserving HTTP redirect status; reuse that result in the board. The main landing never waits on that precheck.
 - Keep category pages focused on their category without the welcome section. Localize the hero and introduction guide links.
 - Add translated loading/outage messages in all five supported languages and a root-landing assertion to the existing discovery audit.
 
