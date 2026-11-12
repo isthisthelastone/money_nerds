@@ -2,6 +2,11 @@ import type { Locale, Messages } from "./config";
 
 // Reviewed interface copy overrides the initial translation draft.
 const rows: Array<[string, string, string, string, string]> = [
+  ["Loading the public board…", "Cargando el tablón público…", "正在加载公共看板…", "Загружаем публичную ленту…", "Đang tải bảng tin công khai…"],
+  ["The board is temporarily unavailable.", "El tablón no está disponible temporalmente.", "看板暂时无法使用。", "Лента временно недоступна.", "Bảng tin tạm thời không khả dụng."],
+  ["The introduction is still available. Please try loading the posts again.", "La presentación sigue disponible. Intenta cargar las publicaciones de nuevo.", "平台介绍仍可查看，请尝试重新加载帖子。", "Информация о платформе по-прежнему доступна. Попробуйте загрузить публикации ещё раз.", "Bạn vẫn có thể đọc phần giới thiệu. Vui lòng thử tải lại bài viết."],
+  ["Reload posts", "Volver a cargar publicaciones", "重新加载帖子", "Загрузить публикации", "Tải lại bài viết"],
+  ["Statistics are temporarily unavailable.", "Las estadísticas no están disponibles temporalmente.", "统计数据暂时无法使用。", "Статистика временно недоступна.", "Số liệu thống kê tạm thời không khả dụng."],
   ["Page {page}", "Página {page}", "第 {page} 页", "Страница {page}", "Trang {page}"],
   ["Crypto crowdfunding", "Crowdfunding con criptomonedas", "加密货币众筹", "Краудфандинг в криптовалюте", "Gọi vốn cộng đồng bằng tiền mã hóa"],
   ["Contact email", "Correo de contacto", "联系邮箱", "Контактная почта", "Email liên hệ"],

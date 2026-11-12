@@ -1,5 +1,6 @@
 import { getTranslator, getRequestPreferences } from "@/lib/i18n/server";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, Radio, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -7,6 +8,7 @@ import { Composer } from "@/components/features/Composer";
 import { DonateButton } from "@/components/features/DonateButton";
 import { PostCard } from "@/components/features/PostCard";
 import { Hero } from "@/components/site";
+import { HomeIntroduction } from "@/components/site/HomeIntroduction";
 import { CATEGORY_SCOPES, categoryScope } from "@/lib/categories";
 import { SERVICE_WALLET, SITE_URL } from "@/lib/config";
 import { getFeed, getSiteStats } from "@/lib/data";
@@ -92,12 +94,8 @@ function pageHref(params: FeedParams, page: number) {
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const t = await getTranslator();
-  const { locale } = await getRequestPreferences();
   const params = parseFeedParams(await searchParams);
   const scope = categoryScope(params.category);
-  const [{ posts, count }, stats] = await Promise.all([getFeed(params), getSiteStats()]);
-  const totalPages = Math.max(1, Math.ceil(count / params.pageSize));
-  if (params.page > totalPages) redirect(pageHref(params, totalPages));
 
   const websiteJsonLd = {
     "@context": "https://schema.org",
@@ -137,7 +135,30 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      {scope ? null : <Hero />}
+      {scope ? null : <><Hero /><HomeIntroduction /></>}
+      <Suspense fallback={<section id="feed" className="site-shell pb-20" aria-busy="true" aria-label={t("The public board")}><p role="status" className="py-10 text-white/55">{t("Loading the public board…")}</p></section>}>
+        <PublicBoard params={params} />
+      </Suspense>
+    </>
+  );
+}
+
+/** A data outage must not take the public introduction or navigation offline. */
+async function PublicBoard({ params }: { params: FeedParams }) {
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
+  const scope = categoryScope(params.category);
+  const [feedResult, statsResult] = await Promise.allSettled([getFeed(params), getSiteStats()]);
+  const feed = feedResult.status === "fulfilled" ? feedResult.value : null;
+  const stats = statsResult.status === "fulfilled" ? statsResult.value : null;
+  if (!feed) console.error("homepage_feed_unavailable");
+  if (!stats) console.error("homepage_statistics_unavailable");
+  const posts = feed?.posts ?? [];
+  const count = feed?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(count / params.pageSize));
+  // Only a successfully counted feed may redirect an out-of-range page.
+  if (feed && params.page > totalPages) redirect(pageHref(params, totalPages));
+
+  return (
       <section
         className={`site-shell pb-20 ${scope ? "pt-8 sm:pt-12" : ""}`}
         id="feed"
@@ -206,7 +227,13 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
             <div className="mt-5 grid gap-5">
               {posts.map((post) => <PostCard key={post.id} post={post} />)}
-              {!posts.length ? (
+              {!feed ? (
+                <div role="status" className="rounded-[1.4rem] border border-[#c9ff55]/20 bg-[#c9ff55]/[0.04] px-5 py-10">
+                  <h3 className="text-lg font-semibold text-[#f2efe6]">{t("The board is temporarily unavailable.")}</h3>
+                  <p className="mt-2 max-w-xl text-sm text-white/60">{t("The introduction is still available. Please try loading the posts again.")}</p>
+                  <a className="button button-secondary mt-5 inline-flex" href={pageHref(params, params.page)}>{t("Reload posts")}</a>
+                </div>
+              ) : !posts.length ? (
                 <div className="rounded-[1.4rem] border border-dashed border-white/12 bg-white/[0.02] px-5 py-16 text-center">
                   <p className="text-lg font-medium text-[#f2efe6]">{t("Nothing in this corner yet.")}</p>
                   <p className="mt-2 text-sm text-white/45">{t("Change the filters or make the first ask.")}</p>
@@ -214,7 +241,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               ) : null}
             </div>
 
-            <nav className="mt-7 flex items-center justify-between gap-4" aria-label={t("Feed pages")}>
+            {feed ? <nav className="mt-7 flex items-center justify-between gap-4" aria-label={t("Feed pages")}>
               {params.page > 1 ? (
                 <Link className="button button-secondary" href={pageHref(params, params.page - 1)}>
                   <ArrowLeft aria-hidden="true" size={16} /> {t("Previous")}</Link>
@@ -225,7 +252,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                   {t("Next")}{" "}<ArrowRight aria-hidden="true" size={16} />
                 </Link>
               ) : <span />}
-            </nav>
+            </nav> : null}
           </div>
 
           <aside className="grid gap-4 lg:sticky lg:top-24" aria-label={t("Platform transparency")}>
@@ -245,15 +272,16 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">{t("Public pulse")}</p>
               <dl className="mt-4 grid gap-4">
                 <div className="flex items-end justify-between gap-3 border-b border-white/8 pb-3">
-                  <dt className="text-sm text-white/50">{t("Posts")}</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{new Intl.NumberFormat(locale).format(stats.posts)}</dd>
+                  <dt className="text-sm text-white/50">{t("Posts")}</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{stats ? new Intl.NumberFormat(locale).format(stats.posts) : "—"}</dd>
                 </div>
                 <div className="flex items-end justify-between gap-3 border-b border-white/8 pb-3">
-                  <dt className="flex items-center gap-1.5 text-sm text-white/50"><Users aria-hidden="true" size={14} /> {t("Profiles")}</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{new Intl.NumberFormat(locale).format(stats.profiles)}</dd>
+                  <dt className="flex items-center gap-1.5 text-sm text-white/50"><Users aria-hidden="true" size={14} /> {t("Profiles")}</dt><dd className="text-2xl font-semibold text-[#f2efe6]">{stats ? new Intl.NumberFormat(locale).format(stats.profiles) : "—"}</dd>
                 </div>
                 <div className="flex items-end justify-between gap-3">
-                  <dt className="text-sm text-white/50">{t("Verified SOL flow")}</dt><dd className="text-xl font-semibold text-[#c9ff55]">{formatSol(stats.verifiedLamports, locale)} SOL</dd>
+                  <dt className="text-sm text-white/50">{t("Verified SOL flow")}</dt><dd className="text-xl font-semibold text-[#c9ff55]">{stats ? `${formatSol(stats.verifiedLamports, locale)} SOL` : "—"}</dd>
                 </div>
               </dl>
+              {!stats ? <p className="mt-4 text-xs text-white/50">{t("Statistics are temporarily unavailable.")}</p> : null}
             </div>
             <div className="rounded-[1.4rem] border border-white/10 bg-[#111311] p-5 text-sm leading-6 text-white/50">
               <strong className="block text-[#f2efe6]">{t("Safety note")}</strong>
@@ -263,6 +291,5 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           </aside>
         </div>
       </section>
-    </>
   );
 }

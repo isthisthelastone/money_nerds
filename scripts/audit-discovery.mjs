@@ -69,6 +69,7 @@ const markdown = await fetchPage('/', { Accept: 'text/markdown' });
 check(markdown.response.status === 200 && markdown.response.headers.get('content-type')?.startsWith('text/markdown'), 'Homepage Markdown negotiation failed');
 check(/\baccept\b/i.test(markdown.response.headers.get('vary') ?? '') && markdown.body.startsWith('# Money Nerds'), 'Markdown Vary/body missing');
 const html = await fetchPage('/', { Accept: 'text/html' });
+check(html.response.status === 200 && html.body.includes('id="money-nerds-title"') && html.body.includes('id="home-purpose-title"'), 'Root landing status/mission missing');
 check(html.response.headers.get('content-type')?.startsWith('text/html'), 'HTML negotiation failed');
 check(/\baccept\b/i.test(html.response.headers.get('vary') ?? ''), 'HTML Vary: Accept missing');
 const htmlPosts = [...new Set([...html.body.matchAll(/<a\b[^>]*href="\/p\/(\d+)"/g)].map((match) => match[1]))].sort();

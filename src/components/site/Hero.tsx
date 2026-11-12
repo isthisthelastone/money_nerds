@@ -1,10 +1,11 @@
-import { getTranslator } from "@/lib/i18n/server";
+import { getRequestPreferences, getTranslator } from "@/lib/i18n/server";
+import { localizedPublicPath } from "@/lib/editorial";
 import Link from "next/link";
 import {ArrowDown, ArrowRight, Blocks, CircleDollarSign, ShieldCheck} from "lucide-react";
 import {HeroCoin} from "./HeroCoin";
 
 export async function Hero() {
-  const t = await getTranslator();
+  const [t, { locale }] = await Promise.all([getTranslator(), getRequestPreferences()]);
     return (
         <section className="site-hero site-shell" aria-labelledby="money-nerds-title">
             <div className="site-hero__copy">
@@ -16,7 +17,7 @@ export async function Hero() {
                 <div className="site-actions">
                     <a className="site-button site-button--primary" href="#feed"> {t("Explore requests")} <ArrowDown aria-hidden="true" size={17} />
                     </a>
-                    <Link className="site-button site-button--secondary" href="/how-it-works"> {t("How it works")} <ArrowRight aria-hidden="true" size={17} />
+                    <Link className="site-button site-button--secondary" href={localizedPublicPath("/how-it-works", locale)}> {t("How it works")} <ArrowRight aria-hidden="true" size={17} />
                     </Link>
                 </div>
 
